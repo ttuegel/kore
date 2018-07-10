@@ -72,8 +72,16 @@ handleBinder a b binder s1 v p =
     in if S.member v fa 
         then binder s1 v p 
     else if S.member v fb
-        then subst a b $ alphaRename $ binder s1 v p 
+        then subst a b $ alphaRename binder s1 v p 
         else binder s1 v $ subst a b p
+  where
+    alphaRename binder s1 v p = 
+        binder s1 (replacementVar v p)
+        (subst (Var_ v) (Var_ $ replacementVar v p) p)
+      where
+        replacementVar v p = head $ alternatives v \\ (S.toList $ freeVars p)
+        alternatives (Variable (Id name loc) sort) =  -- FIXME: lens. 
+            [Variable (Id (name ++ show n) loc) sort | n <- [(0::Integer)..] ]
 
 freeVars
   :: MetaOrObject level 
@@ -83,23 +91,6 @@ freeVars (Forall_ s1 v p) = S.delete v $ freeVars p
 freeVars (Exists_ s1 v p) = S.delete v $ freeVars p 
 freeVars (Var_ v) = S.singleton v 
 freeVars p = S.unions $ map freeVars $ p ^. partsOf allChildren
-
-alphaRename
-  :: MetaOrObject level 
-  => CommonPurePattern level 
-  -> CommonPurePattern level 
-alphaRename = (\case 
- Forall_ s1 v p -> go Forall_ s1 v p 
- Exists_ s1 v p -> go Exists_ s1 v p
- -- x -> x
- _ -> error "Input must be an Exist or Forall at the top level"
- ) where 
-    go binder s1 v p = 
-        binder s1 (replacementVar v p)
-        (subst (Var_ v) (Var_ $ replacementVar v p) p)
-    replacementVar v p = head $ alternatives v \\ (S.toList $ freeVars p)
-    alternatives (Variable (Id name loc) sort) =  -- FIXME: lens. 
-        [Variable (Id (name ++ show n) loc) sort | n <- [(0::Integer)..] ]
 
 inPath
   :: (MetaOrObject level, Applicative f)
