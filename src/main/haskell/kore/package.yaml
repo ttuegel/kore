@@ -25,7 +25,6 @@ dependencies:
   - base >= 4.7
   - array
   - bytestring >= 0.10
-  - bytestring-trie
   - containers
   - clock
   - deepseq
@@ -45,6 +44,7 @@ dependencies:
   - reflection
   - text
   - time
+  - unordered-containers
 
 build-tools:
   - tasty-discover
