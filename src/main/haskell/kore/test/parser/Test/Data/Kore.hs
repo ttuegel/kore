@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs             #-}
 module Test.Data.Kore where
 
 import           Test.QuickCheck.Gen         (Gen, choose, chooseAny, elements,
@@ -26,7 +24,7 @@ couple1 gen = do
     xs <- couple gen
     return (x:xs)
 
-{-# ANN genericIdGen "HLint: ignore Use String" #-}
+{-# ANN genericIdGen ("HLint: ignore Use String" :: String) #-}
 genericIdGen :: [Char] -> [Char] -> Gen String
 genericIdGen firstChars nextChars = do
     firstChar <- elements firstChars
