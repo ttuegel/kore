@@ -1,9 +1,9 @@
-module Test.Kore.Variables.Sort (test_freeSortVariables) where
+module Test.Kore.Variables.Sort
+    ( test_freeSortVariables
+    ) where
 
-import Test.Tasty
-       ( TestTree )
-import Test.Tasty.HUnit
-       ( assertEqual, testCase )
+import Test.Tasty (TestTree)
+import Test.Tasty.HUnit (assertEqual, testCase)
 
 import qualified Data.Set as Set
 
@@ -17,22 +17,18 @@ import Kore.Variables.Sort
 
 test_freeSortVariables :: [TestTree]
 test_freeSortVariables =
-    [ testCase "identifies variable"
-        (assertEqual "Expected to find sort variable"
-            (Set.singleton
-                (UnifiedMeta
-                    (asMetaSortVariable
-                        (MetaSortVariable1 "#s" AstLocationTest)))
-            )
-            (sortVariables
-                (asAst
-                    (metaVariable
-                        "#s"
-                        AstLocationTest
-                        (MetaSortVariable1 "#s" AstLocationTest)
-                    )
-                    :: CommonKorePattern
-                )
-            )
-        )
+    [ testCase
+          "identifies variable"
+          (assertEqual
+               "Expected to find sort variable"
+               (Set.singleton
+                    (UnifiedMeta
+                         (asMetaSortVariable
+                              (MetaSortVariable1 "#s" AstLocationTest))))
+               (sortVariables
+                    (asAst
+                         (metaVariable
+                              "#s"
+                              AstLocationTest
+                              (MetaSortVariable1 "#s" AstLocationTest)) :: CommonKorePattern)))
     ]

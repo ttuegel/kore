@@ -12,43 +12,37 @@ module Kore.Step.Function.UserDefined
     , axiomFunctionEvaluator
     ) where
 
-import Data.Reflection
-       ( Given )
+import Data.Reflection (Given)
 
-import Kore.AST.Common
-       ( Application (..), Pattern (..), SortedVariable )
-import Kore.AST.MetaOrObject
-       ( MetaOrObject )
-import Kore.AST.PureML
-       ( CommonPurePattern, PureMLPattern, asPurePattern )
-import Kore.IndexedModule.MetadataTools
-       ( MetadataTools (..) )
-import Kore.Predicate.Predicate
-       ( pattern PredicateFalse, makeTruePredicate )
-import Kore.Step.BaseStep
-       ( AxiomPattern, stepWithAxiom )
+import Kore.AST.Common (Application(..), Pattern(..), SortedVariable)
+import Kore.AST.MetaOrObject (MetaOrObject)
+import Kore.AST.PureML (CommonPurePattern, PureMLPattern, asPurePattern)
+import Kore.IndexedModule.MetadataTools (MetadataTools(..))
+import Kore.Predicate.Predicate (pattern PredicateFalse, makeTruePredicate)
+import Kore.Step.BaseStep (AxiomPattern, stepWithAxiom)
 import Kore.Step.ExpandedPattern as ExpandedPattern
-       ( ExpandedPattern (..), bottom )
-import Kore.Step.Function.Data as AttemptedFunction
-       ( AttemptedFunction (..) )
+    ( ExpandedPattern(..)
+    , bottom
+    )
+import Kore.Step.Function.Data as AttemptedFunction (AttemptedFunction(..))
 import Kore.Step.Function.Data
-       ( CommonAttemptedFunction, CommonConditionEvaluator,
-       CommonPurePatternFunctionEvaluator, ConditionEvaluator (..),
-       FunctionResultProof (..), PureMLPatternFunctionEvaluator (..) )
-import Kore.Step.Substitution
-       ( mergePredicatesAndSubstitutions )
-import Kore.Variables.Fresh.IntCounter
-       ( IntCounter )
+    ( CommonAttemptedFunction
+    , CommonConditionEvaluator
+    , CommonPurePatternFunctionEvaluator
+    , ConditionEvaluator(..)
+    , FunctionResultProof(..)
+    , PureMLPatternFunctionEvaluator(..)
+    )
+import Kore.Step.Substitution (mergePredicatesAndSubstitutions)
+import Kore.Variables.Fresh.IntCounter (IntCounter)
 
 {-| 'axiomFunctionEvaluator' evaluates a user-defined function. After
 evaluating the function, it tries to re-evaluate all functions on the result.
 
 The function is assumed to be defined through an axiom.
 -}
-axiomFunctionEvaluator
-    ::  ( MetaOrObject level
-        , Given (MetadataTools level)
-        )
+axiomFunctionEvaluator ::
+       (MetaOrObject level, Given (MetadataTools level))
     => AxiomPattern level
     -- ^ Axiom defining the current function.
     -> CommonConditionEvaluator level
@@ -58,49 +52,36 @@ axiomFunctionEvaluator
     -> Application level (CommonPurePattern level)
     -- ^ The function on which to evaluate the current function.
     -> IntCounter (CommonAttemptedFunction level, FunctionResultProof level)
-axiomFunctionEvaluator
-    axiom
-    (ConditionEvaluator conditionEvaluator)
-    functionEvaluator
-    app
-  =
-    case stepResult of
+axiomFunctionEvaluator axiom (ConditionEvaluator conditionEvaluator) functionEvaluator app =
+    case stepResult
         -- TODO: Make sure that Left excludes bottom results
-        Left _ ->
-            return (AttemptedFunction.NotApplicable, FunctionResultProof)
-        Right configurationWithProof ->
-            do
-                (   ExpandedPattern
-                        { term = rewrittenPattern
-                        , predicate = rewritingCondition
-                        , substitution = rewritingSubstitution
-                        }
-                    , _
-                    ) <- configurationWithProof
-                (evaluatedRewritingCondition, _) <-
-                    conditionEvaluator rewritingCondition
-                case evaluatedRewritingCondition of
-                    PredicateFalse ->
-                        return
-                            ( AttemptedFunction.Applied ExpandedPattern.bottom
-                            , FunctionResultProof
-                            )
-                    _ ->
-                        reevaluateFunctions
-                            (ConditionEvaluator conditionEvaluator)
-                            functionEvaluator
-                            ExpandedPattern
-                                { term   = rewrittenPattern
-                                , predicate = evaluatedRewritingCondition
-                                , substitution = rewritingSubstitution
-                                }
+          of
+        Left _ -> return (AttemptedFunction.NotApplicable, FunctionResultProof)
+        Right configurationWithProof -> do
+            (ExpandedPattern { term = rewrittenPattern
+                             , predicate = rewritingCondition
+                             , substitution = rewritingSubstitution
+                             }, _) <- configurationWithProof
+            (evaluatedRewritingCondition, _) <-
+                conditionEvaluator rewritingCondition
+            case evaluatedRewritingCondition of
+                PredicateFalse ->
+                    return
+                        ( AttemptedFunction.Applied ExpandedPattern.bottom
+                        , FunctionResultProof)
+                _ ->
+                    reevaluateFunctions
+                        (ConditionEvaluator conditionEvaluator)
+                        functionEvaluator
+                        ExpandedPattern
+                            { term = rewrittenPattern
+                            , predicate = evaluatedRewritingCondition
+                            , substitution = rewritingSubstitution
+                            }
   where
-    stepResult =
-        stepWithAxiom
-            (stepperConfiguration app)
-            axiom
-    stepperConfiguration
-        :: MetaOrObject level
+    stepResult = stepWithAxiom (stepperConfiguration app) axiom
+    stepperConfiguration ::
+           MetaOrObject level
         => Application level (PureMLPattern level variable)
         -> ExpandedPattern level variable
     stepperConfiguration app' =
@@ -113,12 +94,13 @@ axiomFunctionEvaluator
 {-| 'reevaluateFunctions' re-evaluates functions after a user-defined function
 was evaluated.
 -}
-reevaluateFunctions
-    ::  ( MetaOrObject level
-        , Given (MetadataTools level)
-        , SortedVariable variable
-        , Ord (variable level)
-        , Show (variable level))
+reevaluateFunctions ::
+       ( MetaOrObject level
+       , Given (MetadataTools level)
+       , SortedVariable variable
+       , Ord (variable level)
+       , Show (variable level)
+       )
     => ConditionEvaluator level variable
     -- ^ Evaluates conditions
     -> PureMLPatternFunctionEvaluator level variable
@@ -126,42 +108,35 @@ reevaluateFunctions
     -> ExpandedPattern level variable
     -- ^ Function evaluation result.
     -> IntCounter (AttemptedFunction level variable, FunctionResultProof level)
-reevaluateFunctions
-    (ConditionEvaluator conditionEvaluator)
-    (PureMLPatternFunctionEvaluator functionEvaluator)
-    ExpandedPattern
-        { term   = rewrittenPattern
-        , predicate = rewritingCondition
-        , substitution = rewrittenSubstitution
-        }
-  = do
-    ( ExpandedPattern
-        { term = simplifiedPattern
-        , predicate = simplificationCondition
-        , substitution = simplificationSubstitution
-        }
-        , _  -- TODO: Use this proof
+reevaluateFunctions (ConditionEvaluator conditionEvaluator) (PureMLPatternFunctionEvaluator functionEvaluator) ExpandedPattern { term = rewrittenPattern
+                                                                                                                               , predicate = rewritingCondition
+                                                                                                                               , substitution = rewrittenSubstitution
+                                                                                                                               } = do
+    (ExpandedPattern { term = simplifiedPattern
+                     , predicate = simplificationCondition
+                     , substitution = simplificationSubstitution
+                     }, _ -- TODO: Use this proof
         -- TODO(virgil): This call should be done in Evaluator.hs, but,
         -- for optimization purposes, it's done here. Make sure that
         -- this still makes sense after the evaluation code is fully
         -- optimized.
-        ) <- functionEvaluator rewrittenPattern
-    let
-        (mergedCondition, mergedSubstitution, _) =
+     ) <- functionEvaluator rewrittenPattern
+    let (mergedCondition, mergedSubstitution, _) =
             mergePredicatesAndSubstitutions
                 [rewritingCondition, simplificationCondition]
                 [rewrittenSubstitution, simplificationSubstitution]
     (evaluatedMergedCondition, _) <- conditionEvaluator mergedCondition
     case evaluatedMergedCondition of
-        PredicateFalse -> return
-            ( AttemptedFunction.Applied ExpandedPattern.bottom
-            , FunctionResultProof
-            )
-        _ -> return
-            ( AttemptedFunction.Applied ExpandedPattern
-                { term   = simplifiedPattern
-                , predicate = evaluatedMergedCondition
-                , substitution = mergedSubstitution
-                }
-            , FunctionResultProof
-            )
+        PredicateFalse ->
+            return
+                ( AttemptedFunction.Applied ExpandedPattern.bottom
+                , FunctionResultProof)
+        _ ->
+            return
+                ( AttemptedFunction.Applied
+                      ExpandedPattern
+                          { term = simplifiedPattern
+                          , predicate = evaluatedMergedCondition
+                          , substitution = mergedSubstitution
+                          }
+                , FunctionResultProof)

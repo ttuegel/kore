@@ -1,6 +1,6 @@
 module Test.Kore.Parser.Regression
-    ( InputFileName (..)
-    , GoldenFileName (..)
+    ( InputFileName(..)
+    , GoldenFileName(..)
     , regressionTest
     , regressionTests
     , regressionTestsInputFiles
@@ -8,36 +8,31 @@ module Test.Kore.Parser.Regression
     , VerifyRequest(..)
     ) where
 
-import Test.Tasty
-       ( TestTree )
-import Test.Tasty.Golden
-       ( findByExtension, goldenVsString )
+import Test.Tasty (TestTree)
+import Test.Tasty.Golden (findByExtension, goldenVsString)
 
-import           Control.Exception
-                 ( bracket )
-import           Control.Monad
-                 ( void )
+import Control.Exception (bracket)
+import Control.Monad (void)
 import qualified Data.ByteString.Lazy as LazyByteString
 import qualified Data.ByteString.Lazy.Char8 as LazyChar8
-import           System.Directory
-                 ( getCurrentDirectory, setCurrentDirectory )
-import           System.FilePath
-                 ( addExtension, splitFileName, (</>) )
+import System.Directory (getCurrentDirectory, setCurrentDirectory)
+import System.FilePath ((</>), addExtension, splitFileName)
 
-import Kore.AST.PureToKore
-       ( definitionPureToKore )
+import Kore.AST.PureToKore (definitionPureToKore)
 import Kore.AST.Sentence
 import Kore.ASTPrettyPrint
 import Kore.ASTVerifier.DefinitionVerifier
 import Kore.Error
-import Kore.MetaML.Lift
-       ( liftDefinition )
+import Kore.MetaML.Lift (liftDefinition)
 import Kore.Parser.Parser
 
 import qualified Paths
 
-newtype InputFileName = InputFileName FilePath
-newtype GoldenFileName = GoldenFileName FilePath
+newtype InputFileName =
+    InputFileName FilePath
+
+newtype GoldenFileName =
+    GoldenFileName FilePath
 
 data VerifyRequest
     = VerifyRequestWithLifting
@@ -51,7 +46,8 @@ regressionTestsInputFiles :: String -> IO [InputFileName]
 regressionTestsInputFiles dir = do
     files <-
         withCurrentDirectory
-            (Paths.dataFileName ".") (findByExtension [".kore"] dir)
+            (Paths.dataFileName ".")
+            (findByExtension [".kore"] dir)
     return (map InputFileName files)
 
 regressionTestFromInputFile :: InputFileName -> TestTree
@@ -62,11 +58,7 @@ regressionTestFromInputFile inputFileName =
         VerifyRequestWithLifting
 
 regressionTest :: InputFileName -> GoldenFileName -> VerifyRequest -> TestTree
-regressionTest
-    (InputFileName inputFileName)
-    (GoldenFileName goldenFileName)
-    verifyRequest
-  =
+regressionTest (InputFileName inputFileName) (GoldenFileName goldenFileName) verifyRequest =
     goldenVsString
         ("Testing '" ++ inputFileName ++ "'")
         (Paths.dataFileName goldenFileName)
@@ -76,55 +68,55 @@ goldenFromInputFileName :: InputFileName -> GoldenFileName
 goldenFromInputFileName (InputFileName inputFile) =
     GoldenFileName
         (directory </> "expected" </> addExtension inputFileName ".golden")
-  where (directory, inputFileName) = splitFileName inputFile
+  where
+    (directory, inputFileName) = splitFileName inputFile
 
 toByteString :: Either String KoreDefinition -> LazyByteString.ByteString
-toByteString (Left err) =
-    LazyChar8.pack ("Parse error: " ++ err)
+toByteString (Left err) = LazyChar8.pack ("Parse error: " ++ err)
 toByteString (Right definition) =
     LazyChar8.pack (prettyPrintToString definition)
 
 verify :: KoreDefinition -> Either String KoreDefinition
 verify definition =
     case verifyDefinition attributesVerification definition of
-        Left e  -> Left (printError e)
+        Left e -> Left (printError e)
         Right _ -> Right definition
   where
     attributesVerification :: AttributesVerification
-    attributesVerification = case defaultAttributesVerification of
-        Right verification -> verification
-        Left err           -> error (printError err)
+    attributesVerification =
+        case defaultAttributesVerification of
+            Right verification -> verification
+            Left err -> error (printError err)
 
 runParser :: String -> VerifyRequest -> IO LazyByteString.ByteString
 runParser inputFileName verifyRequest = do
     fileContent <-
         withCurrentDirectory (Paths.dataFileName ".") (readFile inputFileName)
-    let
-        definition = do
+    let definition = do
             unverifiedDefinition <- fromKore inputFileName fileContent
-            verifiedDefinition <- case verifyRequest of
-                VerifyRequestWithLifting -> verify unverifiedDefinition
-                VerifyRequestYes         -> verify unverifiedDefinition
-                VerifyRequestNo          -> return unverifiedDefinition
+            verifiedDefinition <-
+                case verifyRequest of
+                    VerifyRequestWithLifting -> verify unverifiedDefinition
+                    VerifyRequestYes -> verify unverifiedDefinition
+                    VerifyRequestNo -> return unverifiedDefinition
             case verifyRequest of
                 VerifyRequestWithLifting ->
-                    void $ verify
+                    void $
+                    verify
                         (definitionPureToKore
-                            (liftDefinition verifiedDefinition)
-                        )
+                             (liftDefinition verifiedDefinition))
                 VerifyRequestYes -> return ()
-                VerifyRequestNo  -> return ()
+                VerifyRequestNo -> return ()
             return verifiedDefinition
     return (toByteString definition)
 
 withCurrentDirectory :: FilePath -> IO a -> IO a
-withCurrentDirectory dir go =
-    bracket pushd popd (const go)
+withCurrentDirectory dir go = bracket pushd popd (const go)
   where
-    pushd =
-        do cur <- getCurrentDirectory
-           setCurrentDirectory dir
-           pure cur
+    pushd = do
+        cur <- getCurrentDirectory
+        setCurrentDirectory dir
+        pure cur
     popd = setCurrentDirectory
 
 test_regression :: IO [TestTree]

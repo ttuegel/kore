@@ -1,14 +1,13 @@
-module Test.Kore.IndexedModule.Resolvers (test_resolvers) where
+module Test.Kore.IndexedModule.Resolvers
+    ( test_resolvers
+    ) where
 
-import Test.Tasty
-       ( TestTree )
-import Test.Tasty.HUnit
-       ( assertEqual, testCase )
+import Test.Tasty (TestTree)
+import Test.Tasty.HUnit (assertEqual, testCase)
 
-import           Data.Functor.Foldable
+import Data.Functor.Foldable
 import qualified Data.Map as Map
-import           Data.Maybe
-                 ( fromMaybe )
+import Data.Maybe (fromMaybe)
 
 import Kore.AST.Builders
 import Kore.AST.Common
@@ -30,10 +29,10 @@ objectS1 :: Sort Object
 objectS1 = simpleSort (SortName "s1")
 
 topPatMeta :: Pattern Meta variable (Fix (pat variable))
-topPatMeta = TopPattern $ Top { topSort = patternMetaSort }
+topPatMeta = TopPattern $ Top {topSort = patternMetaSort}
 
 topPatObj :: Pattern Object variable (Fix (pat variable))
-topPatObj  = TopPattern $ Top { topSort = objectS1 }
+topPatObj = TopPattern $ Top {topSort = objectS1}
 
 objectA :: PureSentenceSymbol Object
 objectA = symbol_ "a" AstLocationTest [] objectS1
@@ -64,15 +63,15 @@ testObjectModule =
     Module
         { moduleName = testObjectModuleName
         , moduleSentences =
-            [ SentenceSortSentence
-                SentenceSort
-                    { sentenceSortName = testId "s1"
-                    , sentenceSortParameters = []
-                    , sentenceSortAttributes = Attributes []
-                    }
-            , asSentence objectA
-            , asSentence objectB
-            ]
+              [ SentenceSortSentence
+                    SentenceSort
+                        { sentenceSortName = testId "s1"
+                        , sentenceSortParameters = []
+                        , sentenceSortAttributes = Attributes []
+                        }
+              , asSentence objectA
+              , asSentence objectB
+              ]
         , moduleAttributes = Attributes []
         }
 
@@ -80,10 +79,7 @@ testMetaModule :: PureModule Meta
 testMetaModule =
     Module
         { moduleName = testMetaModuleName
-        , moduleSentences =
-            [ asSentence metaA
-            , asSentence metaB
-            ]
+        , moduleSentences = [asSentence metaA, asSentence metaB]
         , moduleAttributes = Attributes []
         }
 
@@ -92,9 +88,9 @@ subMainModule =
     Module
         { moduleName = testSubMainModuleName
         , moduleSentences =
-            [ importSentence testMetaModuleName
-            , importSentence testObjectModuleName
-            ]
+              [ importSentence testMetaModuleName
+              , importSentence testObjectModuleName
+              ]
         , moduleAttributes = Attributes []
         }
 
@@ -103,23 +99,22 @@ mainModule =
     Module
         { moduleName = testMainModuleName
         , moduleSentences =
-            [ importSentence testMetaModuleName
-            , importSentence testSubMainModuleName
-            ]
+              [ importSentence testMetaModuleName
+              , importSentence testSubMainModuleName
+              ]
         , moduleAttributes = Attributes []
         }
-
 
 testDefinition :: KoreDefinition
 testDefinition =
     Definition
         { definitionAttributes = Attributes []
         , definitionModules =
-            [ modulePureToKore testObjectModule
-            , modulePureToKore testMetaModule
-            , subMainModule
-            , mainModule
-            ]
+              [ modulePureToKore testObjectModule
+              , modulePureToKore testMetaModule
+              , subMainModule
+              , mainModule
+              ]
         }
 
 testIndexedModule :: KoreIndexedModule
@@ -133,120 +128,132 @@ testIndexedModule =
 
 test_resolvers :: [TestTree]
 test_resolvers =
-    [ testCase "object sort"
-        (assertEqual ""
-            (Right SentenceSort
-                { sentenceSortName = testId "s1"
-                , sentenceSortParameters = []
-                , sentenceSortAttributes = Attributes []
-                }
-            )
-            (resolveSort testIndexedModule (testId "s1" :: Id Object))
-        )
-    , testCase "meta sort"
-        (assertEqual ""
-            (Right SentenceSort
-                { sentenceSortName = charMetaId
-                , sentenceSortParameters = []
-                , sentenceSortAttributes = Attributes []
-                }
-            )
-            (resolveSort testIndexedModule charMetaId)
-        )
-    , testCase "object symbol"
-        (assertEqual ""
-            (Right SentenceSymbol
-                { sentenceSymbolAttributes = Attributes []
-                , sentenceSymbolSymbol = sentenceSymbolSymbol objectA
-                , sentenceSymbolSorts = []
-                , sentenceSymbolResultSort = objectS1
-                }
-            )
-            (resolveSymbol testIndexedModule (testId "a" :: Id Object))
-        )
-    , testCase "meta symbol"
-        (assertEqual ""
-            (Right SentenceSymbol
-                { sentenceSymbolAttributes = Attributes []
-                , sentenceSymbolSymbol = sentenceSymbolSymbol metaA
-                , sentenceSymbolSorts = []
-                , sentenceSymbolResultSort = charListMetaSort
-                }
-            )
-            (resolveSymbol testIndexedModule (testId "#a" :: Id Meta))
-        )
-    , testCase "object alias"
-        (assertEqual ""
-            (Right SentenceAlias
-                { sentenceAliasAttributes = Attributes []
-                , sentenceAliasAlias = sentenceAliasAlias objectB
-                , sentenceAliasSorts = []
-                , sentenceAliasLeftPattern = topPatObj
-                , sentenceAliasRightPattern = topPatObj
-                , sentenceAliasResultSort = objectS1
-                }
-            )
-            (resolveAlias testIndexedModule (testId "b" :: Id Object))
-        )
-    , testCase "meta alias"
-        (assertEqual ""
-            (Right SentenceAlias
-                { sentenceAliasAttributes = Attributes []
-                , sentenceAliasAlias = sentenceAliasAlias metaB
-                , sentenceAliasSorts = []
-                , sentenceAliasLeftPattern = topPatMeta
-                , sentenceAliasRightPattern = topPatMeta
-                , sentenceAliasResultSort = charListMetaSort
-                }
-            )
-            (resolveAlias testIndexedModule (testId "#b" :: Id Meta))
-        )
-    , testCase "symbol error"
-        (assertEqual ""
-            (Left Error
-                { errorContext = ["(<test data>)"]
-                , errorError = "Symbol '#b' not defined."}
-            )
-            (resolveSymbol testIndexedModule (testId "#b" :: Id Meta))
-        )
-    , testCase "alias error"
-        (assertEqual ""
-            (Left Error
-                { errorContext = ["(<test data>)"]
-                , errorError = "Alias '#a' not defined."}
-            )
-            (resolveAlias testIndexedModule (testId "#a" :: Id Meta))
-        )
-    , testCase "sort error"
-        (assertEqual ""
-            (Left Error
-                { errorContext = ["(<test data>)"]
-                , errorError = "Sort '#a' not declared."}
-            )
-            (resolveSort testIndexedModule (testId "#a" :: Id Meta))
-        )
-    , testCase "symbol getHeadApplicationSorts"
-        (assertEqual ""
-            ApplicationSorts
-                { applicationSortsOperands = []
-                , applicationSortsResult = objectS1
-                }
-            (getHeadApplicationSorts
-                testIndexedModule
-                (getSentenceSymbolOrAliasHead objectA [])
-            )
-        )
-    , testCase "alias getHeadApplicationSorts"
-        (assertEqual ""
-            ApplicationSorts
-                { applicationSortsOperands = []
-                , applicationSortsResult = objectS1
-                }
-            (getHeadApplicationSorts
-                testIndexedModule
-                (getSentenceSymbolOrAliasHead objectB [])
-            )
-        )
+    [ testCase
+          "object sort"
+          (assertEqual
+               ""
+               (Right
+                    SentenceSort
+                        { sentenceSortName = testId "s1"
+                        , sentenceSortParameters = []
+                        , sentenceSortAttributes = Attributes []
+                        })
+               (resolveSort testIndexedModule (testId "s1" :: Id Object)))
+    , testCase
+          "meta sort"
+          (assertEqual
+               ""
+               (Right
+                    SentenceSort
+                        { sentenceSortName = charMetaId
+                        , sentenceSortParameters = []
+                        , sentenceSortAttributes = Attributes []
+                        })
+               (resolveSort testIndexedModule charMetaId))
+    , testCase
+          "object symbol"
+          (assertEqual
+               ""
+               (Right
+                    SentenceSymbol
+                        { sentenceSymbolAttributes = Attributes []
+                        , sentenceSymbolSymbol = sentenceSymbolSymbol objectA
+                        , sentenceSymbolSorts = []
+                        , sentenceSymbolResultSort = objectS1
+                        })
+               (resolveSymbol testIndexedModule (testId "a" :: Id Object)))
+    , testCase
+          "meta symbol"
+          (assertEqual
+               ""
+               (Right
+                    SentenceSymbol
+                        { sentenceSymbolAttributes = Attributes []
+                        , sentenceSymbolSymbol = sentenceSymbolSymbol metaA
+                        , sentenceSymbolSorts = []
+                        , sentenceSymbolResultSort = charListMetaSort
+                        })
+               (resolveSymbol testIndexedModule (testId "#a" :: Id Meta)))
+    , testCase
+          "object alias"
+          (assertEqual
+               ""
+               (Right
+                    SentenceAlias
+                        { sentenceAliasAttributes = Attributes []
+                        , sentenceAliasAlias = sentenceAliasAlias objectB
+                        , sentenceAliasSorts = []
+                        , sentenceAliasLeftPattern = topPatObj
+                        , sentenceAliasRightPattern = topPatObj
+                        , sentenceAliasResultSort = objectS1
+                        })
+               (resolveAlias testIndexedModule (testId "b" :: Id Object)))
+    , testCase
+          "meta alias"
+          (assertEqual
+               ""
+               (Right
+                    SentenceAlias
+                        { sentenceAliasAttributes = Attributes []
+                        , sentenceAliasAlias = sentenceAliasAlias metaB
+                        , sentenceAliasSorts = []
+                        , sentenceAliasLeftPattern = topPatMeta
+                        , sentenceAliasRightPattern = topPatMeta
+                        , sentenceAliasResultSort = charListMetaSort
+                        })
+               (resolveAlias testIndexedModule (testId "#b" :: Id Meta)))
+    , testCase
+          "symbol error"
+          (assertEqual
+               ""
+               (Left
+                    Error
+                        { errorContext = ["(<test data>)"]
+                        , errorError = "Symbol '#b' not defined."
+                        })
+               (resolveSymbol testIndexedModule (testId "#b" :: Id Meta)))
+    , testCase
+          "alias error"
+          (assertEqual
+               ""
+               (Left
+                    Error
+                        { errorContext = ["(<test data>)"]
+                        , errorError = "Alias '#a' not defined."
+                        })
+               (resolveAlias testIndexedModule (testId "#a" :: Id Meta)))
+    , testCase
+          "sort error"
+          (assertEqual
+               ""
+               (Left
+                    Error
+                        { errorContext = ["(<test data>)"]
+                        , errorError = "Sort '#a' not declared."
+                        })
+               (resolveSort testIndexedModule (testId "#a" :: Id Meta)))
+    , testCase
+          "symbol getHeadApplicationSorts"
+          (assertEqual
+               ""
+               ApplicationSorts
+                   { applicationSortsOperands = []
+                   , applicationSortsResult = objectS1
+                   }
+               (getHeadApplicationSorts
+                    testIndexedModule
+                    (getSentenceSymbolOrAliasHead objectA [])))
+    , testCase
+          "alias getHeadApplicationSorts"
+          (assertEqual
+               ""
+               ApplicationSorts
+                   { applicationSortsOperands = []
+                   , applicationSortsResult = objectS1
+                   }
+               (getHeadApplicationSorts
+                    testIndexedModule
+                    (getSentenceSymbolOrAliasHead objectB [])))
     ]
   where
     SortActualSort charMetaSortActual = charMetaSort

@@ -22,80 +22,60 @@ Conventions used:
 
 4. The "Raw" parsers do not consume any whitespace.
 -}
-
 module Kore.Parser.LexemeImpl where
 
-import           Control.Arrow
-                 ( (&&&) )
-import           Control.Monad
-                 ( void, when )
-import           Control.Monad.Combinators
-                 ( manyTill, (<|>) )
+import Control.Arrow ((&&&))
+import Control.Monad (void, when)
+import Control.Monad.Combinators ((<|>), manyTill)
 import qualified Data.ByteString.Char8 as Char8
-import           Data.Char
-                 ( isHexDigit, isOctDigit )
-import           Data.HashMap.Strict
-                 ( HashMap )
+import Data.Char (isHexDigit, isOctDigit)
+import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
-import           Data.HashSet
-                 ( HashSet )
+import Data.HashSet (HashSet)
 import qualified Data.HashSet as HashSet
-import           Text.Megaparsec
-                 ( SourcePos (..), eof, getPosition, unPos )
-import qualified Text.Megaparsec.Char as Parser
-                 ( anyChar, char, space1, string )
+import Text.Megaparsec (SourcePos(..), eof, getPosition, unPos)
+import qualified Text.Megaparsec.Char as Parser (anyChar, char, space1, string)
 import qualified Text.Megaparsec.Char.Lexer as L
 
-import           Kore.AST.Common
-import           Kore.AST.MetaOrObject
-                 ( IsMetaOrObject (..), MetaOrObject (..), toProxy )
-import           Kore.AST.Sentence
+import Kore.AST.Common
+import Kore.AST.MetaOrObject (IsMetaOrObject(..), MetaOrObject(..), toProxy)
+import Kore.AST.Sentence
+import Kore.Parser.CString
 import qualified Kore.Parser.CharDict as CharDict
-import           Kore.Parser.CharSet as CharSet
-import           Kore.Parser.CString
-import           Kore.Parser.ParserUtils as ParserUtils
+import Kore.Parser.CharSet as CharSet
+import Kore.Parser.ParserUtils as ParserUtils
 
 sourcePosToFileLocation :: SourcePos -> FileLocation
-sourcePosToFileLocation
-    SourcePos
-        { sourceName = name
-        , sourceLine = line'
-        , sourceColumn = column'
-        }
-  = FileLocation
-    { fileName = name
-    , line     = unPos line'
-    , column   = unPos column'
-    }
+sourcePosToFileLocation SourcePos { sourceName = name
+                                  , sourceLine = line'
+                                  , sourceColumn = column'
+                                  } =
+    FileLocation {fileName = name, line = unPos line', column = unPos column'}
 
 {-|'idParser' parses either an @object-identifier@, or a @meta-identifier@.
 
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
-idParser :: MetaOrObject level
-         => level  -- ^ Distinguishes between the meta and non-meta elements.
-         -> Parser (Id level)
+idParser ::
+       MetaOrObject level
+    => level -- ^ Distinguishes between the meta and non-meta elements.
+    -> Parser (Id level)
 idParser x =
-  case isMetaOrObject (toProxy x) of
-    IsObject -> do
-        pos <- sourcePosToFileLocation <$> getPosition
-        name <- lexeme (objectIdRawParser KeywordsForbidden)
-        return Id
-            { getId = name
-            , idLocation = AstLocationFile pos
-            }
-    IsMeta -> do
-        pos <- sourcePosToFileLocation <$> getPosition
-        name <- lexeme metaIdRawParser
-        return Id
-            { getId = name
-            , idLocation = AstLocationFile pos
-            }
+    case isMetaOrObject (toProxy x) of
+        IsObject -> do
+            pos <- sourcePosToFileLocation <$> getPosition
+            name <- lexeme (objectIdRawParser KeywordsForbidden)
+            return Id {getId = name, idLocation = AstLocationFile pos}
+        IsMeta -> do
+            pos <- sourcePosToFileLocation <$> getPosition
+            name <- lexeme metaIdRawParser
+            return Id {getId = name, idLocation = AstLocationFile pos}
+   {- " -}
 
 {-|'stringLiteralParser' parses a C-style string literal, unescaping it.
 
 Always starts with @"@.
--} {- " -}
+-}
 stringLiteralParser :: Parser StringLiteral
 stringLiteralParser = lexeme stringLiteralRawParser
 
@@ -118,10 +98,11 @@ lexeme = L.lexeme skipWhitespace
 
 {-|'skipWhitespace' skips whitespace and any comments.
 -}
-skipWhitespace ::  Parser ()
+skipWhitespace :: Parser ()
 skipWhitespace = L.space Parser.space1 (L.skipLineComment "//") blockComment
   where
-    blockComment = Parser.string "/*" >> void (manyTill commentBody (Parser.string "*/"))
+    blockComment =
+        Parser.string "/*" >> void (manyTill commentBody (Parser.string "*/"))
     commentBody = Parser.anyChar <|> (eof >> fail "Unfinished comment.")
 
 koreKeywordsSet :: HashSet Char8.ByteString
@@ -132,31 +113,28 @@ koreKeywordsSet = HashSet.fromList (Char8.pack <$> keywords)
 data IdKeywordParsing
     = KeywordsPermitted
     | KeywordsForbidden
-  deriving (Eq)
+    deriving (Eq)
 
 {-|'genericIdRawParser' parses for tokens that can be represented as
 @⟨prefix-char⟩ ⟨body-char⟩*@. Does not consume whitespace.
 -}
-genericIdRawParser
-    :: CharSet  -- ^ contains the characters allowed for @⟨prefix-char⟩@.
-    -> CharSet  -- ^ contains the characters allowed for @⟨body-char⟩@.
+genericIdRawParser ::
+       CharSet -- ^ contains the characters allowed for @⟨prefix-char⟩@.
+    -> CharSet -- ^ contains the characters allowed for @⟨body-char⟩@.
     -> IdKeywordParsing
     -> Parser String
 genericIdRawParser firstCharSet bodyCharSet idKeywordParsing = do
     c <- peekChar'
-    idChar <- if not (c `CharSet.elem` firstCharSet)
-        then fail ("genericIdRawParser: Invalid first character '" ++ c : "'.")
-        else ParserUtils.takeWhile (`CharSet.elem` bodyCharSet)
+    idChar <-
+        if not (c `CharSet.elem` firstCharSet)
+            then fail
+                     ("genericIdRawParser: Invalid first character '" ++
+                      c : "'.")
+            else ParserUtils.takeWhile (`CharSet.elem` bodyCharSet)
     when
-        (  (idKeywordParsing == KeywordsForbidden)
-        && HashSet.member (Char8.pack idChar) koreKeywordsSet
-        )
-        (fail
-            (  "Identifiers should not be keywords: '"
-            ++ idChar
-            ++ "'."
-            )
-        )
+        ((idKeywordParsing == KeywordsForbidden) &&
+         HashSet.member (Char8.pack idChar) koreKeywordsSet)
+        (fail ("Identifiers should not be keywords: '" ++ idChar ++ "'."))
     return idChar
 
 moduleNameFirstCharSet :: CharSet
@@ -165,28 +143,30 @@ moduleNameFirstCharSet = idFirstCharSet
 moduleNameCharSet :: CharSet
 moduleNameCharSet = idCharSet
 
-
 {-|'moduleNameRawParser' parses a @module-name@. Does not consume whitespace.-}
 moduleNameRawParser :: Parser ModuleName
 moduleNameRawParser =
-  ModuleName <$>
+    ModuleName <$>
     genericIdRawParser
-        moduleNameFirstCharSet moduleNameCharSet KeywordsForbidden
+        moduleNameFirstCharSet
+        moduleNameCharSet
+        KeywordsForbidden
 
 {-# ANN idFirstChars ("HLint: ignore Use String" :: String) #-}
+
 idFirstChars :: [Char]
-idFirstChars = ['A'..'Z'] ++ ['a'..'z']
+idFirstChars = ['A' .. 'Z'] ++ ['a' .. 'z']
 
 idFirstCharSet :: CharSet
 idFirstCharSet = CharSet.makeCharSet idFirstChars
 
 {-# ANN idOtherChars ("HLint: ignore Use String" :: String) #-}
+
 idOtherChars :: [Char]
-idOtherChars = ['0'..'9'] ++ "'-"
+idOtherChars = ['0' .. '9'] ++ "'-"
 
 idCharSet :: CharSet
-idCharSet =
-    CharSet.join idFirstCharSet (CharSet.makeCharSet idOtherChars)
+idCharSet = CharSet.join idFirstCharSet (CharSet.makeCharSet idOtherChars)
 
 {-|'objectIdRawParser' extracts the string representing an @object-identifier@.
 Does not consume whitespace.
@@ -207,25 +187,26 @@ metaIdRawParser = do
         '`' -> do
             void (Parser.char c')
             idToken <- objectIdRawParser KeywordsPermitted
-            return (c:c':idToken)
+            return (c : c' : idToken)
         '\\' -> do
             void (Parser.char c')
             mlPatternCtor <- mlPatternCtorParser
-            return (c:c':mlPatternCtor)
+            return (c : c' : mlPatternCtor)
         _ -> do
             idToken <- objectIdRawParser KeywordsPermitted
-            return (c:idToken)
+            return (c : idToken)
   where
-    mlPatternCtorParser = keywordBasedParsers
-        (map (patternString &&& return . patternString) allPatternTypes)
+    mlPatternCtorParser =
+        keywordBasedParsers
+            (map (patternString &&& return . patternString) allPatternTypes)
 
 data StringScannerState
-  = STRING
-  | STRING_END
-  | ESCAPE
-  | OCTAL
-  | VARIABLE_HEX
-  | HEX StringScannerState
+    = STRING
+    | STRING_END
+    | ESCAPE
+    | OCTAL
+    | VARIABLE_HEX
+    | HEX StringScannerState
 
 {-|'stringLiteralRawParser' parses a C-style string literal, unescaping it.
 Does not consume whitespace.
@@ -238,46 +219,45 @@ stringLiteralRawParser =
 Does not consume whitespace.
 -}
 charLiteralRawParser :: Parser CharLiteral
-charLiteralRawParser =
-    stringCharLiteralRawParser '\'' STRING_END toCharLiteral
+charLiteralRawParser = stringCharLiteralRawParser '\'' STRING_END toCharLiteral
   where
-    toCharLiteral []  = fail "'' is not a valid character literal."
+    toCharLiteral [] = fail "'' is not a valid character literal."
     toCharLiteral [c] = return (CharLiteral c)
-    toCharLiteral _   = error "This should not have happened"
+    toCharLiteral _ = error "This should not have happened"
 
-stringCharLiteralRawParser
-    :: Char -> StringScannerState -> (String -> Parser a) -> Parser a
+stringCharLiteralRawParser ::
+       Char -> StringScannerState -> (String -> Parser a) -> Parser a
 stringCharLiteralRawParser delimiter nextCharState constructor = do
     void (Parser.char delimiter)
     s <- scan STRING delta
     void (Parser.char delimiter)
     case unescapeCString s of
-        Left e   -> fail e
+        Left e -> fail e
         Right s' -> constructor s'
   where
     pow _ 0 = id
-    pow f n = f . pow f (n-1::Int)
+    pow f n = f . pow f (n - 1 :: Int)
     delta STRING c
-      | c == delimiter = Nothing
-      | c == '\\' = Just ESCAPE
-      | otherwise = Just nextCharState
+        | c == delimiter = Nothing
+        | c == '\\' = Just ESCAPE
+        | otherwise = Just nextCharState
     delta STRING_END _ = Nothing
     delta ESCAPE c
-      | c `CharSet.elem` oneCharEscapeDict = Just nextCharState
-      | isOctDigit c = Just OCTAL -- ingore actual codes for now
-      | c == 'x' = Just (HEX VARIABLE_HEX)
-      | c == 'u' = Just ((HEX `pow` 4) nextCharState)
-      | c == 'U' = Just ((HEX `pow` 8) nextCharState)
-      | otherwise = Nothing
+        | c `CharSet.elem` oneCharEscapeDict = Just nextCharState
+        | isOctDigit c = Just OCTAL -- ingore actual codes for now
+        | c == 'x' = Just (HEX VARIABLE_HEX)
+        | c == 'u' = Just ((HEX `pow` 4) nextCharState)
+        | c == 'U' = Just ((HEX `pow` 8) nextCharState)
+        | otherwise = Nothing
     delta OCTAL c
-      | isOctDigit c = Just OCTAL
-      | otherwise = delta nextCharState c
+        | isOctDigit c = Just OCTAL
+        | otherwise = delta nextCharState c
     delta VARIABLE_HEX c
-      | isHexDigit c = Just VARIABLE_HEX
-      | otherwise = delta nextCharState c
+        | isHexDigit c = Just VARIABLE_HEX
+        | otherwise = delta nextCharState c
     delta (HEX s) c
-      | isHexDigit c = Just s
-      | otherwise = Nothing
+        | isHexDigit c = Just s
+        | otherwise = Nothing
 
 {-|'tokenCharParser' parses a character, skipping any whitespace after.
 
@@ -285,8 +265,8 @@ Note that it does not enforce the existence of whitespace after the character.
 -}
 tokenCharParser :: Char -> Parser ()
 tokenCharParser c = do
-      _ <- L.symbol skipWhitespace [c]
-      return ()
+    _ <- L.symbol skipWhitespace [c]
+    return ()
 
 {-|'colonParser' parses a @:@ character.-}
 colonParser :: Parser ()
@@ -305,12 +285,10 @@ closedCurlyBraceParser = tokenCharParser '}'
 Always starts with @{@.
 -}
 inCurlyBracesParser :: Parser a -> Parser a
-inCurlyBracesParser p =
-    openCurlyBraceParser *> inCurlyBracesRemainderParser p
+inCurlyBracesParser p = openCurlyBraceParser *> inCurlyBracesRemainderParser p
 
 inCurlyBracesRemainderParser :: Parser a -> Parser a
-inCurlyBracesRemainderParser p =
-    p <* closedCurlyBraceParser
+inCurlyBracesRemainderParser p = p <* closedCurlyBraceParser
 
 {-|'openParenthesisParser' parses a @(@ character.-}
 openParenthesisParser :: Parser ()
@@ -325,11 +303,10 @@ closedParenthesisParser = tokenCharParser ')'
 Always starts with @(@.
 -}
 inParenthesesParser :: Parser a -> Parser a
-inParenthesesParser p =
-    openParenthesisParser *> p <* closedParenthesisParser
+inParenthesesParser p = openParenthesisParser *> p <* closedParenthesisParser
 
 {-|'commaSeparatedPairParser' parses two elements separated by a comma.-}
-commaSeparatedPairParser :: Parser a -> Parser b -> Parser (a,b)
+commaSeparatedPairParser :: Parser a -> Parser b -> Parser (a, b)
 commaSeparatedPairParser pa pb = do
     a <- pa
     commaParser
@@ -341,7 +318,7 @@ a comma.
 
 Always starts with @(@.
 -}
-parenPairParser :: Parser a -> Parser b -> Parser (a,b)
+parenPairParser :: Parser a -> Parser b -> Parser (a, b)
 parenPairParser pa pb = inParenthesesParser (commaSeparatedPairParser pa pb)
 
 {-|'curlyPairParser' parses two elements between curly braces, separated by
@@ -349,13 +326,13 @@ a comma.
 
 Always starts with @{@.
 -}
-curlyPairParser :: Parser a -> Parser b -> Parser (a,b)
+curlyPairParser :: Parser a -> Parser b -> Parser (a, b)
 curlyPairParser pa pb = inCurlyBracesParser (commaSeparatedPairParser pa pb)
 
 {-|'curlyPairRemainderParser' parses two elements between curly braces,
 separated by a comma, assumming that the leading @{@ was already consumed.
 -}
-curlyPairRemainderParser :: Parser a -> Parser (a,a)
+curlyPairRemainderParser :: Parser a -> Parser (a, a)
 curlyPairRemainderParser pa =
     inCurlyBracesRemainderParser (commaSeparatedPairParser pa pa)
 
@@ -387,8 +364,7 @@ skipString = void . Parser.string
 followed by a character which could be part of an @object-identifier@.
 -}
 mlLexemeParser :: String -> Parser ()
-mlLexemeParser s =
-    lexeme (void (Parser.string s <* keywordEndParser))
+mlLexemeParser s = lexeme (void (Parser.string s <* keywordEndParser))
 
 {-|'keywordEndParser' checks that the next character cannot be part of an
 @object-identifier@.
@@ -398,8 +374,8 @@ keywordEndParser = do
     mc <- peekChar
     case mc of
         Nothing -> return ()
-        Just c -> when (c `CharSet.elem` idCharSet) $
-            fail "Expecting keyword to end."
+        Just c ->
+            when (c `CharSet.elem` idCharSet) $ fail "Expecting keyword to end."
 
 {-|'keywordBasedParsers' consumes one of the strings in the provided pairs,
 then parses an element using the corresponding parser. Checks that the consumed
@@ -416,7 +392,7 @@ then parses an element using the corresponding parser.
 
 Fails if one of the strings is a prefix of another one.
 -}
-prefixBasedParsers ::  (String -> Parser ()) ->[(String, Parser a)] -> Parser a
+prefixBasedParsers :: (String -> Parser ()) -> [(String, Parser a)] -> Parser a
 prefixBasedParsers _ [] = error "Keyword Based Parsers - no parsers"
 prefixBasedParsers prefixParser [(k, p)] = prefixParser k *> p
 prefixBasedParsers prefixParser stringParsers = do
@@ -427,9 +403,9 @@ prefixBasedParsers prefixParser stringParsers = do
         [(tail prefix, p) | (prefix, p) <- stringParsers, head prefix == c]
     tailParser c =
         let ts = tails c
-        in if null ts
-            then fail "Keyword Based Parsers - unexpected character."
-            else Parser.char c *> prefixBasedParsers prefixParser ts
+         in if null ts
+                then fail "Keyword Based Parsers - unexpected character."
+                else Parser.char c *> prefixBasedParsers prefixParser ts
     dict = CharDict.memoize tailParser
 
 {-|'prefixBasedParsersWithDefault' consumes one of the strings in the provided
@@ -438,9 +414,9 @@ input character does not match any string prefix, it uses the default parser.
 
 Fails if one of the strings is a prefix of another one.
 -}
-prefixBasedParsersWithDefault
-    :: (String -> Parser ())  -- ^ Parser for the prefix strings.
-    -> Parser a  -- ^ Element parser.
+prefixBasedParsersWithDefault ::
+       (String -> Parser ()) -- ^ Parser for the prefix strings.
+    -> Parser a -- ^ Element parser.
     -> [(String, Parser a)] -- ^ (prefix, remainder parser) pairs.
     -> Parser a
 prefixBasedParsersWithDefault _ _ [] =
@@ -450,15 +426,16 @@ prefixBasedParsersWithDefault prefixParser defaultParser stringParsers = do
     case mc of
         Nothing -> defaultParser
         -- TODO(virgil): Should this lookup be optimized?
-        Just c -> if any ((==c).head.fst) stringParsers
-            then prefixBasedParsers prefixParser stringParsers
-            else defaultParser
+        Just c ->
+            if any ((== c) . head . fst) stringParsers
+                then prefixBasedParsers prefixParser stringParsers
+                else defaultParser
 
 {-|'metaSortTrie' is a trie containing all the possible metasorts.-}
 metaSortTrie :: HashMap Char8.ByteString MetaSortType
 metaSortTrie =
     HashMap.fromList $
-        map (\s -> (Char8.pack (show s), s)) metaSortsListWithString
+    map (\s -> (Char8.pack (show s), s)) metaSortsListWithString
 
 {-|'metaSortConverter' converts a string representation of a metasort name
 (without the leading '#') to a 'MetaSortType'.
@@ -466,4 +443,5 @@ metaSortTrie =
 metaSortConverter :: String -> Maybe MetaSortType
 -- TODO(virgil): Does the pack call matter for performance? Should we try to
 -- improve it?
-metaSortConverter identifier = HashMap.lookup (Char8.pack identifier) metaSortTrie
+metaSortConverter identifier =
+    HashMap.lookup (Char8.pack identifier) metaSortTrie

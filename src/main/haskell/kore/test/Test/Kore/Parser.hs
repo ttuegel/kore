@@ -1,22 +1,19 @@
 module Test.Kore.Parser where
 
-import Test.Tasty
-       ( TestTree, testGroup )
-import Test.Tasty.HUnit
-       ( Assertion, assertBool, assertEqual, testCase )
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, testCase)
 
-import Data.Either
-       ( isLeft )
+import Data.Either (isLeft)
 
 import Kore.Parser.ParserUtils
 
 data SuccessfulTest a = SuccessfulTest
-    { successInput    :: String
+    { successInput :: String
     , successExpected :: a
     }
 
 data FailureTest = FailureTest
-    { failureInput    :: String
+    { failureInput :: String
     , failureExpected :: String
     }
 
@@ -27,16 +24,12 @@ data ParserTest a
     | FailureWithoutMessage [String]
 
 success :: String -> a -> ParserTest a
-success input expected = Success SuccessfulTest
-    { successInput = input
-    , successExpected = expected
-    }
+success input expected =
+    Success SuccessfulTest {successInput = input, successExpected = expected}
 
 failure :: String -> String -> ParserTest a
-failure input expected = Failure FailureTest
-    { failureInput = input
-    , failureExpected = expected
-    }
+failure input expected =
+    Failure FailureTest {failureInput = input, failureExpected = expected}
 
 parseTree :: (Show a, Eq a) => Parser a -> [ParserTest a] -> [TestTree]
 parseTree parser = map (parseTest parser)
@@ -50,17 +43,17 @@ parseTest parser (Failure test) =
     testCase
         ("Failing to parse '" ++ failureInput test ++ "'")
         (parseFailureWithMessage
-            (failureExpected test) parser (failureInput test))
+             (failureExpected test)
+             parser
+             (failureInput test))
 parseTest parser (FailureWithoutMessage tests) =
-    testGroup "Tests Failing Without Message"
-    (map
-        (\input ->
-            testCase
-                ("Failing to parse '" ++ input ++ "'")
-                (parseFailureWithoutMessage parser input)
-        )
-        tests
-    )
+    testGroup
+        "Tests Failing Without Message"
+        (map (\input ->
+                  testCase
+                      ("Failing to parse '" ++ input ++ "'")
+                      (parseFailureWithoutMessage parser input))
+             tests)
 parseTest _ (Skip tests) =
     testCase
         ("Parsing skip tests '" ++ show tests ++ "'")
@@ -68,17 +61,16 @@ parseTest _ (Skip tests) =
 
 parseSkipTree :: Parser () -> [ParserTest ()] -> [TestTree]
 parseSkipTree parser = map (parseSkipTest parser)
+
 parseSkipTest :: Parser () -> ParserTest () -> TestTree
 parseSkipTest parser (Skip tests) =
-    testGroup "Tests for Parsers not creating ASTs"
-    (map
-        (\input ->
-            testCase
-                ("Skipping '" ++ input ++ "'")
-                (parseSkip parser input)
-        )
-        tests
-    )
+    testGroup
+        "Tests for Parsers not creating ASTs"
+        (map (\input ->
+                  testCase
+                      ("Skipping '" ++ input ++ "'")
+                      (parseSkip parser input))
+             tests)
 parseSkipTest _ (Success test) =
     testCase
         ("Parsing success test '" ++ successInput test ++ "'")
@@ -103,13 +95,10 @@ parseFailureWithoutMessage :: Parser a -> String -> Assertion
 parseFailureWithoutMessage parser input =
     assertBool
         "Expecting parse failure!"
-        (isLeft
-            (parseOnly (parser <* endOfInput) "<test-string>" input)
-        )
+        (isLeft (parseOnly (parser <* endOfInput) "<test-string>" input))
 
-parseFailureWithMessage
-    :: (Show a, Eq a)
-    => String -> Parser a -> String -> Assertion
+parseFailureWithMessage ::
+       (Show a, Eq a) => String -> Parser a -> String -> Assertion
 parseFailureWithMessage expected parser input =
     assertEqual
         "Expecting parse failure!"

@@ -14,47 +14,51 @@ module Kore.AST.Error
     , withLocationsContext
     ) where
 
-import Data.List
-       ( intercalate )
+import Data.List (intercalate)
 
 import Kore.AST.AstWithLocation
 import Kore.Error
 
 {-|'koreFailWithLocations' produces an error result with a context containing
 the provided locations. -}
-koreFailWithLocations
-    :: AstWithLocation astWithLocation
-    => [astWithLocation] -> String -> Either (Error a) b
+koreFailWithLocations ::
+       AstWithLocation astWithLocation
+    => [astWithLocation]
+    -> String
+    -> Either (Error a) b
 koreFailWithLocations locations errorMessage =
     withLocationsContext locations (koreFail errorMessage)
 
 {-|'koreFailWithLocationsWhen' produces an error result with a context
 containing the provided locations whenever the provided flag is true.
 -}
-koreFailWithLocationsWhen
-    :: AstWithLocation astWithLocation
-    => Bool -> [astWithLocation] -> String -> Either (Error a) ()
+koreFailWithLocationsWhen ::
+       AstWithLocation astWithLocation
+    => Bool
+    -> [astWithLocation]
+    -> String
+    -> Either (Error a) ()
 koreFailWithLocationsWhen condition locations errorMessage =
     withLocationsContext locations (koreFailWhen condition errorMessage)
 
 {-|'withLocationsContext' prepends the given location to the error context
 whenever the given action fails.
 -}
-withLocationsContext
-    :: AstWithLocation astWithLocation
-    => [astWithLocation] -> Either (Error a) result -> Either (Error a) result
+withLocationsContext ::
+       AstWithLocation astWithLocation
+    => [astWithLocation]
+    -> Either (Error a) result
+    -> Either (Error a) result
 withLocationsContext locations =
     withContext
-        (  "("
-        ++ intercalate ", " (map prettyPrintLocationFromAst locations)
-        ++ ")"
-        )
+        ("(" ++
+         intercalate ", " (map prettyPrintLocationFromAst locations) ++ ")")
 
 {-|'withLocationsContext' prepends the given message, associated with the
 location, to the error context whenever the given action fails.
 -}
-withLocationAndContext
-    :: AstWithLocation astWithLocation
+withLocationAndContext ::
+       AstWithLocation astWithLocation
     => astWithLocation
     -> String
     -> Either (Error a) result

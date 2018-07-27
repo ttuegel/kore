@@ -8,7 +8,6 @@ Maintainer  : virgil.serbanuta@runtimeverification.com
 Stability   : experimental
 Portability : POSIX
 -}
-
 module Kore.Implicit.Attributes
     ( attributeObjectSort
     , hookAttribute
@@ -23,22 +22,19 @@ import Kore.AST.Kore
 import Kore.AST.MetaOrObject
 import Kore.AST.Sentence
 
-noParameterObjectSortAndSentence
-    :: String -> (AstLocation -> Sort Object, KoreSentence)
+noParameterObjectSortAndSentence ::
+       String -> (AstLocation -> Sort Object, KoreSentence)
 noParameterObjectSortAndSentence name =
-    ( \location -> SortActualSort SortActual
-        { sortActualName = Id name location
-        , sortActualSorts = []
-        }
+    ( \location ->
+          SortActualSort
+              SortActual
+                  {sortActualName = Id name location, sortActualSorts = []}
     , asSentence
-        (SentenceSort
-            { sentenceSortName       = Id name AstLocationImplicit
-            , sentenceSortParameters = []
-            , sentenceSortAttributes = Attributes []
-            }
-        :: KoreSentenceSort Object
-        )
-    )
+          (SentenceSort
+               { sentenceSortName = Id name AstLocationImplicit
+               , sentenceSortParameters = []
+               , sentenceSortAttributes = Attributes []
+               } :: KoreSentenceSort Object))
 
 {-| 'attributeObjectSort' is the sort for all top-level attribute patterns
 -}
@@ -52,13 +48,11 @@ hookObjectSortSentence :: KoreSentence
 (hookObjectSort, hookObjectSortSentence) =
     noParameterObjectSortAndSentence "Hook"
 
-
 hookName :: String
 hookName = "hook"
 
 hookObjectSymbolSentence :: KoreSentence
-hookObjectSymbolSentence =
-  attributeObjectSymbolSentence hookName hookObjectSort
+hookObjectSymbolSentence = attributeObjectSymbolSentence hookName hookObjectSort
 
 {-| `hookAttribute` creates a hook attribute pattern containing the given
 string.
@@ -75,105 +69,109 @@ smtlibObjectSortSentence :: KoreSentence
 
 smtlibObjectSymbolSentence :: KoreSentence
 smtlibObjectSymbolSentence =
-  attributeObjectSymbolSentence "smtlib" smtlibObjectSort
-
+    attributeObjectSymbolSentence "smtlib" smtlibObjectSort
 
 -- | example: `smtlib{}(\dv{SmtLib{}}("and"))`
 smtlibAttribute :: String -> AstLocation -> CommonKorePattern
 smtlibAttribute smtlibSymbol location =
     singleDomainValueAttribute "smtlib" smtlibSymbol $ smtlibObjectSort location
 
-attributeObjectSymbolSentence
-  :: String                       -- ^ attribute symbol
-  -> (AstLocation -> Sort Object) -- ^ argument sort constructor
-  -> KoreSentence
+attributeObjectSymbolSentence ::
+       String -- ^ attribute symbol
+    -> (AstLocation -> Sort Object) -- ^ argument sort constructor
+    -> KoreSentence
 attributeObjectSymbolSentence name sort =
     asSentence
-        ( SentenceSymbol
-            { sentenceSymbolSymbol  = Symbol
-                { symbolConstructor = Id name AstLocationImplicit
-                , symbolParams      = []
-                }
-            , sentenceSymbolSorts      = [sort AstLocationImplicit]
-            , sentenceSymbolResultSort = attributeObjectSort AstLocationImplicit
-            , sentenceSymbolAttributes = Attributes []
-            }
-        :: KoreSentenceSymbol Object
-        )
+        (SentenceSymbol
+             { sentenceSymbolSymbol =
+                   Symbol
+                       { symbolConstructor = Id name AstLocationImplicit
+                       , symbolParams = []
+                       }
+             , sentenceSymbolSorts = [sort AstLocationImplicit]
+             , sentenceSymbolResultSort =
+                   attributeObjectSort AstLocationImplicit
+             , sentenceSymbolAttributes = Attributes []
+             } :: KoreSentenceSymbol Object)
 
 {- | `singleDomainValueAttribute` creates an attribute pattern with a single domain value argument
 for example:
         hook{}(\\dv{Hook{}}(".Set"))
         smtlib{}(\\dv{SmtLib{}}("and"))
 -}
-singleDomainValueAttribute
-  :: String      -- ^ Attribute name
-  -> String      -- ^ Domain value
-  -> Sort Object -- ^ Attribute sort
-  -> CommonKorePattern
+singleDomainValueAttribute ::
+       String -- ^ Attribute name
+    -> String -- ^ Domain value
+    -> Sort Object -- ^ Attribute sort
+    -> CommonKorePattern
 singleDomainValueAttribute name domainValue sort =
     asObjectKorePattern
-        ( ApplicationPattern Application
-            { applicationSymbolOrAlias = SymbolOrAlias
-                { symbolOrAliasConstructor = Id name AstLocationImplicit
-                , symbolOrAliasParams      = []
-                }
-            , applicationChildren      =
-                [ asKorePattern
-                    ( DomainValuePattern DomainValue
-                        { domainValueSort  = sort
-                        , domainValueChild =
-                            asKorePattern
-                                (StringLiteralPattern (StringLiteral domainValue))
-                        }
-                    )
-                ]
-            }
-        )
+        (ApplicationPattern
+             Application
+                 { applicationSymbolOrAlias =
+                       SymbolOrAlias
+                           { symbolOrAliasConstructor =
+                                 Id name AstLocationImplicit
+                           , symbolOrAliasParams = []
+                           }
+                 , applicationChildren =
+                       [ asKorePattern
+                             (DomainValuePattern
+                                  DomainValue
+                                      { domainValueSort = sort
+                                      , domainValueChild =
+                                            asKorePattern
+                                                (StringLiteralPattern
+                                                     (StringLiteral domainValue))
+                                      })
+                       ]
+                 })
 
 functionalAttribute :: CommonKorePattern
-functionalAttribute  = simpleAttribute "functional"
+functionalAttribute = simpleAttribute "functional"
 
 functionalSymbolSentence :: KoreSentence
-functionalSymbolSentence  = simpleAttributeSentence "functional"
+functionalSymbolSentence = simpleAttributeSentence "functional"
 
 constructorAttribute :: CommonKorePattern
 constructorAttribute = simpleAttribute "constructor"
 
 constructorSymbolSentence :: KoreSentence
-constructorSymbolSentence  = simpleAttributeSentence "constructor"
+constructorSymbolSentence = simpleAttributeSentence "constructor"
 
 {-| Creates a Pattern for an attribute
 consisting of a single keyword with no arguments.
 -}
 simpleAttribute :: String -> CommonKorePattern
-simpleAttribute name = asObjectKorePattern
-        ( ApplicationPattern Application
-            { applicationSymbolOrAlias = SymbolOrAlias
-                { symbolOrAliasConstructor = Id name AstLocationImplicit
-                , symbolOrAliasParams      = []
-                }
-            , applicationChildren = []
-            }
-        )
+simpleAttribute name =
+    asObjectKorePattern
+        (ApplicationPattern
+             Application
+                 { applicationSymbolOrAlias =
+                       SymbolOrAlias
+                           { symbolOrAliasConstructor =
+                                 Id name AstLocationImplicit
+                           , symbolOrAliasParams = []
+                           }
+                 , applicationChildren = []
+                 })
 
 {-| Creates a sentence declaring a simpleAttribute
 -}
 simpleAttributeSentence :: String -> KoreSentence
 simpleAttributeSentence name =
     asSentence
-        ( SentenceSymbol
-            { sentenceSymbolSymbol     = Symbol
-                { symbolConstructor = Id name AstLocationImplicit
-                , symbolParams      = []
-                }
-            , sentenceSymbolSorts      = []
-            , sentenceSymbolResultSort = attributeObjectSort AstLocationImplicit
-            , sentenceSymbolAttributes = Attributes []
-            }
-        :: KoreSentenceSymbol Object
-        )
-
+        (SentenceSymbol
+             { sentenceSymbolSymbol =
+                   Symbol
+                       { symbolConstructor = Id name AstLocationImplicit
+                       , symbolParams = []
+                       }
+             , sentenceSymbolSorts = []
+             , sentenceSymbolResultSort =
+                   attributeObjectSort AstLocationImplicit
+             , sentenceSymbolAttributes = Attributes []
+             } :: KoreSentenceSymbol Object)
 
 argumentPositionObjectSort :: AstLocation -> Sort Object
 argumentPositionObjectSortSentence :: KoreSentence
@@ -218,39 +216,38 @@ strictObjectSortSentence :: KoreSentence
 strictObjectSymbolSentence :: KoreSentence
 strictObjectSymbolSentence =
     asSentence
-        ( SentenceSymbol
-            { sentenceSymbolSymbol     = Symbol
-                { symbolConstructor = Id "strict" AstLocationImplicit
-                , symbolParams      = []
-                }
-            , sentenceSymbolSorts      =
-                [ strictObjectSort AstLocationImplicit
-                , argumentPositionObjectSort AstLocationImplicit
-                ]
-            , sentenceSymbolResultSort = attributeObjectSort AstLocationImplicit
-            , sentenceSymbolAttributes = Attributes []
-            }
-        :: KoreSentenceSymbol Object
-        )
+        (SentenceSymbol
+             { sentenceSymbolSymbol =
+                   Symbol
+                       { symbolConstructor = Id "strict" AstLocationImplicit
+                       , symbolParams = []
+                       }
+             , sentenceSymbolSorts =
+                   [ strictObjectSort AstLocationImplicit
+                   , argumentPositionObjectSort AstLocationImplicit
+                   ]
+             , sentenceSymbolResultSort =
+                   attributeObjectSort AstLocationImplicit
+             , sentenceSymbolAttributes = Attributes []
+             } :: KoreSentenceSymbol Object)
 
 seqstrictObjectSymbolSentence :: KoreSentence
 seqstrictObjectSymbolSentence =
-  attributeObjectSymbolSentence "seqstrict" strictObjectSort
+    attributeObjectSymbolSentence "seqstrict" strictObjectSort
 
 noArgumentOrParameterSentence :: String -> Sort Object -> KoreSentence
 noArgumentOrParameterSentence name sort =
     asSentence
-        ( SentenceSymbol
-            { sentenceSymbolSymbol     = Symbol
-                { symbolConstructor = Id name AstLocationImplicit
-                , symbolParams      = []
-                }
-            , sentenceSymbolSorts      = []
-            , sentenceSymbolResultSort = sort
-            , sentenceSymbolAttributes = Attributes []
-            }
-        :: KoreSentenceSymbol Object
-        )
+        (SentenceSymbol
+             { sentenceSymbolSymbol =
+                   Symbol
+                       { symbolConstructor = Id name AstLocationImplicit
+                       , symbolParams = []
+                       }
+             , sentenceSymbolSorts = []
+             , sentenceSymbolResultSort = sort
+             , sentenceSymbolAttributes = Attributes []
+             } :: KoreSentenceSymbol Object)
 
 associativeObjectSymbolSentence :: KoreSentence
 associativeObjectSymbolSentence =
@@ -270,26 +267,26 @@ in attributes;
 uncheckedAttributesModule :: KoreModule
 uncheckedAttributesModule =
     Module
-        { moduleName       = ModuleName "BUILTIN-attributes"
-        , moduleSentences  =
-            [ attributeObjectSortSentence
-            , hookObjectSortSentence
-            , hookObjectSymbolSentence
-            , smtlibObjectSortSentence
-            , smtlibObjectSymbolSentence
-            , functionalSymbolSentence
-            , constructorSymbolSentence
-            , argumentPositionObjectSortSentence
-            , firstArgumentObjectSymbolSentence
-            , secondArgumentObjectSymbolSentence
-            , thirdArgumentObjectSymbolSentence
-            , fourthArgumentObjectSymbolSentence
-            , fifthArgumentObjectSymbolSentence
-            , strictObjectSortSentence
-            , strictObjectSymbolSentence
-            , seqstrictObjectSymbolSentence
-            , associativeObjectSymbolSentence
-            , commutativeObjectSymbolSentence
-            ]
+        { moduleName = ModuleName "BUILTIN-attributes"
+        , moduleSentences =
+              [ attributeObjectSortSentence
+              , hookObjectSortSentence
+              , hookObjectSymbolSentence
+              , smtlibObjectSortSentence
+              , smtlibObjectSymbolSentence
+              , functionalSymbolSentence
+              , constructorSymbolSentence
+              , argumentPositionObjectSortSentence
+              , firstArgumentObjectSymbolSentence
+              , secondArgumentObjectSymbolSentence
+              , thirdArgumentObjectSymbolSentence
+              , fourthArgumentObjectSymbolSentence
+              , fifthArgumentObjectSymbolSentence
+              , strictObjectSortSentence
+              , strictObjectSymbolSentence
+              , seqstrictObjectSymbolSentence
+              , associativeObjectSymbolSentence
+              , commutativeObjectSymbolSentence
+              ]
         , moduleAttributes = Attributes []
         }

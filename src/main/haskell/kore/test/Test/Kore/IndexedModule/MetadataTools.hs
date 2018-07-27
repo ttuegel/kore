@@ -1,13 +1,12 @@
-module Test.Kore.IndexedModule.MetadataTools (test_metadataTools) where
+module Test.Kore.IndexedModule.MetadataTools
+    ( test_metadataTools
+    ) where
 
-import Test.Tasty
-       ( TestTree )
-import Test.Tasty.HUnit
-       ( assertEqual, testCase )
+import Test.Tasty (TestTree)
+import Test.Tasty.HUnit (assertEqual, testCase)
 
 import qualified Data.Map as Map
-import           Data.Maybe
-                 ( fromMaybe )
+import Data.Maybe (fromMaybe)
 
 import Kore.AST.Builders
 import Kore.AST.Common
@@ -29,16 +28,17 @@ objectS1 :: Sort Object
 objectS1 = simpleSort (SortName "s1")
 
 objectA :: PureSentenceSymbol Object
-objectA = SentenceSymbol
-    { sentenceSymbolSymbol =
-        Symbol
-          { symbolConstructor = (Id "b" AstLocationNone)
-          , symbolParams = []
-          }
-    , sentenceSymbolSorts = []
-    , sentenceSymbolResultSort = objectS1
-    , sentenceSymbolAttributes = Attributes [ constructorAttribute ]
-    }
+objectA =
+    SentenceSymbol
+        { sentenceSymbolSymbol =
+              Symbol
+                  { symbolConstructor = (Id "b" AstLocationNone)
+                  , symbolParams = []
+                  }
+        , sentenceSymbolSorts = []
+        , sentenceSymbolResultSort = objectS1
+        , sentenceSymbolAttributes = Attributes [constructorAttribute]
+        }
 
 metaA :: PureSentenceSymbol Meta
 metaA = symbol_ "#a" AstLocationTest [] charListMetaSort
@@ -57,15 +57,14 @@ testObjectModule =
     Module
         { moduleName = testObjectModuleName
         , moduleSentences =
-            [ SentenceSortSentence
-                SentenceSort
-                    { sentenceSortName = testId "s1"
-                    , sentenceSortParameters = []
-                    , sentenceSortAttributes = Attributes []
-                    }
-
-            , asSentence objectA
-            ]
+              [ SentenceSortSentence
+                    SentenceSort
+                        { sentenceSortName = testId "s1"
+                        , sentenceSortParameters = []
+                        , sentenceSortAttributes = Attributes []
+                        }
+              , asSentence objectA
+              ]
         , moduleAttributes = Attributes []
         }
 
@@ -73,7 +72,7 @@ testMetaModule :: PureModule Meta
 testMetaModule =
     Module
         { moduleName = testMetaModuleName
-        , moduleSentences = [ asSentence metaA ]
+        , moduleSentences = [asSentence metaA]
         , moduleAttributes = Attributes []
         }
 
@@ -82,22 +81,21 @@ mainModule =
     Module
         { moduleName = testMainModuleName
         , moduleSentences =
-            [ importSentence testObjectModuleName
-            , importSentence testMetaModuleName
-            ]
+              [ importSentence testObjectModuleName
+              , importSentence testMetaModuleName
+              ]
         , moduleAttributes = Attributes []
         }
-
 
 testDefinition :: KoreDefinition
 testDefinition =
     Definition
         { definitionAttributes = Attributes []
         , definitionModules =
-            [ modulePureToKore testObjectModule
-            , modulePureToKore testMetaModule
-            , mainModule
-            ]
+              [ modulePureToKore testObjectModule
+              , modulePureToKore testMetaModule
+              , mainModule
+              ]
         }
 
 testIndexedModule :: KoreIndexedModule
@@ -114,46 +112,42 @@ metadataTools = extractMetadataTools testIndexedModule
 
 test_metadataTools :: [TestTree]
 test_metadataTools =
-    [ testCase "constructor object"
-        (assertEqual ""
-            True
-            (isConstructor metadataTools (symbolHead objectA))
-        )
-    , testCase "constructor meta"
-        (assertEqual ""
-            False
-            (isConstructor metadataTools (symbolHead metaA))
-        )
-    , testCase "functional object"
-        (assertEqual ""
-            False
-            (isFunctional metadataTools (symbolHead metaA))
-        )
-    , testCase "functional meta"
-        (assertEqual ""
-            False
-            (isFunctional metadataTools (symbolHead metaA))
-        )
-    , testCase "getArgumentSorts object"
-        (assertEqual ""
-            []
-            (getArgumentSorts metadataTools (symbolHead objectA))
-        )
-    , testCase "getArgumentSorts meta"
-        (assertEqual ""
-            []
-            (getArgumentSorts metadataTools (symbolHead metaA))
-        )
-    , testCase "getResultSort object"
-        (assertEqual ""
-            objectS1
-            (getResultSort metadataTools (symbolHead objectA))
-        )
-    , testCase "getResultSort meta"
-        (assertEqual ""
-            charListMetaSort
-            (getResultSort metadataTools (symbolHead metaA))
-        )
+    [ testCase
+          "constructor object"
+          (assertEqual
+               ""
+               True
+               (isConstructor metadataTools (symbolHead objectA)))
+    , testCase
+          "constructor meta"
+          (assertEqual "" False (isConstructor metadataTools (symbolHead metaA)))
+    , testCase
+          "functional object"
+          (assertEqual "" False (isFunctional metadataTools (symbolHead metaA)))
+    , testCase
+          "functional meta"
+          (assertEqual "" False (isFunctional metadataTools (symbolHead metaA)))
+    , testCase
+          "getArgumentSorts object"
+          (assertEqual
+               ""
+               []
+               (getArgumentSorts metadataTools (symbolHead objectA)))
+    , testCase
+          "getArgumentSorts meta"
+          (assertEqual "" [] (getArgumentSorts metadataTools (symbolHead metaA)))
+    , testCase
+          "getResultSort object"
+          (assertEqual
+               ""
+               objectS1
+               (getResultSort metadataTools (symbolHead objectA)))
+    , testCase
+          "getResultSort meta"
+          (assertEqual
+               ""
+               charListMetaSort
+               (getResultSort metadataTools (symbolHead metaA)))
     ]
   where
     symbolHead symbol = getSentenceSymbolOrAliasHead symbol []

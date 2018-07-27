@@ -13,8 +13,8 @@ module Kore.AST.AstWithLocation
     ) where
 
 import Kore.AST.Common
-import Kore.AST.MetaOrObject
 import Kore.AST.MLPatterns
+import Kore.AST.MetaOrObject
 
 {-| 'AstWithLocation' should be implemented by all AST terms that have
 an 'AstLocation'.
@@ -23,17 +23,14 @@ class AstWithLocation awl where
     locationFromAst :: awl -> AstLocation
     updateAstLocation :: awl -> AstLocation -> awl
 
-prettyPrintLocationFromAst
-    :: AstWithLocation astWithLocation
-    => astWithLocation -> String
+prettyPrintLocationFromAst ::
+       AstWithLocation astWithLocation => astWithLocation -> String
 prettyPrintLocationFromAst = prettyPrintAstLocation . locationFromAst
 
-instance
-    (AstWithLocation (thing Object), AstWithLocation (thing Meta))
-    => AstWithLocation (Unified thing)
-  where
+instance (AstWithLocation (thing Object), AstWithLocation (thing Meta)) =>
+         AstWithLocation (Unified thing) where
     locationFromAst (UnifiedObject t) = locationFromAst t
-    locationFromAst (UnifiedMeta t)   = locationFromAst t
+    locationFromAst (UnifiedMeta t) = locationFromAst t
     updateAstLocation (UnifiedObject t) loc =
         UnifiedObject (updateAstLocation t loc)
     updateAstLocation (UnifiedMeta t) loc =
@@ -45,7 +42,7 @@ instance AstWithLocation AstLocation where
 
 instance AstWithLocation (Id level) where
     locationFromAst = idLocation
-    updateAstLocation id' loc = id' { idLocation = loc }
+    updateAstLocation id' loc = id' {idLocation = loc}
 
 instance AstWithLocation (SortVariable level) where
     locationFromAst = locationFromAst . getSortVariable
@@ -55,13 +52,12 @@ instance AstWithLocation (SortVariable level) where
 instance AstWithLocation (SortActual level) where
     locationFromAst = locationFromAst . sortActualName
     updateAstLocation sa loc =
-        sa { sortActualName = updateAstLocation (sortActualName sa) loc }
+        sa {sortActualName = updateAstLocation (sortActualName sa) loc}
 
 instance AstWithLocation (Sort level) where
     locationFromAst (SortVariableSort sortVariable) =
         locationFromAst sortVariable
-    locationFromAst (SortActualSort sortActual) =
-        locationFromAst sortActual
+    locationFromAst (SortActualSort sortActual) = locationFromAst sortActual
     updateAstLocation (SortVariableSort sortVariable) loc =
         SortVariableSort (updateAstLocation sortVariable loc)
     updateAstLocation (SortActualSort sortActual) loc =
@@ -75,31 +71,33 @@ instance AstWithLocation (Variable level) where
 instance AstWithLocation (Alias level) where
     locationFromAst = locationFromAst . aliasConstructor
     updateAstLocation al loc =
-        al { aliasConstructor = updateAstLocation (aliasConstructor al) loc }
+        al {aliasConstructor = updateAstLocation (aliasConstructor al) loc}
 
 instance AstWithLocation (SymbolOrAlias level) where
     locationFromAst = locationFromAst . symbolOrAliasConstructor
     updateAstLocation sal loc =
         sal
             { symbolOrAliasConstructor =
-                updateAstLocation (symbolOrAliasConstructor sal) loc
+                  updateAstLocation (symbolOrAliasConstructor sal) loc
             }
 
 instance AstWithLocation (Symbol level) where
     locationFromAst = locationFromAst . symbolConstructor
     updateAstLocation s loc =
-        s { symbolConstructor = updateAstLocation (symbolConstructor s) loc }
+        s {symbolConstructor = updateAstLocation (symbolConstructor s) loc}
 
-instance
-    AstWithLocation (variable level)
-    => AstWithLocation (Pattern level variable child)
-  where
-    locationFromAst = applyPatternFunction PatternFunction
-        { patternFunctionML = locationFromAst . getMLPatternResultSort
-        , patternFunctionMLBinder = locationFromAst . getBinderPatternSort
-        , applicationFunction = locationFromAst . applicationSymbolOrAlias
-        , variableFunction = locationFromAst
-        , stringFunction = const AstLocationUnknown
-        , charFunction = const AstLocationUnknown
-        }
+instance AstWithLocation (variable level) =>
+         AstWithLocation (Pattern level variable child) where
+    locationFromAst =
+        applyPatternFunction
+            PatternFunction
+                { patternFunctionML = locationFromAst . getMLPatternResultSort
+                , patternFunctionMLBinder =
+                      locationFromAst . getBinderPatternSort
+                , applicationFunction =
+                      locationFromAst . applicationSymbolOrAlias
+                , variableFunction = locationFromAst
+                , stringFunction = const AstLocationUnknown
+                , charFunction = const AstLocationUnknown
+                }
     updateAstLocation = undefined

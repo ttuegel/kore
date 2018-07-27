@@ -7,32 +7,26 @@ Maintainer  : traian.serbanuta@runtimeverification.com
 Stability   : experimental
 Portability : portable
 -}
-
 module Data.Function.Compose where
 
-{-|The '<..>' operator offers function composition functionality when the
-second function has two arguments.  It satisfies that
+{-| Compose two functions where the second has two arguments.
 
 * @(g <..> f) a1 a2 == g (f a1 a2)@
 -}
 (<..>) :: (b -> c) -> (a1 -> a2 -> b) -> (a1 -> a2 -> c)
 (<..>) = (.) . (.)
 
-{-|The '<...>' operator offers function composition functionality when the
-second function has three arguments.  It satisfies that
+{-| Compose two functions where the second has three arguments.
 
 * @(g <...> f) a1 a2 a3 == g (f a1 a2 a3)@
 -}
 (<...>) :: (b -> c) -> (a1 -> a2 -> a3 -> b) -> (a1 -> a2 -> a3 -> c)
 (<...>) = (<..>) . (.)
 
-{-|The '<....>' operator offers function composition functionality when the
-second function has four arguments.  It satisfies that
+{-| Compose two functions where the second has four arguments
 
 * @(g <...> f) a1 a2 a3 a4 == g (f a1 a2 a3 a4)@
 -}
-(<....>)
-    :: (b -> c)
-    -> (a1 -> a2 -> a3 -> a4 -> b)
-    -> (a1 -> a2 -> a3 -> a4 -> c)
+(<....>) ::
+       (b -> c) -> (a1 -> a2 -> a3 -> a4 -> b) -> (a1 -> a2 -> a3 -> a4 -> c)
 (<....>) = (<...>) . (.)

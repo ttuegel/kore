@@ -34,12 +34,14 @@ module Kore.Parser.Parser
     , korePatternParser
     ) where
 
-import           Kore.AST.Kore           (CommonKorePattern)
-import           Kore.AST.Sentence
-import           Kore.Parser.Lexeme      (skipWhitespace)
-import qualified Kore.Parser.ParserImpl  as KoreParser (koreDefinitionParser,
-                                                        korePatternParser)
-import           Kore.Parser.ParserUtils
+import Kore.AST.Kore (CommonKorePattern)
+import Kore.AST.Sentence
+import Kore.Parser.Lexeme (skipWhitespace)
+import qualified Kore.Parser.ParserImpl as KoreParser
+    ( koreDefinitionParser
+    , korePatternParser
+    )
+import Kore.Parser.ParserUtils
 
 {-|'koreParser' is a parser for Kore.
 

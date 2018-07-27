@@ -11,25 +11,34 @@ Portability : POSIX
 module Kore.Building.Implicit where
 
 import Kore.AST.Common
-       ( Application (..), AstLocation (..), Id (..), Pattern (..),
-       SymbolOrAlias (..) )
-import Kore.AST.MetaOrObject
-       ( Meta )
+    ( Application(..)
+    , AstLocation(..)
+    , Id(..)
+    , Pattern(..)
+    , SymbolOrAlias(..)
+    )
+import Kore.AST.MetaOrObject (Meta)
 import Kore.Building.Patterns
 import Kore.Building.Sorts
 
-data MetaNilSortList = MetaNilSortList
+data MetaNilSortList =
+    MetaNilSortList
+
 instance ProperPattern Meta SortListSort MetaNilSortList where
     asProperPattern _ =
-        ApplicationPattern Application
-            { applicationSymbolOrAlias = SymbolOrAlias
-                { symbolOrAliasConstructor = Id
-                    { getId = "#nilSortList"
-                    , idLocation = AstLocationImplicit
-                    }
-                , symbolOrAliasParams = []
+        ApplicationPattern
+            Application
+                { applicationSymbolOrAlias =
+                      SymbolOrAlias
+                          { symbolOrAliasConstructor =
+                                Id
+                                    { getId = "#nilSortList"
+                                    , idLocation = AstLocationImplicit
+                                    }
+                          , symbolOrAliasParams = []
+                          }
+                , applicationChildren = []
                 }
-            , applicationChildren      = []
-            }
+
 metaNilSortList :: MetaNilSortList
 metaNilSortList = MetaNilSortList

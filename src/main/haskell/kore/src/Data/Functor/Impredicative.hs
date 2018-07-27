@@ -17,10 +17,9 @@ For example, 'Rotate41' might be needed to transform types in order
 to use such 'MetaOrObject' constructs as 'applyMetaObjectFunction' or
 'UnifiedThing'.
 -}
-newtype
-    Rotate31 t pat variable level
-  = Rotate31 { unRotate31 :: t level pat variable}
-  deriving (Eq, Show)
+newtype Rotate31 t pat variable level = Rotate31
+    { unRotate31 :: t level pat variable
+    } deriving (Eq, Show)
 
 {-|'Rotate41' is a helper type useful to bring the first argument
 of a type paramaterized by four arguments to the last position,
@@ -30,7 +29,6 @@ For example, 'Rotate41' might be needed to transform types in order
 to use such 'MetaOrObject' constructs as 'applyMetaObjectFunction' or
 'UnifiedThing'.
 -}
-newtype
-    Rotate41 t sortParam pat variable level
-  = Rotate41 { unRotate41 :: t level sortParam pat variable}
-  deriving (Eq, Show)
+newtype Rotate41 t sortParam pat variable level = Rotate41
+    { unRotate41 :: t level sortParam pat variable
+    } deriving (Eq, Show)

@@ -9,27 +9,27 @@ Portability : portable
 -}
 module Kore.AST.MLPatterns
     ( MLPatternClass(..)
-    , MLBinderPatternClass (..)
-    , PatternFunction (..)
-    , PatternLeveledFunction (..)
+    , MLBinderPatternClass(..)
+    , PatternFunction(..)
+    , PatternLeveledFunction(..)
     , applyPatternFunction
     , applyPatternLeveledFunction
     , getPatternResultSort
     , undefinedHeadSort
     ) where
 
-import           Kore.AST.Common
-import           Kore.AST.Kore
-import           Kore.AST.MetaOrObject
-import           Kore.Implicit.ImplicitSorts
+import Kore.AST.Common
+import Kore.AST.Kore
+import Kore.AST.MetaOrObject
+import Kore.Implicit.ImplicitSorts
 
 {-|'MLPatternClass' offers a common interface to ML patterns
   (those starting with '\', except for 'Exists' and 'Forall')
 -}
 class MLPatternClass pat level where
     getPatternType :: pat level child -> MLPatternType
-    getMLPatternOperandSorts
-        :: MetaOrObject level => pat level child -> [UnifiedSort]
+    getMLPatternOperandSorts ::
+           MetaOrObject level => pat level child -> [UnifiedSort]
     getMLPatternResultSort :: pat level child -> Sort level
     getPatternSorts :: pat level child -> [Sort level]
     getPatternChildren :: pat level child -> [child]
@@ -45,11 +45,15 @@ class MLBinderPatternClass pat where
     getBinderPatternChild :: pat level variable child -> child
     -- The first argument is only needed in order to make the Haskell type
     -- system work.
-    binderPatternConstructor
-        :: MetaOrObject level
-        => pat level variable child -> Sort level -> variable level -> child
+    binderPatternConstructor ::
+           MetaOrObject level
+        => pat level variable child
+        -> Sort level
+        -> variable level
+        -> child
         -> Pattern level variable child
-    mlBinderPatternToPattern :: pat level variable child -> Pattern level variable child
+    mlBinderPatternToPattern ::
+           pat level variable child -> Pattern level variable child
 
 instance MLPatternClass And level where
     getPatternType _ = AndPatternType
@@ -172,11 +176,13 @@ instance MLBinderPatternClass Exists where
     getBinderPatternSort = existsSort
     getBinderPatternVariable = existsVariable
     getBinderPatternChild = existsChild
-    binderPatternConstructor _ sort variable pat = ExistsPattern Exists
-        { existsSort = sort
-        , existsVariable = variable
-        , existsChild = pat
-        }
+    binderPatternConstructor _ sort variable pat =
+        ExistsPattern
+            Exists
+                { existsSort = sort
+                , existsVariable = variable
+                , existsChild = pat
+                }
     mlBinderPatternToPattern = ExistsPattern
 
 instance MLBinderPatternClass Forall where
@@ -184,11 +190,13 @@ instance MLBinderPatternClass Forall where
     getBinderPatternSort = forallSort
     getBinderPatternVariable = forallVariable
     getBinderPatternChild = forallChild
-    binderPatternConstructor _ sort variable pat = ForallPattern Forall
-        { forallSort = sort
-        , forallVariable = variable
-        , forallChild = pat
-        }
+    binderPatternConstructor _ sort variable pat =
+        ForallPattern
+            Forall
+                { forallSort = sort
+                , forallVariable = variable
+                , forallChild = pat
+                }
     mlBinderPatternToPattern = ForallPattern
 
 {-|`PatternLeveledFunction` holds a full set of functions that
@@ -197,13 +205,10 @@ with `applyPatternLeveledFunction` they form a function on patterns, hence the n
 -}
 -- TODO: consider parameterizing on variable also
 data PatternLeveledFunction level variable child result = PatternLeveledFunction
-    { patternLeveledFunctionML
-        :: !(forall patt . MLPatternClass patt level
-            => patt level child -> result level)
-    , patternLeveledFunctionMLBinder
-        :: !(forall patt . MLBinderPatternClass patt
-        => patt level variable child
-        -> result level)
+    { patternLeveledFunctionML :: !(forall patt. MLPatternClass patt level =>
+                                                     patt level child -> result level)
+    , patternLeveledFunctionMLBinder :: !(forall patt. MLBinderPatternClass patt =>
+                                                           patt level variable child -> result level)
     , stringLeveledFunction :: StringLiteral -> result Meta
     , charLeveledFunction :: CharLiteral -> result Meta
     , applicationLeveledFunction :: !(Application level child -> result level)
@@ -213,8 +218,8 @@ data PatternLeveledFunction level variable child result = PatternLeveledFunction
 {-|`applyPatternLeveledFunction` applies a patternFunction on the inner element of a
 `Pattern`, returning the result.
 -}
-applyPatternLeveledFunction
-    :: PatternLeveledFunction level variable child result
+applyPatternLeveledFunction ::
+       PatternLeveledFunction level variable child result
     -> Pattern level variable child
     -> result level
 applyPatternLeveledFunction function (AndPattern a) =
@@ -264,12 +269,10 @@ with `applyPatternFunction` they form a function on patterns, hence the name.
 -}
 -- TODO: consider parameterizing on variable also
 data PatternFunction level variable child result = PatternFunction
-    { patternFunctionML
-        :: !(forall patt . MLPatternClass patt level => patt level child -> result)
-    , patternFunctionMLBinder
-        :: !(forall patt . MLBinderPatternClass patt
-        => patt level variable child
-        -> result)
+    { patternFunctionML :: !(forall patt. MLPatternClass patt level =>
+                                              patt level child -> result)
+    , patternFunctionMLBinder :: !(forall patt. MLBinderPatternClass patt =>
+                                                    patt level variable child -> result)
     , stringFunction :: StringLiteral -> result
     , charFunction :: CharLiteral -> result
     , applicationFunction :: !(Application level child -> result)
@@ -277,31 +280,32 @@ data PatternFunction level variable child result = PatternFunction
     }
 
 newtype ParameterizedProxy result level = ParameterizedProxy
-    { getParameterizedProxy :: result }
+    { getParameterizedProxy :: result
+    }
 
 {-|`applyPatternFunction` applies a patternFunction on the inner element of a
 `Pattern`, returning the result.
 -}
-applyPatternFunction
-    :: PatternFunction level variable child result
+applyPatternFunction ::
+       PatternFunction level variable child result
     -> Pattern level variable child
     -> result
 applyPatternFunction patternFunction =
-    getParameterizedProxy
-    . applyPatternLeveledFunction
+    getParameterizedProxy .
+    applyPatternLeveledFunction
         PatternLeveledFunction
             { patternLeveledFunctionML =
-                ParameterizedProxy . patternFunctionML patternFunction
+                  ParameterizedProxy . patternFunctionML patternFunction
             , patternLeveledFunctionMLBinder =
-                ParameterizedProxy . patternFunctionMLBinder patternFunction
+                  ParameterizedProxy . patternFunctionMLBinder patternFunction
             , stringLeveledFunction =
-                ParameterizedProxy . stringFunction patternFunction
+                  ParameterizedProxy . stringFunction patternFunction
             , charLeveledFunction =
-                ParameterizedProxy . charFunction patternFunction
+                  ParameterizedProxy . charFunction patternFunction
             , applicationLeveledFunction =
-                ParameterizedProxy . applicationFunction patternFunction
+                  ParameterizedProxy . applicationFunction patternFunction
             , variableLeveledFunction =
-                ParameterizedProxy . variableFunction patternFunction
+                  ParameterizedProxy . variableFunction patternFunction
             }
 
 -- |'getPatternResultSort' retrieves the result sort of a pattern.
@@ -310,23 +314,23 @@ applyPatternFunction patternFunction =
 -- the term itself, it takes as firts argument a function yielding the
 -- result sort corresponding to an application head.
 -- TODO(traiansf): add tests.
-getPatternResultSort
-    :: SortedVariable variable
+getPatternResultSort ::
+       SortedVariable variable
     => (SymbolOrAlias level -> Sort level)
     -- ^Function to retrieve the sort of a given pattern Head
     -> Pattern level variable child
     -> Sort level
 getPatternResultSort headSort =
-    applyPatternLeveledFunction PatternLeveledFunction
-        { patternLeveledFunctionML = getMLPatternResultSort
-        , patternLeveledFunctionMLBinder = getBinderPatternSort
-        , stringLeveledFunction = const stringMetaSort
-        , charLeveledFunction = const charMetaSort
-        , applicationLeveledFunction = headSort . applicationSymbolOrAlias
-        , variableLeveledFunction = sortedVariableSort
-        }
+    applyPatternLeveledFunction
+        PatternLeveledFunction
+            { patternLeveledFunctionML = getMLPatternResultSort
+            , patternLeveledFunctionMLBinder = getBinderPatternSort
+            , stringLeveledFunction = const stringMetaSort
+            , charLeveledFunction = const charMetaSort
+            , applicationLeveledFunction = headSort . applicationSymbolOrAlias
+            , variableLeveledFunction = sortedVariableSort
+            }
 
 -- |Sample argument function for 'getPatternResultSort', failing for all input.
 undefinedHeadSort :: SymbolOrAlias level -> Sort level
-undefinedHeadSort _ =
-    error "Application pattern sort currently undefined"
+undefinedHeadSort _ = error "Application pattern sort currently undefined"

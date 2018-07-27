@@ -14,44 +14,45 @@ module Kore.ASTVerifier.ModuleVerifier
 
 import qualified Data.Map as Map
 
-import           Kore.AST.Common
-import           Kore.AST.Sentence
-import           Kore.ASTVerifier.AttributesVerifier
-import           Kore.ASTVerifier.Error
+import Kore.AST.Common
+import Kore.AST.Sentence
+import Kore.ASTVerifier.AttributesVerifier
+import Kore.ASTVerifier.Error
 import qualified Kore.ASTVerifier.SentenceVerifier as SentenceVerifier
-import           Kore.Error
-import           Kore.IndexedModule.IndexedModule
+import Kore.Error
+import Kore.IndexedModule.IndexedModule
 
-{-|'verifyUniqueNames' verifies that names defined in a module are unique both
-within the module and outside, using the provided name set. -}
-verifyUniqueNames
-    :: Map.Map String AstLocation
-    -- ^ Names that are already defined.
+{-| Verify that the names defined in a module are unique.
+
+The names are verified to be unique within the module and among the names in the
+provided set. If the names are all unique, @verifyUniqueNames@ returns the
+updated set of defined names, including the provided names and the names
+defined in the module.
+-}
+verifyUniqueNames ::
+       Map.Map String AstLocation
+       -- ^ Names that are already defined.
     -> KoreModule
     -> Either (Error VerifyError) (Map.Map String AstLocation)
-    -- ^ On success returns the names that were previously defined together with
-    -- the names defined in the given 'Module'.
 verifyUniqueNames existingNames koreModule =
     withContext
         ("module '" ++ getModuleName (moduleName koreModule) ++ "'")
         (SentenceVerifier.verifyUniqueNames
-            (moduleSentences koreModule)
-            existingNames)
+             (moduleSentences koreModule)
+             existingNames)
 
 {-|'verifyModule' verifies the welformedness of a Kore 'Module'. -}
-verifyModule
-    :: AttributesVerification
+verifyModule ::
+       AttributesVerification
     -> KoreIndexedModule
     -> Either (Error VerifyError) VerifySuccess
 verifyModule attributesVerification indexedModule =
     withContext
         ("module '" ++ getModuleName (indexedModuleName indexedModule) ++ "'")
-        (do
-            verifyAttributes
+        (do verifyAttributes
                 (indexedModuleAttributes indexedModule)
                 attributesVerification
             SentenceVerifier.verifySentences
                 indexedModule
                 attributesVerification
-                (indexedModuleRawSentences indexedModule)
-        )
+                (indexedModuleRawSentences indexedModule))

@@ -3,29 +3,32 @@ module Test.Kore.Implicit.ImplicitKore
     , test_implicitAttributes
     ) where
 
-import Test.Tasty
-       ( TestTree, testGroup )
-import Test.Tasty.Golden
-       ( goldenVsString )
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.Golden (goldenVsString)
 
 import qualified Data.ByteString.Lazy as LazyByteString
 import qualified Data.ByteString.Lazy.Char8 as LazyChar8
 
 import Kore.AST.Sentence
 import Kore.Implicit.Verified
-       ( implicitAttributesDefinition, implicitKoreDefinition )
-import Kore.Unparser.Unparse
-       ( unparseToString )
+    ( implicitAttributesDefinition
+    , implicitKoreDefinition
+    )
+import Kore.Unparser.Unparse (unparseToString)
 
 import qualified Paths
-import           Test.Kore.Parser.Regression
-                 ( GoldenFileName (..), InputFileName (..), VerifyRequest (..),
-                 regressionTest )
+import Test.Kore.Parser.Regression
+    ( GoldenFileName(..)
+    , InputFileName(..)
+    , VerifyRequest(..)
+    , regressionTest
+    )
 
-implicitKoreRegressionTests
-    :: KoreDefinition -> InputFileName -> GoldenFileName -> TestTree
+implicitKoreRegressionTests ::
+       KoreDefinition -> InputFileName -> GoldenFileName -> TestTree
 implicitKoreRegressionTests definition inputFileName goldenFileName =
-    testGroup "Implicit kore tests"
+    testGroup
+        "Implicit kore tests"
         [ implicitKoreTest definition inputFileName
         , regressionTest inputFileName goldenFileName VerifyRequestNo
         ]
@@ -38,8 +41,7 @@ implicitKoreTest definition (InputFileName inputFileName) =
         (toByteString definition)
 
 toByteString :: KoreDefinition -> IO LazyByteString.ByteString
-toByteString m =
-    return (LazyChar8.pack (unparseToString m))
+toByteString m = return (LazyChar8.pack (unparseToString m))
 
 test_implicitKore :: TestTree
 test_implicitKore =

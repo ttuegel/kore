@@ -1,19 +1,16 @@
 module Test.Kore.Substitution where
 
-import           Kore.AST.Common
-import           Kore.AST.Kore
-import           Kore.AST.MetaOrObject
+import Kore.AST.Common
+import Kore.AST.Kore
+import Kore.AST.MetaOrObject
 
-import           Test.Kore
+import Test.Kore
 
 objectSort :: Sort Object
 objectSort = SortVariableSort (SortVariable (testId "s"))
 
 objectVariable :: Variable Object
-objectVariable = Variable
-    { variableName = testId "v"
-    , variableSort = objectSort
-    }
+objectVariable = Variable {variableName = testId "v", variableSort = objectSort}
 
 unifiedObjectVariable :: Unified Variable
 unifiedObjectVariable = UnifiedObject objectVariable
@@ -28,10 +25,7 @@ metaSort :: Sort Meta
 metaSort = SortVariableSort (SortVariable (testId "#s"))
 
 metaVariable :: Variable Meta
-metaVariable = Variable
-    { variableName = testId "#v"
-    , variableSort = metaSort
-    }
+metaVariable = Variable {variableName = testId "#v", variableSort = metaSort}
 
 unifiedMetaVariable :: Unified Variable
 unifiedMetaVariable = UnifiedMeta metaVariable

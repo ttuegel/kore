@@ -13,11 +13,12 @@ module Kore.Variables.Fresh.IntCounter
     , runIntCounter
     ) where
 
-import Control.Monad.State
-       ( MonadState (get, put), State, runState )
+import Control.Monad.State (MonadState(get, put), State, runState)
 
 -- |'IntCounter' is a monad encapsulating an integer counter
-newtype IntCounter a = IntCounter { intCounterState :: State Int a }
+newtype IntCounter a = IntCounter
+    { intCounterState :: State Int a
+    }
 
 {-|'runIntCounter' evaluates the computation with the given initial counter
 and yields a value containing the state.

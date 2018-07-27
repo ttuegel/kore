@@ -7,7 +7,6 @@ Maintainer  : virgil.serbanuta@runtimeverification.com
 Stability   : experimental
 Portability : POSIX
 -}
-
 module Kore.Implicit.Definitions
     ( uncheckedAttributesDefinition
     , uncheckedKoreDefinition
@@ -15,13 +14,10 @@ module Kore.Implicit.Definitions
     , uncheckedMetaDefinition
     ) where
 
-import Kore.AST.PureToKore
-       ( modulePureToKore )
+import Kore.AST.PureToKore (modulePureToKore)
 import Kore.AST.Sentence
-import Kore.Implicit.Attributes
-       ( uncheckedAttributesModule )
-import Kore.Implicit.ImplicitKore
-       ( uncheckedKoreModule )
+import Kore.Implicit.Attributes (uncheckedAttributesModule)
+import Kore.Implicit.ImplicitKore (uncheckedKoreModule)
 import Kore.MetaML.AST
 
 metaModules :: [MetaModule]
@@ -33,16 +29,13 @@ Does not do any validation for these modules.
 uncheckedMetaDefinition :: MetaDefinition
 uncheckedMetaDefinition =
     Definition
-        { definitionAttributes = Attributes []
-        , definitionModules    = metaModules
-        }
+        {definitionAttributes = Attributes [], definitionModules = metaModules}
 
 {-| 'uncheckedKoreModules' is the list of all the implicit modules as
 'KoreModule'. Does not do any validation for these modules.
 -}
 uncheckedKoreModules :: [KoreModule]
-uncheckedKoreModules =
-    map modulePureToKore metaModules
+uncheckedKoreModules = map modulePureToKore metaModules
 
 {-| 'uncheckedKoreDefinition' contains all the implicit modules as 'KoreModule'.
 Does not do any validation for these modules.
@@ -51,7 +44,7 @@ uncheckedKoreDefinition :: KoreDefinition
 uncheckedKoreDefinition =
     Definition
         { definitionAttributes = Attributes []
-        , definitionModules    = uncheckedKoreModules
+        , definitionModules = uncheckedKoreModules
         }
 
 {-| 'uncheckedAttributesDefinition' contains the module with
@@ -62,5 +55,5 @@ uncheckedAttributesDefinition :: KoreDefinition
 uncheckedAttributesDefinition =
     Definition
         { definitionAttributes = Attributes []
-        , definitionModules    = [uncheckedAttributesModule]
+        , definitionModules = [uncheckedAttributesModule]
         }

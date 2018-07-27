@@ -23,9 +23,7 @@ module Kore.ASTTraversals
     , patternTopDownVisitorM
     ) where
 
-
-import Control.Monad
-       ( (>=>) )
+import Control.Monad ((>=>))
 import Data.Functor.Foldable
 
 import Data.Functor.Traversable
@@ -61,24 +59,16 @@ else, assume preprocess returns @Right (p', trans)@
 3.3 applies @postprocess@ on the @p''@ obtained from @p'@ by replacing
     its direct children with the corresponding results from (3.2)
 -}
-patternTopDownVisitorM
-    :: (Monad m, UnifiedPatternInterface pat, Traversable (pat variable))
-    => (forall level . (MetaOrObject level)
-        => Pattern level variable (Fix (pat variable))
-        -> m (Either result ( Pattern level variable (Fix (pat variable))
-                            , m result -> m result
-                            )
-             )
-       )
-    -> (forall level . MetaOrObject level
-        => Pattern level variable result -> m result
-       )
+patternTopDownVisitorM ::
+       (Monad m, UnifiedPatternInterface pat, Traversable (pat variable))
+    => (forall level. (MetaOrObject level) =>
+                          Pattern level variable (Fix (pat variable)) -> m (Either result ( Pattern level variable (Fix (pat variable))
+                                                                                          , m result -> m result)))
+    -> (forall level. MetaOrObject level =>
+                          Pattern level variable result -> m result)
     -> (Fix (pat variable) -> m result)
 patternTopDownVisitorM preprocess postprocess =
-    fixTopDownVisitorM
-        fixPreprocess
-        (unifiedPatternApply postprocess)
-  where
+    fixTopDownVisitorM fixPreprocess (unifiedPatternApply postprocess)
     {-
     fixPreprocess
         :: (pat' (Fix pat')
@@ -86,14 +76,12 @@ patternTopDownVisitorM preprocess postprocess =
         )
       where pat' = pat variable
     -}
+  where
     fixPreprocess =
         unifiedPatternApply
-            (preprocess
-            >=>
-            \case
-                Left r       -> return (Left r)
-                Right (p, t) -> return (Right (unifyPattern p, t))
-            )
+            (preprocess >=> \case
+                 Left r -> return (Left r)
+                 Right (p, t) -> return (Right (unifyPattern p, t)))
 
 {-|'patternBottomUpVisitorM' is the specialization of 'patternTopDownVisitorM' where
 the preprocessor function always requests the recursive visitation of its
@@ -104,23 +92,21 @@ The aggreagation function provided as argument is a local visitor/reducer
 which assumes that all children patterns of a pattern have been visited and
 transformed into results and aggregates these results into a new result.
 -}
-patternBottomUpVisitorM
-    :: (Monad m, UnifiedPatternInterface pat, Traversable (pat variable))
-    => (forall level . MetaOrObject level
-        => Pattern level variable result -> m result)
+patternBottomUpVisitorM ::
+       (Monad m, UnifiedPatternInterface pat, Traversable (pat variable))
+    => (forall level. MetaOrObject level =>
+                          Pattern level variable result -> m result)
     -> (Fix (pat variable) -> m result)
 patternBottomUpVisitorM reduce =
     fixBottomUpVisitorM (unifiedPatternApply reduce)
 
 -- |'patternTopDownVisitor' is the non-monadic version of 'patternTopDownVisitorM'.
-patternTopDownVisitor
-    :: (UnifiedPatternInterface pat, Functor (pat variable))
-    => (forall level . MetaOrObject level
-        => Pattern level variable (Fix (pat variable))
-        -> Either result (Pattern level variable (Fix (pat variable)))
-       )
-    -> (forall level . MetaOrObject level
-        => Pattern level variable result -> result)
+patternTopDownVisitor ::
+       (UnifiedPatternInterface pat, Functor (pat variable))
+    => (forall level. MetaOrObject level =>
+                          Pattern level variable (Fix (pat variable)) -> Either result (Pattern level variable (Fix (pat variable))))
+    -> (forall level. MetaOrObject level =>
+                          Pattern level variable result -> result)
     -> (Fix (pat variable) -> result)
 patternTopDownVisitor preprocess postprocess =
     fixTopDownVisitor fixPreprocess fixPostprocess
@@ -129,9 +115,9 @@ patternTopDownVisitor preprocess postprocess =
     fixPreprocess = unifiedPatternApply (fmap unifyPattern . preprocess)
 
 -- |'patternBottomUpVisitor' is the non-monadic version of 'patternBottomUpVisitorM'.
-patternBottomUpVisitor
-    :: (UnifiedPatternInterface pat, Functor (pat variable))
-    => (forall level . MetaOrObject level
-        => Pattern level variable result -> result)
+patternBottomUpVisitor ::
+       (UnifiedPatternInterface pat, Functor (pat variable))
+    => (forall level. MetaOrObject level =>
+                          Pattern level variable result -> result)
     -> (Fix (pat variable) -> result)
 patternBottomUpVisitor reduce = fixBottomUpVisitor (unifiedPatternApply reduce)

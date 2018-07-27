@@ -17,93 +17,106 @@ module Logic.Proof.Hilbert
     , renderProof
     ) where
 
-import           Data.Foldable
-import           Data.Map.Strict
-                 ( Map )
+import Data.Foldable
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import           Data.Sequence
-                 ( Seq, (|>) )
+import Data.Sequence (Seq, (|>))
 import qualified Data.Sequence as Seq
-import           Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc
 
 import Kore.Error
 import Logic.Matching.Error
 
-data Proof ix rule formula =
-  Proof
-  { index       :: Map ix (Int,formula)
-  , claims      :: Seq (ix,formula)
-  , derivations :: Map ix (rule ix)
-  }
-  deriving (Show)
+data Proof ix rule formula = Proof
+    { index :: Map ix (Int, formula)
+    , claims :: Seq (ix, formula)
+    , derivations :: Map ix (rule ix)
+    } deriving (Show)
 
 emptyProof :: Proof ix rule formula
 emptyProof = Proof Map.empty Seq.empty Map.empty
 
 add :: (Pretty ix, Ord ix)
     => (formula -> Either (Error error) ())
-    -> Proof ix rule formula -> ix -> formula
+    -> Proof ix rule formula
+    -> ix
+    -> formula
     -> Either (Error error) (Proof ix rule formula)
 add verifier proof ix formula = do
-  mlFailWhen
-    (Map.member ix (index proof))
-    ["A formula with ID ", squotes (pretty ix), " already exists"]
-  verifier formula
-  return proof
-    { index = Map.insert ix (Seq.length (claims proof), formula) (index proof)
-    , claims = claims proof |> (ix,formula)
-    , derivations = derivations proof
-    }
+    mlFailWhen
+        (Map.member ix (index proof))
+        ["A formula with ID ", squotes (pretty ix), " already exists"]
+    verifier formula
+    return
+        proof
+            { index =
+                  Map.insert
+                      ix
+                      (Seq.length (claims proof), formula)
+                      (index proof)
+            , claims = claims proof |> (ix, formula)
+            , derivations = derivations proof
+            }
 
-renderProof :: (Ord ix, Pretty ix, Pretty (rule ix), Pretty formula)
-            => Proof ix rule formula -> Doc ann
-renderProof proof = vcat
-  [pretty ix<+>colon<+>pretty formula<>
-   case Map.lookup ix (derivations proof) of
-     Nothing   -> emptyDoc
-     Just rule -> emptyDoc <+> "by" <+> pretty rule
-  | (ix,formula) <- toList (claims proof)]
+renderProof ::
+       (Ord ix, Pretty ix, Pretty (rule ix), Pretty formula)
+    => Proof ix rule formula
+    -> Doc ann
+renderProof proof =
+    vcat
+        [ pretty ix <+>
+        colon <+>
+        pretty formula <>
+        case Map.lookup ix (derivations proof) of
+            Nothing -> emptyDoc
+            Just rule -> emptyDoc <+> "by" <+> pretty rule
+        | (ix, formula) <- toList (claims proof)
+        ]
 
-class (Traversable rule, Eq formula)
-    => ProofSystem error rule formula | rule -> formula error
-  where
-    checkDerivation
-        :: formula
-        -> rule formula
-        -> Either (Error error) ()
+class (Traversable rule, Eq formula) =>
+      ProofSystem error rule formula
+    | rule -> formula error
+    where
+    checkDerivation :: formula -> rule formula -> Either (Error error) ()
 
-derive :: (Pretty ix, Ord ix, ProofSystem error rule formula)
-       => Proof ix rule formula
-       -> ix -> formula -> rule ix
-       -> Either (Error error) (Proof ix rule formula)
+derive ::
+       (Pretty ix, Ord ix, ProofSystem error rule formula)
+    => Proof ix rule formula
+    -> ix
+    -> formula
+    -> rule ix
+    -> Either (Error error) (Proof ix rule formula)
 derive proof ix f rule = do
-  mlFailWhen (Map.member ix (derivations proof))
-    [ "Formula with ID "
-    , squotes (pretty ix)
-    , " already has a derivation."
-    ]
-  (offset,conclusion) <-
-    case Map.lookup ix (index proof) of
-      Nothing ->
-        mlFail ["Formula with ID ", squotes (pretty ix), " not found."]
-      Just a  -> return a
-  mlFailWhen (conclusion /= f)
-    ["Expected a different formula for id ", squotes (pretty ix), "."]
-  let resolveIx name = do
-        (offset',formula') <-
-          case Map.lookup name (index proof) of
+    mlFailWhen
+        (Map.member ix (derivations proof))
+        ["Formula with ID ", squotes (pretty ix), " already has a derivation."]
+    (offset, conclusion) <-
+        case Map.lookup ix (index proof) of
             Nothing ->
-              mlFail
-                ["Formula with ID ", squotes (pretty name), " not found."]
+                mlFail ["Formula with ID ", squotes (pretty ix), " not found."]
             Just a -> return a
-        mlFailWhen (offset' >= offset)
-          [ "One of the hypotheses "
-          , parens (pretty name)
-          , " was not defined before the conclusion "
-          , parens (pretty ix)
-          , "."
-          ]
-        return formula'
-  resolvedRule <- traverse resolveIx rule
-  checkDerivation conclusion resolvedRule
-  return (proof { derivations = Map.insert ix rule (derivations proof) })
+    mlFailWhen
+        (conclusion /= f)
+        ["Expected a different formula for id ", squotes (pretty ix), "."]
+    let resolveIx name = do
+            (offset', formula') <-
+                case Map.lookup name (index proof) of
+                    Nothing ->
+                        mlFail
+                            [ "Formula with ID "
+                            , squotes (pretty name)
+                            , " not found."
+                            ]
+                    Just a -> return a
+            mlFailWhen
+                (offset' >= offset)
+                [ "One of the hypotheses "
+                , parens (pretty name)
+                , " was not defined before the conclusion "
+                , parens (pretty ix)
+                , "."
+                ]
+            return formula'
+    resolvedRule <- traverse resolveIx rule
+    checkDerivation conclusion resolvedRule
+    return (proof {derivations = Map.insert ix rule (derivations proof)})

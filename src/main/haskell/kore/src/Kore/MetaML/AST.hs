@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
 {-|
 Module      : Kore.MetaML.AST
 Description : Data Structures for representing a Meta-only version of the
@@ -18,15 +19,13 @@ Please refer to Section 9 (The Kore Language) of the
 -}
 module Kore.MetaML.AST where
 
-import Data.Set
-       ( Set )
+import Data.Set (Set)
 
 import Kore.AST.Common
 import Kore.AST.MetaOrObject
 import Kore.AST.PureML
 import Kore.AST.Sentence
-import Kore.Variables.Free
-       ( pureFreeVariables )
+import Kore.Variables.Free (pureFreeVariables)
 
 {-|'MetaMLPattern' corresponds to "fixed point" representations
 of the 'Pattern' class where the level is fixed to 'Meta'.
@@ -37,10 +36,13 @@ type MetaMLPattern variable = PureMLPattern Meta variable
 
 -- |'MetaSentenceAxiom' is the 'Meta'-only version of 'SentenceAxiom'
 type MetaSentenceAxiom = PureSentenceAxiom Meta
+
 -- |'MetaSentenceAlias' is the 'Meta'-only version of 'SentenceAlias'
 type MetaSentenceAlias = PureSentenceAlias Meta
+
 -- |'MetaSentenceSymbol' is the 'Meta'-only version of 'SentenceSymbol'
 type MetaSentenceSymbol = PureSentenceSymbol Meta
+
 -- |'MetaSentenceImport' is the 'Meta'-only version of 'SentenceImport'
 type MetaSentenceImport = PureSentenceImport Meta
 
@@ -62,6 +64,7 @@ type MetaDefinition = PureDefinition Meta
 -- |'CommonMetaPattern' is the instantiation of 'MetaPattern' with common
 -- 'Variable's.
 type CommonMetaPattern = MetaMLPattern Variable
+
 type PatternMetaType = Pattern Meta Variable CommonMetaPattern
 
 type MetaPatternStub = PatternStub Meta Variable CommonMetaPattern
@@ -98,28 +101,32 @@ metaMLPatternHead :: MLPatternType -> AstLocation -> SymbolOrAlias Meta
 metaMLPatternHead pt = groundHead ('#' : '\\' : patternString pt)
 
 sortDeclaredHead :: Sort Meta -> SymbolOrAlias Meta
-sortDeclaredHead param = SymbolOrAlias
-    { symbolOrAliasConstructor = Id "#sortDeclared" AstLocationImplicit
-    , symbolOrAliasParams = [param]
-    }
+sortDeclaredHead param =
+    SymbolOrAlias
+        { symbolOrAliasConstructor = Id "#sortDeclared" AstLocationImplicit
+        , symbolOrAliasParams = [param]
+        }
 
 provableHead :: Sort Meta -> SymbolOrAlias Meta
-provableHead param = SymbolOrAlias
-    { symbolOrAliasConstructor = Id "#provable" AstLocationImplicit
-    , symbolOrAliasParams = [param]
-    }
+provableHead param =
+    SymbolOrAlias
+        { symbolOrAliasConstructor = Id "#provable" AstLocationImplicit
+        , symbolOrAliasParams = [param]
+        }
 
 sortsDeclaredHead :: Sort Meta -> SymbolOrAlias Meta
-sortsDeclaredHead param = SymbolOrAlias
-    { symbolOrAliasConstructor = Id "#sortsDeclared" AstLocationImplicit
-    , symbolOrAliasParams = [param]
-    }
+sortsDeclaredHead param =
+    SymbolOrAlias
+        { symbolOrAliasConstructor = Id "#sortsDeclared" AstLocationImplicit
+        , symbolOrAliasParams = [param]
+        }
 
 symbolDeclaredHead :: Sort Meta -> SymbolOrAlias Meta
-symbolDeclaredHead param = SymbolOrAlias
-    { symbolOrAliasConstructor = Id "#symbolDeclared" AstLocationImplicit
-    , symbolOrAliasParams = [param]
-    }
+symbolDeclaredHead param =
+    SymbolOrAlias
+        { symbolOrAliasConstructor = Id "#symbolDeclared" AstLocationImplicit
+        , symbolOrAliasParams = [param]
+        }
 
 sortHead :: SymbolOrAlias Meta
 sortHead = groundHead "#sort" AstLocationImplicit

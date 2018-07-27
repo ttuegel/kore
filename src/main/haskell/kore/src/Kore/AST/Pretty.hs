@@ -1,30 +1,26 @@
 {-|
-
 Module      : Kore.AST.Pretty
 Description : Helpers for printing Kore AST
 Copyright   : 2018 Runtime Verification, Inc.
 License     : NCSA
 Stability   : experimental
-
- -}
-
+-}
 module Kore.AST.Pretty
     ( module Data.Text.Prettyprint.Doc
-    , arguments, arguments', noArguments
-    , attributes, attributes'
+    , arguments
+    , arguments'
+    , noArguments
+    , attributes
+    , attributes'
     , parameters
     , fromString
     , layoutPrettyUnbounded
     ) where
 
-import Data.String
-       ( fromString )
-import Data.Text.Prettyprint.Doc hiding
-       ( list )
+import Data.String (fromString)
+import Data.Text.Prettyprint.Doc hiding (list)
 
 -- TODO: Refer to semantics document for syntactic rules.
-
-
 -- | Print a list of sort parameters.
 parameters :: Pretty a => [a] -> Doc ann
 parameters = parameters' . map pretty
@@ -54,15 +50,17 @@ attributes :: Pretty a => [a] -> Doc ann
 attributes = attributes' . map pretty
 
 -- | Print a list of documents separated by commas in the preferred Kore format.
-list
-    :: Doc ann  -- ^ opening list delimiter
-    -> Doc ann  -- ^ closing list delimiter
-    -> [Doc ann]  -- ^ list items
+list ::
+       Doc ann -- ^ opening list delimiter
+    -> Doc ann -- ^ closing list delimiter
+    -> [Doc ann] -- ^ list items
     -> Doc ann
 list left right =
     \case
         [] -> left <> right
-        xs -> (group . (<> close) . nest 4 . (open <>) . vsep . punctuate between) xs
+        xs ->
+            (group . (<> close) . nest 4 . (open <>) . vsep . punctuate between)
+                xs
   where
     open = left <> line'
     close = line' <> right
@@ -70,4 +68,4 @@ list left right =
 
 -- | Render a 'Doc ann' with indentation and without extra line breaks.
 layoutPrettyUnbounded :: Doc ann -> SimpleDocStream ann
-layoutPrettyUnbounded = layoutPretty LayoutOptions { layoutPageWidth = Unbounded }
+layoutPrettyUnbounded = layoutPretty LayoutOptions {layoutPageWidth = Unbounded}

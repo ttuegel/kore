@@ -15,84 +15,75 @@ module Kore.IndexedModule.Resolvers
     , resolveSymbol
     ) where
 
-import           Data.Functor.Foldable
+import Data.Functor.Foldable
 import qualified Data.Map as Map
-import           Data.Proxy
-                 ( Proxy (..) )
+import Data.Proxy (Proxy(..))
 import qualified Data.Set as Set
 
 import Kore.AST.Common
-import Kore.AST.Error
-       ( koreFailWithLocations )
+import Kore.AST.Error (koreFailWithLocations)
 import Kore.AST.Kore
-import Kore.AST.MetaOrObject
-       ( IsMetaOrObject (..), MetaOrObject, isMetaOrObject )
+import Kore.AST.MetaOrObject (IsMetaOrObject(..), MetaOrObject, isMetaOrObject)
 import Kore.AST.Sentence
-import Kore.ASTHelpers
-       ( ApplicationSorts, symbolOrAliasSorts )
-import Kore.Error
-       ( Error, printError )
+import Kore.ASTHelpers (ApplicationSorts, symbolOrAliasSorts)
+import Kore.Error (Error, printError)
 import Kore.IndexedModule.IndexedModule
-       ( IndexedModule (..), KoreIndexedModule, SortDescription )
+    ( IndexedModule(..)
+    , KoreIndexedModule
+    , SortDescription
+    )
 
-symbolSentencesMap
-    :: MetaOrObject level
+symbolSentencesMap ::
+       MetaOrObject level
     => a level
     -> KoreIndexedModule
-    -> Map.Map
-        (Id level)
-        (SentenceSymbol level UnifiedPattern Variable)
+    -> Map.Map (Id level) (SentenceSymbol level UnifiedPattern Variable)
 symbolSentencesMap a m =
     case isMetaOrObject a of
-        IsMeta   -> indexedModuleMetaSymbolSentences m
+        IsMeta -> indexedModuleMetaSymbolSentences m
         IsObject -> indexedModuleObjectSymbolSentences m
 
-aliasSentencesMap
-    :: MetaOrObject level
+aliasSentencesMap ::
+       MetaOrObject level
     => a level
     -> KoreIndexedModule
-    -> Map.Map
-        (Id level)
-        (SentenceAlias level UnifiedPattern Variable)
+    -> Map.Map (Id level) (SentenceAlias level UnifiedPattern Variable)
 aliasSentencesMap a m =
     case isMetaOrObject a of
-        IsMeta   -> indexedModuleMetaAliasSentences m
+        IsMeta -> indexedModuleMetaAliasSentences m
         IsObject -> indexedModuleObjectAliasSentences m
 
-sortSentencesMap
-    :: MetaOrObject level
+sortSentencesMap ::
+       MetaOrObject level
     => a level
     -> KoreIndexedModule
-    -> Map.Map
-        (Id level)
-        (SortDescription level)
+    -> Map.Map (Id level) (SortDescription level)
 sortSentencesMap a m =
     case isMetaOrObject a of
-        IsMeta   -> indexedModuleMetaSortDescriptions m
+        IsMeta -> indexedModuleMetaSortDescriptions m
         IsObject -> indexedModuleObjectSortDescriptions m
 
 -- |Given a KoreIndexedModule and a head, it looks up the 'SentenceSymbol' or
 -- 'SentenceAlias', and instantiates sort parameters with the arguments
 -- specified by the head to obtain the corresponding 'ApplicationSorts'.
-getHeadApplicationSorts
-    :: MetaOrObject level
-    => KoreIndexedModule   -- ^module representing a verified definition
+getHeadApplicationSorts ::
+       MetaOrObject level
+    => KoreIndexedModule -- ^module representing a verified definition
     -> SymbolOrAlias level -- ^the head we want to find sorts for
     -> ApplicationSorts level
 getHeadApplicationSorts m patternHead =
     case resolveSymbol m headName of
         Right sentence ->
             case symbolOrAliasSorts headParams sentence of
-                Left err     -> error (printError err)
+                Left err -> error (printError err)
                 Right result -> result
         Left _ ->
             case resolveAlias m headName of
                 Right sentence ->
                     case symbolOrAliasSorts headParams sentence of
-                        Left err     -> error (printError err)
+                        Left err -> error (printError err)
                         Right result -> result
-                Left _ ->
-                    error ("Head " ++ show patternHead ++ " not defined.")
+                Left _ -> error ("Head " ++ show patternHead ++ " not defined.")
   where
     headName = symbolOrAliasConstructor patternHead
     headParams = symbolOrAliasParams patternHead
@@ -103,9 +94,9 @@ getHeadApplicationSorts m patternHead =
 -- The problem is resolveSymbol and resolveAlias return different types
 -- you could work around this with some rearrangement
 -- but rather just change the types
-getAttributeList
-    :: MetaOrObject level
-    => KoreIndexedModule   -- ^module representing a verified definition
+getAttributeList ::
+       MetaOrObject level
+    => KoreIndexedModule -- ^module representing a verified definition
     -> SymbolOrAlias level -- ^the head we want to find sorts for
     -> [Fix (UnifiedPattern Variable)]
 getAttributeList m patternHead =
@@ -113,62 +104,46 @@ getAttributeList m patternHead =
         Right sentence -> getAttributes $ sentenceSymbolAttributes sentence
         Left _ ->
             case resolveAlias m headName of
-                Right sentence -> getAttributes $ sentenceAliasAttributes sentence
-                Left _ ->
-                    error ("Head " ++ show patternHead ++ " not defined.")
+                Right sentence ->
+                    getAttributes $ sentenceAliasAttributes sentence
+                Left _ -> error ("Head " ++ show patternHead ++ " not defined.")
   where
     headName = symbolOrAliasConstructor patternHead
-
 
 {-|'resolveThing' looks up an id in an 'IndexedModule', also searching in the
 imported modules.
 -}
-resolveThing
-    :: (IndexedModule sortParam pat variable
-        -> Map.Map (Id level) (thing level pat variable))
+resolveThing ::
+       (IndexedModule sortParam pat variable -> Map.Map (Id level) (thing level pat variable))
     -- ^ extracts the map into which to look up the id
     -> IndexedModule sortParam pat variable
     -> Id level
     -> Maybe (thing level pat variable)
-resolveThing
-    mapExtractor
-    indexedModule
-    thingId
-  =
-    fst
-        ( resolveThingInternal
-            (Nothing, Set.empty) mapExtractor indexedModule thingId
-        )
+resolveThing mapExtractor indexedModule thingId =
+    fst (resolveThingInternal
+             (Nothing, Set.empty)
+             mapExtractor
+             indexedModule
+             thingId)
 
-resolveThingInternal
-    :: (Maybe (thing level pat variable), Set.Set ModuleName)
-    -> (IndexedModule sortParam pat variable
-        -> Map.Map (Id level) (thing level pat variable))
+resolveThingInternal ::
+       (Maybe (thing level pat variable), Set.Set ModuleName)
+    -> (IndexedModule sortParam pat variable -> Map.Map (Id level) (thing level pat variable))
     -> IndexedModule sortParam pat variable
     -> Id level
     -> (Maybe (thing level pat variable), Set.Set ModuleName)
 resolveThingInternal x@(Just _, _) _ _ _ = x
 resolveThingInternal x@(Nothing, searchedModules) _ indexedModule _
     | indexedModuleName indexedModule `Set.member` searchedModules = x
-resolveThingInternal
-    (Nothing, searchedModules)
-    mapExtractor
-    indexedModule
-    thingId
-  =
+resolveThingInternal (Nothing, searchedModules) mapExtractor indexedModule thingId =
     case Map.lookup thingId things of
-        Just thing -> (Just thing, undefined {- this should never evaluate -})
+        Just thing -> (Just thing, undefined) {- this should never evaluate -}
         Nothing ->
             foldr
-                (\(_, m) partialResult -> resolveThingInternal
-                    partialResult
-                    mapExtractor
-                    m
-                    thingId
-                )
+                (\(_, m) partialResult ->
+                     resolveThingInternal partialResult mapExtractor m thingId)
                 ( Nothing
-                , Set.insert (indexedModuleName indexedModule) searchedModules
-                )
+                , Set.insert (indexedModuleName indexedModule) searchedModules)
                 (indexedModuleImports indexedModule)
   where
     things = mapExtractor indexedModule
@@ -176,8 +151,8 @@ resolveThingInternal
 {-|'resolveSymbol' looks up a symbol id in an 'IndexedModule',
 also searching in the imported modules.
 -}
-resolveSymbol
-    :: MetaOrObject level
+resolveSymbol ::
+       MetaOrObject level
     => KoreIndexedModule
     -> Id level
     -> Either (Error a) (KoreSentenceSymbol level)
@@ -186,14 +161,14 @@ resolveSymbol m headId =
         Nothing ->
             koreFailWithLocations
                 [headId]
-                ("Symbol '" ++ getId headId ++  "' not defined.")
+                ("Symbol '" ++ getId headId ++ "' not defined.")
         Just result -> Right result
 
 {-|'resolveAlias' looks up a symbol id in an 'IndexedModule',
 also searching in the imported modules.
 -}
-resolveAlias
-    :: MetaOrObject level
+resolveAlias ::
+       MetaOrObject level
     => KoreIndexedModule
     -> Id level
     -> Either (Error a) (KoreSentenceAlias level)
@@ -202,15 +177,14 @@ resolveAlias m headId =
         Nothing ->
             koreFailWithLocations
                 [headId]
-                ("Alias '" ++ getId headId ++  "' not defined.")
+                ("Alias '" ++ getId headId ++ "' not defined.")
         Just result -> Right result
-
 
 {-|'resolveSort' looks up a sort id in an 'IndexedModule',
 also searching in the imported modules.
 -}
-resolveSort
-    :: MetaOrObject level
+resolveSort ::
+       MetaOrObject level
     => KoreIndexedModule
     -> Id level
     -> Either (Error a) (SortDescription level)
@@ -219,5 +193,5 @@ resolveSort m sortId =
         Nothing ->
             koreFailWithLocations
                 [sortId]
-                ("Sort '" ++ getId sortId ++  "' not declared.")
+                ("Sort '" ++ getId sortId ++ "' not declared.")
         Just sortDescription -> Right sortDescription

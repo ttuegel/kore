@@ -1,5 +1,5 @@
 module Kore.Step.Error
-    ( StepError (..)
+    ( StepError(..)
     , mapStepErrorVariables
     , stepErrorVariables
     , substitutionToStepError
@@ -21,17 +21,18 @@ data StepError level variable
 {--| 'substitutionErrorVariables' extracts all variables in a
 'SubstitutionError' as a set.
 --}
-stepErrorVariables
-    :: Ord (variable level)
-    => StepError level variable -> Set.Set (variable level)
-stepErrorVariables (StepErrorUnification _)  = Set.empty
+stepErrorVariables ::
+       Ord (variable level)
+    => StepError level variable
+    -> Set.Set (variable level)
+stepErrorVariables (StepErrorUnification _) = Set.empty
 stepErrorVariables (StepErrorSubstitution a) = substitutionErrorVariables a
 
 {--| 'mapStepErrorVariables' replaces all variables in a 'StepError' using
 the provided mapping.
 --}
-mapStepErrorVariables
-    :: (variableFrom level -> variableTo level)
+mapStepErrorVariables ::
+       (variableFrom level -> variableTo level)
     -> StepError level variableFrom
     -> StepError level variableTo
 mapStepErrorVariables _ (StepErrorUnification a) = StepErrorUnification a
@@ -41,16 +42,16 @@ mapStepErrorVariables mapper (StepErrorSubstitution a) =
 {--| 'unificationToStepError' converts an action with a 'UnificationError' into
 an action with a 'StepError'.
 --}
-unificationToStepError
-    :: Either (UnificationError level) a -> Either (StepError level variable) a
-unificationToStepError (Left err)     = Left (StepErrorUnification err)
+unificationToStepError ::
+       Either (UnificationError level) a -> Either (StepError level variable) a
+unificationToStepError (Left err) = Left (StepErrorUnification err)
 unificationToStepError (Right result) = Right result
 
 {--| 'substitutionToStepError' converts an action with a 'SubstitutionError'
 into an action with a 'StepError'.
 --}
-substitutionToStepError
-    :: Either (SubstitutionError level variable) a
+substitutionToStepError ::
+       Either (SubstitutionError level variable) a
     -> Either (StepError level variable) a
-substitutionToStepError (Left err)     = Left (StepErrorSubstitution err)
+substitutionToStepError (Left err) = Left (StepErrorSubstitution err)
 substitutionToStepError (Right result) = Right result

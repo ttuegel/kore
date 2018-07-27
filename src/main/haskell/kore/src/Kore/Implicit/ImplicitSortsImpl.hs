@@ -15,26 +15,24 @@ import Kore.AST.MetaOrObject
 import Kore.Implicit.ImplicitVarsInternal
 import Kore.MetaML.AST
 
-parameterizedEqualsAxiom
-    :: [SortVariable Meta]
+parameterizedEqualsAxiom ::
+       [SortVariable Meta]
     -> MetaPatternStub
     -> MetaPatternStub
     -> MetaSentenceAxiom
 parameterizedEqualsAxiom parameters =
-    parameterizedEqualsAxiom_ parameters
+    parameterizedEqualsAxiom_
+        parameters
         (sortParameter Meta "#esp" AstLocationImplicit)
 
-equalsAxiom
-    :: MetaPatternStub
-    -> MetaPatternStub
-    -> MetaSentenceAxiom
+equalsAxiom :: MetaPatternStub -> MetaPatternStub -> MetaSentenceAxiom
 equalsAxiom = parameterizedEqualsAxiom []
 
 {-|'defineMetaSort' is a helper function for defining meta sorts together
 with their constructors, helper functions and axioms.
 -}
-defineMetaSort
-    :: MetaBasicSortType
+defineMetaSort ::
+       MetaBasicSortType
     -> ( Sort Meta
        , Sort Meta
        , MetaSentenceSymbol
@@ -47,8 +45,7 @@ defineMetaSort
        , [Sort Meta] -> [MetaPatternStub] -> MetaPatternStub
        , MetaSentenceSymbol
        , [MetaPatternStub] -> MetaPatternStub
-       , [MetaSentenceAxiom]
-       )
+       , [MetaSentenceAxiom])
 defineMetaSort sortType =
     ( objectSort
     , listSort
@@ -63,37 +60,29 @@ defineMetaSort sortType =
     , delete
     , deleteA
         -- inList
-    ,   [ parameterizedAxiom_ [pS] (not_ (inListA [spS] [vs, emptyListA]))
-        , parameterizedEqualsAxiom [pS]
+    , [ parameterizedAxiom_ [pS] (not_ (inListA [spS] [vs, emptyListA]))
+      , parameterizedEqualsAxiom
+            [pS]
             (inListA [spS] [vs, listConstructorA [vs', vS]])
-            (or_
-                (equalsS_ objectSort vs vs')
-                (inListA [spS] [vs, vS])
-            )
+            (or_ (equalsS_ objectSort vs vs') (inListA [spS] [vs, vS]))
         -- append
-        , equalsAxiom (appendA [emptyListA, vS]) vS
-        , equalsAxiom
+      , equalsAxiom (appendA [emptyListA, vS]) vS
+      , equalsAxiom
             (appendA [listConstructorA [vs, vS'], vS])
             (listConstructorA [vs, appendA [vS', vS]])
         -- delete
-        , equalsAxiom
-            (deleteA [vs, emptyListA])
-            emptyListA
-        , equalsAxiom
+      , equalsAxiom (deleteA [vs, emptyListA]) emptyListA
+      , equalsAxiom
             (deleteA [vs, listConstructorA [vs', vS]])
-            (or_
-                (and_ (equalsS_ objectSort vs vs') (deleteA [vs, vS]))
-                (and_
-                    (not_ (equalsS_ objectSort vs vs'))
-                    (listConstructorA [vs', deleteA [vs, vS]])
-                )
-            )
-        ]
-    )
+            (or_ (and_ (equalsS_ objectSort vs vs') (deleteA [vs, vS]))
+                 (and_
+                      (not_ (equalsS_ objectSort vs vs'))
+                      (listConstructorA [vs', deleteA [vs, vS]])))
+      ])
   where
     objectSortType = MetaBasicSortType sortType
-    listSortType =  MetaListSortType sortType
-    listSortName =  metaSortTypeString listSortType
+    listSortType = MetaListSortType sortType
+    listSortName = metaSortTypeString listSortType
     objectSort = sort_ objectSortType
     listSort = sort_ listSortType
     emptyList = symbol_ ("#nil" ++ listSortName) AstLocationImplicit [] listSort

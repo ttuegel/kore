@@ -8,8 +8,8 @@ Stability   : experimental
 Portability : portable
 -}
 module Kore.Unification.Error
-    ( SubstitutionError (..)
-    , UnificationError (..)
+    ( SubstitutionError(..)
+    , UnificationError(..)
     , mapSubstitutionErrorVariables
     , substitutionErrorVariables
     ) where
@@ -21,8 +21,10 @@ import Kore.AST.Common
 -- |'UnificationError' specifies various error cases encountered during
 -- unification
 data UnificationError level
-    = ConstructorClash (SymbolOrAlias level) (SymbolOrAlias level)
-    | SortClash (Sort level) (Sort level)
+    = ConstructorClash (SymbolOrAlias level)
+                       (SymbolOrAlias level)
+    | SortClash (Sort level)
+                (Sort level)
     | NonConstructorHead (SymbolOrAlias level)
     | NonFunctionalHead (SymbolOrAlias level)
     | NonFunctionalPattern
@@ -40,8 +42,8 @@ newtype SubstitutionError level variable =
 {--| 'substitutionErrorVariables' extracts all variables in a
 'SubstitutionError' as a set.
 --}
-substitutionErrorVariables
-    :: Ord (variable level)
+substitutionErrorVariables ::
+       Ord (variable level)
     => SubstitutionError level variable
     -> Set.Set (variable level)
 substitutionErrorVariables (CircularVariableDependency variables) =
@@ -50,10 +52,9 @@ substitutionErrorVariables (CircularVariableDependency variables) =
 {--| 'mapSubstitutionErrorVariables' replaces all variables in a
 'SubstitutionError' using the provided mapping.
 --}
-mapSubstitutionErrorVariables
-    :: (variableFrom level -> variableTo level)
+mapSubstitutionErrorVariables ::
+       (variableFrom level -> variableTo level)
     -> SubstitutionError level variableFrom
     -> SubstitutionError level variableTo
 mapSubstitutionErrorVariables mapper (CircularVariableDependency variables) =
     CircularVariableDependency (map mapper variables)
-

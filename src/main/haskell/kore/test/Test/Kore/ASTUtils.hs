@@ -3,12 +3,13 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 {-# OPTIONS_GHC -Wno-missing-pattern-synonym-signatures #-}
 
-module Test.Kore.ASTUtils (test_substitutions, test_sortAgreement) where
+module Test.Kore.ASTUtils
+    ( test_substitutions
+    , test_sortAgreement
+    ) where
 
-import Test.Tasty
-       ( TestTree, testGroup )
-import Test.Tasty.HUnit
-       ( assertEqual, testCase )
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit (assertEqual, testCase)
 
 import Control.Lens
 import Data.Reflection
@@ -21,109 +22,114 @@ import Kore.ASTUtils.Substitution
 import Kore.IndexedModule.MetadataTools
 
 test_substitutions :: TestTree
-test_substitutions = testGroup "Substitutions"
-    [ testCase "subTrivial" $ assertEqual "" subTrivial subTrivialSolution
-    , testCase "subShadow"  $ assertEqual "" subShadow subShadowSolution
-    , testCase "subAlphaRename1" $
-          assertEqual ""
-              subAlphaRename1
-              subAlphaRename1Solution
-    , testCase "subAlphaRename2" $
-          assertEqual ""
-              (subAlphaRename2 ^? inPath [0])
-              (Just $ Var_ $ var "b")
-    , testCase "subTermForTerm" $
-          assertEqual ""
-              subTermForTerm
-              subTermForTermSolution
-    ]
+test_substitutions =
+    testGroup
+        "Substitutions"
+        [ testCase "subTrivial" $ assertEqual "" subTrivial subTrivialSolution
+        , testCase "subShadow" $ assertEqual "" subShadow subShadowSolution
+        , testCase "subAlphaRename1" $
+          assertEqual "" subAlphaRename1 subAlphaRename1Solution
+        , testCase "subAlphaRename2" $
+          assertEqual "" (subAlphaRename2 ^? inPath [0]) (Just $ Var_ $ var "b")
+        , testCase "subTermForTerm" $
+          assertEqual "" subTermForTerm subTermForTermSolution
+        ]
 
 test_sortAgreement :: TestTree
-test_sortAgreement = testGroup "Sort agreement"
-    [ testCase "sortAgreement1" $
-          assertEqual ""
+test_sortAgreement =
+    testGroup
+        "Sort agreement"
+        [ testCase "sortAgreement1" $
+          assertEqual
+              ""
               (sortAgreement1 ^? inPath [1])
               (Just $ Bottom_ (testSort "X"))
-    , testCase "sortAgreement2.1" $
-          assertEqual ""
+        , testCase "sortAgreement2.1" $
+          assertEqual
+              ""
               (sortAgreement2 ^? inPath [0])
               (Just $ Bottom_ (testSort "Y"))
-    , testCase "sortAgreement2.2" $
-          assertEqual ""
-              (sortAgreement2 ^? (inPath [1] . resultSort ))
+        , testCase "sortAgreement2.2" $
+          assertEqual
+              ""
+              (sortAgreement2 ^? (inPath [1] . resultSort))
               (Just $ testSort "Y")
-    , testCase "flexibleSort.1" $
-          assertEqual ""
+        , testCase "flexibleSort.1" $
+          assertEqual
+              ""
               (dummyEnvironment mkBottom ^? resultSort)
               (Just (flexibleSort :: Sort Object))
-    , testCase "flexibleSort.2" $
-          assertEqual ""
+        , testCase "flexibleSort.2" $
+          assertEqual
+              ""
               (dummyEnvironment mkTop ^? resultSort)
               (Just (flexibleSort :: Sort Object))
-    , testCase "flexibleSort.3" $
-          assertEqual ""
+        , testCase "flexibleSort.3" $
+          assertEqual
+              ""
               (dummyEnvironment (mkExists (var_ "a" "A") mkBottom) ^? resultSort)
               (Just (flexibleSort :: Sort Object))
-    , testGroup "sortAgreementManySimplePatterns" $
+        , testGroup "sortAgreementManySimplePatterns" $
           dummyEnvironment sortAgreementManySimplePatterns
-    , testGetSetIdentity 5
-    ]
-
+        , testGetSetIdentity 5
+        ]
 
 subTrivial :: CommonPurePattern Object
-subTrivial = dummyEnvironment $
+subTrivial =
+    dummyEnvironment $
     subst (Var_ $ var "a") (Var_ $ var "b") $
     mkExists (var "p") (Var_ $ var "a")
 
 subTrivialSolution :: CommonPurePattern Object
-subTrivialSolution = dummyEnvironment $
-    mkExists (var "p") (Var_ $ var "b")
+subTrivialSolution = dummyEnvironment $ mkExists (var "p") (Var_ $ var "b")
 
 subShadow :: CommonPurePattern Object
-subShadow = dummyEnvironment $
+subShadow =
+    dummyEnvironment $
     subst (Var_ $ var "a") (Var_ $ var "b") $
     mkExists (var "a") (Var_ $ var "q")
 
 subShadowSolution :: CommonPurePattern Object
-subShadowSolution = dummyEnvironment $
-    mkExists (var "a") (Var_ $ var "q")
+subShadowSolution = dummyEnvironment $ mkExists (var "a") (Var_ $ var "q")
 
 subAlphaRename1 :: CommonPurePattern Object
-subAlphaRename1 = dummyEnvironment $
+subAlphaRename1 =
+    dummyEnvironment $
     subst (Var_ $ var "a") (Var_ $ var "b") $
     mkExists (var "b") (Var_ $ var "q")
 
 subAlphaRename1Solution :: CommonPurePattern Object
-subAlphaRename1Solution = dummyEnvironment $
-    mkExists (var "b0") (Var_ $ var "q")
+subAlphaRename1Solution =
+    dummyEnvironment $ mkExists (var "b0") (Var_ $ var "q")
 
 subAlphaRename2 :: CommonPurePattern Object
-subAlphaRename2 = dummyEnvironment $
+subAlphaRename2 =
+    dummyEnvironment $
     subst (Var_ $ var "a") (Var_ $ var "b") $
     mkExists (var "b") (Var_ $ var "a")
 
 subTermForTerm :: CommonPurePattern Object
-subTermForTerm = dummyEnvironment $
+subTermForTerm =
+    dummyEnvironment $
     subst (mkOr mkTop mkBottom) (mkAnd mkTop mkBottom) $
     mkImplies (mkOr mkTop mkBottom) mkTop
 
 subTermForTermSolution :: CommonPurePattern Object
-subTermForTermSolution = dummyEnvironment $
-    mkImplies (mkAnd mkTop mkBottom) mkTop
+subTermForTermSolution =
+    dummyEnvironment $ mkImplies (mkAnd mkTop mkBottom) mkTop
 
 -- subAlphaRename2Solution :: CommonPurePattern Object
 -- subAlphaRename2Solution = dummyEnvironment @Object $
 --   subst (Var_ $ var "a") (Var_ $ var "b") $
 --   mkExists (var "b0") (Var_ $ var "b")
-
 -- the a : X forces bottom : X
 sortAgreement1 :: CommonPurePattern Object
-sortAgreement1 = dummyEnvironment $
-    mkOr (Var_ $ var_ "a" "X") mkBottom
+sortAgreement1 = dummyEnvironment $ mkOr (Var_ $ var_ "a" "X") mkBottom
 
 -- the y : Y should force everything else to be Y
 sortAgreement2 :: CommonPurePattern Object
-sortAgreement2 = dummyEnvironment $
+sortAgreement2 =
+    dummyEnvironment $
     mkImplies mkBottom $
     mkIff
         (mkEquals (Var_ $ var_ "foo" "X") (Var_ $ var_ "bar" "X"))
@@ -132,12 +138,10 @@ sortAgreement2 = dummyEnvironment $
 varX :: (Given (MetadataTools Object)) => CommonPurePattern Object
 varX = mkVar $ var_ "x" "X"
 
-sortAgreementManySimplePatterns
-  :: (Given (MetadataTools Object))
-  => [TestTree]
+sortAgreementManySimplePatterns :: (Given (MetadataTools Object)) => [TestTree]
 sortAgreementManySimplePatterns = do
     flexibleZeroArg <- [mkBottom, mkTop]
-    (a,b) <- [(varX, flexibleZeroArg), (flexibleZeroArg, varX), (varX, varX)]
+    (a, b) <- [(varX, flexibleZeroArg), (flexibleZeroArg, varX), (varX, varX)]
     shouldHaveSortXOneArg <-
         [ mkForall (var "a") varX
         , mkExists (var "a") varX
@@ -145,105 +149,85 @@ sortAgreementManySimplePatterns = do
         , mkNext varX
         ]
     shouldHaveSortXTwoArgs <-
-        [ mkAnd a b
-        , mkOr a b
-        , mkImplies a b
-        , mkIff a b
-        , mkRewrites a b
-        ]
-    shouldHaveFlexibleSortTwoArgs <-
-        [ mkEquals a b
-        , mkIn a b
-        ]
-    shoudlHaveFlexibleSortOneArg <-
-        [ mkCeil a
-        , mkFloor a
-        ]
-    let assert1 = return $ testCase "" $ assertEqual ""
-            (getSort shouldHaveSortXOneArg)
-            (testSort "X")
-    let assert2 = return $ testCase "" $ assertEqual ""
-            (getSort shouldHaveSortXTwoArgs)
-            (testSort "X")
-    let assert3 = return $ testCase "" $ assertEqual ""
-            (getSort shoudlHaveFlexibleSortOneArg)
-            flexibleSort
-    let assert4 = return $ testCase "" $ assertEqual ""
-            (getSort shouldHaveFlexibleSortTwoArgs)
-            flexibleSort
+        [mkAnd a b, mkOr a b, mkImplies a b, mkIff a b, mkRewrites a b]
+    shouldHaveFlexibleSortTwoArgs <- [mkEquals a b, mkIn a b]
+    shoudlHaveFlexibleSortOneArg <- [mkCeil a, mkFloor a]
+    let assert1 =
+            return $
+            testCase "" $
+            assertEqual "" (getSort shouldHaveSortXOneArg) (testSort "X")
+    let assert2 =
+            return $
+            testCase "" $
+            assertEqual "" (getSort shouldHaveSortXTwoArgs) (testSort "X")
+    let assert3 =
+            return $
+            testCase "" $
+            assertEqual "" (getSort shoudlHaveFlexibleSortOneArg) flexibleSort
+    let assert4 =
+            return $
+            testCase "" $
+            assertEqual "" (getSort shouldHaveFlexibleSortTwoArgs) flexibleSort
     assert1 ++ assert2 ++ assert3 ++ assert4
 
 substitutionGetSetIdentity a b pat =
-  assertEqual ""
-  (subst b a pat)
-  (subst b a $ subst a b pat)
+    assertEqual "" (subst b a pat) (subst b a $ subst a b pat)
 
-generatePatterns
-  :: Given (MetadataTools Object)
-  => Int
-  -> [CommonPurePattern Object]
+generatePatterns ::
+       Given (MetadataTools Object) => Int -> [CommonPurePattern Object]
 generatePatterns size = genBinaryPatterns size ++ genUnaryPatterns size
-genBinaryPatterns
-  :: Given (MetadataTools Object)
-  => Int
-  -> [CommonPurePattern Object]
+
+genBinaryPatterns ::
+       Given (MetadataTools Object) => Int -> [CommonPurePattern Object]
 genBinaryPatterns 0 = []
 genBinaryPatterns size = do
-  sa <- [1..size-1]
-  let sb = size - sa
-  a <- generatePatterns sa
-  b <- generatePatterns sb
-  [mkAnd a b, mkOr a b, mkImplies a b, mkIff a b, mkRewrites a b]
-genUnaryPatterns
-  :: Given (MetadataTools Object)
-  => Int
-  -> [CommonPurePattern Object]
+    sa <- [1 .. size - 1]
+    let sb = size - sa
+    a <- generatePatterns sa
+    b <- generatePatterns sb
+    [mkAnd a b, mkOr a b, mkImplies a b, mkIff a b, mkRewrites a b]
+
+genUnaryPatterns ::
+       Given (MetadataTools Object) => Int -> [CommonPurePattern Object]
 genUnaryPatterns 0 = []
 genUnaryPatterns 1 = [Var_ $ var_ "x" "X"]
 genUnaryPatterns size = do
-  a <- generatePatterns (size - 1)
-  [mkNot a, mkNext a, mkForall (var $ show size) a]
+    a <- generatePatterns (size - 1)
+    [mkNot a, mkNext a, mkForall (var $ show size) a]
 
 --FIXME: Make a proper Tasty generator instead
-testGetSetIdentity
-  :: Int
-  -> TestTree
-testGetSetIdentity size = dummyEnvironment $ testGroup "getSetIdent" $ do
-  a <- generatePatterns (size `div` 3)
-  b <- generatePatterns (size `div` 3)
-  pat <- generatePatterns size
-  return $ testCase "" $ substitutionGetSetIdentity a b pat
+testGetSetIdentity :: Int -> TestTree
+testGetSetIdentity size =
+    dummyEnvironment $
+    testGroup "getSetIdent" $ do
+        a <- generatePatterns (size `div` 3)
+        b <- generatePatterns (size `div` 3)
+        pat <- generatePatterns size
+        return $ testCase "" $ substitutionGetSetIdentity a b pat
 
 var :: MetaOrObject level => String -> Variable level
-var x =
-  Variable (noLocationId x) (testSort "S")
-
+var x = Variable (noLocationId x) (testSort "S")
 
 var_ :: MetaOrObject level => String -> String -> Variable level
-var_ x s =
-  Variable (noLocationId x) (testSort s)
+var_ x s = Variable (noLocationId x) (testSort s)
 
-dummyEnvironment
-  :: forall r . MetaOrObject Object
-  => (Given (MetadataTools Object) => r)
-  -> r
+dummyEnvironment ::
+       forall r. MetaOrObject Object
+    => (Given (MetadataTools Object) =>
+            r)
+    -> r
 dummyEnvironment = give (dummyMetadataTools @Object)
 
-dummyMetadataTools
-  :: MetaOrObject level
-  => MetadataTools level
-dummyMetadataTools = MetadataTools
-    { isConstructor    = const True
-    , isFunctional     = const True
-    , isFunction       = const True
-    , getArgumentSorts = const []
-    , getResultSort    = const $ testSort "S"
-    }
+dummyMetadataTools :: MetaOrObject level => MetadataTools level
+dummyMetadataTools =
+    MetadataTools
+        { isConstructor = const True
+        , isFunctional = const True
+        , isFunction = const True
+        , getArgumentSorts = const []
+        , getResultSort = const $ testSort "S"
+        }
 
-testSort
-  :: MetaOrObject level
-  => String
-  -> Sort level
+testSort :: MetaOrObject level => String -> Sort level
 testSort name =
-    SortVariableSort $ SortVariable
-        { getSortVariable = noLocationId name }
+    SortVariableSort $ SortVariable {getSortVariable = noLocationId name}

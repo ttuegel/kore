@@ -9,49 +9,42 @@ Portability : POSIX
 -}
 module Kore.ASTVerifier.AttributesVerifier
     ( verifyAttributes
-    , AttributesVerification (..)
+    , AttributesVerification(..)
     ) where
 
 import qualified Data.Set as Set
 
 import Kore.AST.Common
-import Kore.AST.MetaOrObject
-       ( asUnified )
+import Kore.AST.MetaOrObject (asUnified)
 import Kore.AST.Sentence
 import Kore.ASTVerifier.Error
 import Kore.ASTVerifier.PatternVerifier
 import Kore.Error
-import Kore.Implicit.Attributes
-       ( attributeObjectSort )
+import Kore.Implicit.Attributes (attributeObjectSort)
 import Kore.IndexedModule.IndexedModule
 
 {--| Whether we should verify attributes and, when verifying, the module with
 declarations visible in these atributes. --}
 data AttributesVerification
-    = VerifyAttributes KoreIndexedModule | DoNotVerifyAttributes
+    = VerifyAttributes KoreIndexedModule
+    | DoNotVerifyAttributes
 
 {-|'verifyAttributes' verifies the wellformedness of the given attributes.
 -}
-verifyAttributes
-    :: Attributes
+verifyAttributes ::
+       Attributes
     -> AttributesVerification
     -> Either (Error VerifyError) VerifySuccess
-verifyAttributes
-    (Attributes patterns)
-    (VerifyAttributes indexedModule)
-  = do
+verifyAttributes (Attributes patterns) (VerifyAttributes indexedModule) = do
     withContext
         "attributes"
         (mapM_
-            (\p ->
-                verifyPattern
-                    p
-                    (Just (asUnified (attributeObjectSort AstLocationNone)))
-                    indexedModule
-                    Set.empty
-            )
-            patterns
-        )
+             (\p ->
+                  verifyPattern
+                      p
+                      (Just (asUnified (attributeObjectSort AstLocationNone)))
+                      indexedModule
+                      Set.empty)
+             patterns)
     verifySuccess
-verifyAttributes _ DoNotVerifyAttributes =
-    verifySuccess
+verifyAttributes _ DoNotVerifyAttributes = verifySuccess

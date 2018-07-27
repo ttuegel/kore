@@ -5,7 +5,6 @@
     -optF --ingredient=Test.Tasty.Runners.listingTests
     -optF --ingredient=Test.Tasty.Runners.AntXML.antXMLRunner
 #-}
-
 {-
 
 # Debugging

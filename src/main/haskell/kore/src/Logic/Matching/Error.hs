@@ -14,11 +14,13 @@ import Data.Text.Prettyprint.Doc
 import Kore.Error
 
 {-| 'MLError' is a tag for errors related to matching logic. -}
-newtype MLError = MLError ()
+newtype MLError =
+    MLError ()
     deriving (Eq, Show)
 
 {-| 'MLSuccess' is a tag for success related to matching logic. -}
-newtype MLSuccess = MLSuccess ()
+newtype MLSuccess =
+    MLSuccess ()
     deriving (Eq, Show)
 
 {-| 'mlSuccess' helper for signaling success related to matching logic. -}
@@ -26,9 +28,7 @@ mlSuccess :: Either (Error MLError) MLSuccess
 mlSuccess = Right (MLSuccess ())
 
 mlFailWhen :: Bool -> [Doc ann] -> Either (Error a) ()
-mlFailWhen condition docs =
-    koreFailWhen condition (show (concatWith (<>) docs))
+mlFailWhen condition docs = koreFailWhen condition (show (concatWith (<>) docs))
 
 mlFail :: [Doc ann] -> Either (Error a) b
-mlFail docs =
-    koreFail (show (concatWith (<>) docs))
+mlFail docs = koreFail (show (concatWith (<>) docs))

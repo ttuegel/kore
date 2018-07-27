@@ -16,23 +16,25 @@ module Kore.Variables.Int
 import Kore.AST.Common
 import Kore.AST.MetaOrObject
 
-class IntVariable var where
+class IntVariable var
     {-|Given an existing variable @v@ and an integer index @n@, 'intVariable'
     generates a "fresh" variable, whose name is based on index @n@, but
     which inherits the meta type and sort from @v@.
     -}
+    where
     intVariable :: MetaOrObject level => var level -> Int -> var level
 
 instance IntVariable Variable where
     intVariable var n =
         var
-            { variableName = Id
-                { getId = metaObjectPrefix ++ "var_" ++ show n
-                , idLocation = AstLocationGeneratedVariable
-                }
+            { variableName =
+                  Id
+                      { getId = metaObjectPrefix ++ "var_" ++ show n
+                      , idLocation = AstLocationGeneratedVariable
+                      }
             }
       where
         metaObjectPrefix =
             case isMetaOrObject var of
                 IsObject -> ""
-                IsMeta   -> "#"
+                IsMeta -> "#"
