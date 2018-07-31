@@ -11,7 +11,31 @@ Stability   : experimental
 Portability : portable
 
 -}
-module Kore.AST.PureML where
+module Kore.AST.PureML
+    (
+      -- * Pure (fixed-level) patterns
+      PureMLPattern
+    , CommonPurePattern
+    , UnFixedPureMLPattern
+    , UnfixedCommonPurePattern
+    , PurePatternStub
+    , CommonPurePatternStub
+    , asPurePattern
+    , fromPurePattern
+    , mapPatternVariables
+      -- * Pure (fixed-level) modules
+    , PureModule
+    , PureDefinition
+    , PureSentence
+    , PureSentenceAlias
+    , PureSentenceAxiom
+    , PureSentenceImport
+    , PureSentenceSymbol
+    , groundHead
+    , groundSymbol
+    , apply
+    , constant
+    ) where
 
 import Data.Functor.Foldable
 
