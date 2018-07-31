@@ -45,13 +45,9 @@ It is parameterized by the types of Patterns, @pat@.
 newtype Attributes =
     Attributes { getAttributes :: [CommonKorePattern] }
 
-deriving instance
-    (Eq CommonKorePattern)
-     => Eq Attributes
+deriving instance Eq Attributes
 
-deriving instance
-    (Show CommonKorePattern)
-     => Show Attributes
+deriving instance Show Attributes
 
 instance Pretty Attributes where
     pretty = Pretty.attributes . getAttributes
@@ -116,12 +112,12 @@ data SentenceSymbol level (pat :: (* -> *) -> * -> *) (variable :: * -> *)
     }
 
 deriving instance
-    (Eq (pat variable (Fix (pat variable))))
-     => Eq (SentenceSymbol level pat variable)
+    ( Eq1 (pat variable) ) =>
+    Eq (SentenceSymbol level pat variable)
 
 deriving instance
-    (Show (pat variable (Fix (pat variable))))
-     => Show (SentenceSymbol level pat variable)
+    ( Show1 (pat variable) ) =>
+    Show (SentenceSymbol level pat variable)
 
 instance Pretty (Fix (pat variable)) =>
     Pretty (SentenceSymbol level pat variable) where
@@ -153,12 +149,12 @@ data SentenceImport (pat :: (* -> *) -> * -> *) (variable :: * -> *)
     }
 
 deriving instance
-    (Eq (pat variable (Fix (pat variable))))
-     => Eq (SentenceImport pat variable)
+    ( Eq1 (pat variable) ) =>
+    Eq (SentenceImport pat variable)
 
 deriving instance
-    (Show (pat variable (Fix (pat variable))))
-     => Show (SentenceImport pat variable)
+    ( Show1 (pat variable) ) =>
+    Show (SentenceImport pat variable)
 
 instance Pretty (Fix (pat variable)) =>
     Pretty (SentenceImport pat variable) where
@@ -179,12 +175,12 @@ data SentenceSort level (pat :: (* -> *) -> * -> *) (variable :: * -> *)
     }
 
 deriving instance
-    (Eq (pat variable (Fix (pat variable))))
-     => Eq (SentenceSort level pat variable)
+    ( Eq1 (pat variable) ) =>
+    Eq (SentenceSort level pat variable)
 
 deriving instance
-    (Show (pat variable (Fix (pat variable))))
-     => Show (SentenceSort level pat variable)
+    ( Show1 (pat variable) ) =>
+    Show (SentenceSort level pat variable)
 
 instance Pretty (Fix (pat variable)) =>
     Pretty (SentenceSort level pat variable) where
@@ -238,12 +234,12 @@ data SentenceHook level (pat :: (* -> *) -> * -> *) (variable :: * -> *)
     | SentenceHookedSymbol !(SentenceSymbol level pat variable)
 
 deriving instance
-    (Eq (pat variable (Fix (pat variable))))
-     => Eq (SentenceHook level pat variable)
+    ( Eq1 (pat variable) ) =>
+    Eq (SentenceHook level pat variable)
 
 deriving instance
-    (Show (pat variable (Fix (pat variable))))
-     => Show (SentenceHook level pat variable)
+    ( Show1 (pat variable) ) =>
+    Show (SentenceHook level pat variable)
 
 instance
     Pretty (Fix (pat variable) )
@@ -283,13 +279,13 @@ data Sentence level sortParam (pat :: (* -> *) -> * -> *) (variable :: * -> *) w
         -> Sentence Object sortParam pat variable
 
 deriving instance
-    ( Eq1 (pat variable), Eq (pat variable (Fix (pat variable)))
+    ( Eq1 (pat variable)
     , Eq sortParam
     , Eq (variable level)
     ) => Eq (Sentence level sortParam pat variable)
 
 deriving instance
-    ( Show1 (pat variable), Show (pat variable (Fix (pat variable)))
+    ( Show1 (pat variable)
     , Show sortParam
     , Show (variable level)
     ) => Show (Sentence level sortParam pat variable)
@@ -322,12 +318,12 @@ data Module sentence sortParam (pat :: (* -> *) -> * -> *) (variable :: * -> *)
     }
 
 deriving instance
-    ( Eq (pat variable (Fix (pat variable)))
+    ( Eq1 (pat variable)
     , Eq (sentence sortParam pat variable)
     ) => Eq (Module sentence sortParam pat variable)
 
 deriving instance
-    ( Show (pat variable (Fix (pat variable)))
+    ( Show1 (pat variable)
     , Show (sentence sortParam pat variable)
     ) => Show (Module sentence sortParam pat variable)
 
@@ -363,13 +359,11 @@ data Definition sentence sortParam (pat :: (* -> *) -> * -> *) (variable :: * ->
 
 deriving instance
     ( Eq1 (pat variable)
-    , Eq (pat variable (Fix (pat variable)))
     , Eq (sentence sortParam pat variable)
     ) => Eq (Definition sentence sortParam pat variable)
 
 deriving instance
     ( Show1 (pat variable)
-    , Show (pat variable (Fix (pat variable)))
     , Show (sentence sortParam pat variable)
     ) => Show (Definition sentence sortParam pat variable)
 
@@ -448,7 +442,7 @@ newtype UnifiedSentence sortParam pat variable = UnifiedSentence
     { getUnifiedSentence :: Unified (Rotate41 Sentence sortParam pat variable) }
 
 deriving instance
-    ( Eq1 (pat variable), Eq (pat variable (Fix (pat variable)))
+    ( Eq1 (pat variable)
     , Eq sortParam
     , EqMetaOrObject variable
     ) => Eq (UnifiedSentence sortParam pat variable)
