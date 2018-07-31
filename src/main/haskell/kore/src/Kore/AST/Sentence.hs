@@ -67,20 +67,27 @@ module Kore.AST.Sentence
       -- * Sentences
     , Sentence (..)
     , UnifiedSentence (..)
+    , KoreSentence
     , constructUnifiedSentence
     , applyUnifiedSentence
+    , AnnotatedUnifiedSentence (..)
+    , constructAnnotatedUnifiedSentence
+    , applyAnnotatedUnifiedSentence
+    , AnnotatedKoreSentence
     , SentenceSymbolOrAlias (..)
     , AsSentence (..)
-    , KoreSentence
     , AnnotatedSentence (..)
-    , AnnotatedKoreSentence
     , unannotateSentence
       -- * Modules
     , Module (..)
     , KoreModule
+    , AnnotatedModule (..)
+    , AnnotatedKoreModule
       -- * Definitions
     , Definition (..)
     , KoreDefinition
+    , AnnotatedDefinition (..)
+    , AnnotatedKoreDefinition
     ) where
 
 import Control.Comonad.Cofree
@@ -852,6 +859,36 @@ instance
         , Just (pretty moduleAttributes)
         ]
 
+{- | Kore module with annotations.
+
+See also: 'Module'
+
+-}
+data AnnotatedModule
+    annotation
+    sentence
+    sortParam
+    (pat :: (* -> *) -> * -> *)
+    (variable :: * -> *)
+  =
+    AnnotatedModule
+    { annotatedModuleName       :: !ModuleName
+    , annotatedModuleSentences  :: ![sentence annotation sortParam pat variable]
+    , annotatedModuleAttributes :: !(AnnotatedAttributes annotation)
+    }
+
+deriving instance
+    ( Eq1 (pat variable)
+    , Eq (sentence annotation sortParam pat variable)
+    , Eq annotation
+    ) => Eq (AnnotatedModule annotation sentence sortParam pat variable)
+
+deriving instance
+    ( Show1 (pat variable)
+    , Show (sentence annotation sortParam pat variable)
+    , Show annotation
+    ) => Show (AnnotatedModule annotation sentence sortParam pat variable)
+
 {-|Currently, a 'Definition' consists of some 'Attributes' and a 'Module'
 
 Because there are plans to extend this to a list of 'Module's, the @definition@
@@ -884,6 +921,35 @@ instance
   where
     pretty Definition {..} =
         Pretty.vsep (pretty definitionAttributes : map pretty definitionModules)
+
+{-| Annotated Kore definitions.
+
+See also: 'Definition'
+
+-}
+data AnnotatedDefinition
+    annotation
+    sentence
+    sortParam
+    (pat :: (* -> *) -> * -> *)
+    (variable :: * -> *)
+  =
+    AnnotatedDefinition
+    { annotatedDefinitionAttributes :: !(AnnotatedAttributes annotation)
+    , annotatedDefinitionModules    :: ![AnnotatedModule annotation sentence sortParam pat variable]
+    }
+
+deriving instance
+    ( Eq1 (pat variable)
+    , Eq (sentence annotation sortParam pat variable)
+    , Eq annotation
+    ) => Eq (AnnotatedDefinition annotation sentence sortParam pat variable)
+
+deriving instance
+    ( Show1 (pat variable)
+    , Show (sentence annotation sortParam pat variable)
+    , Show annotation
+    ) => Show (AnnotatedDefinition annotation sentence sortParam pat variable)
 
 class SentenceSymbolOrAlias (sentence :: * -> ((* -> *) -> * -> *) -> (* -> *) -> *) where
     getSentenceSymbolOrAliasConstructor
@@ -995,13 +1061,10 @@ instance
   where
     pretty = applyUnifiedSentence pretty pretty
 
-
 -- |'KoreSentence' instantiates 'UnifiedSentence' to describe sentences fully
 -- corresponding to the @declaration@ syntactic category
 -- from the Semantics of K, Section 9.1.6 (Declaration and Definitions).
 type KoreSentence = UnifiedSentence UnifiedSortVariable UnifiedPattern Variable
-
-type AnnotatedKoreSentence = UnifiedSentence UnifiedSortVariable UnifiedPattern Variable
 
 constructUnifiedSentence
     :: (MetaOrObject level)
@@ -1020,6 +1083,61 @@ applyUnifiedSentence metaT _ (UnifiedSentence (UnifiedMeta rs)) =
 applyUnifiedSentence _ objectT (UnifiedSentence (UnifiedObject rs)) =
     objectT (unRotate41 rs)
 
+newtype AnnotatedUnifiedSentence annotation sortParam pat variable =
+    AnnotatedUnifiedSentence
+    { getAnnotatedUnifiedSentence ::
+        Unified (Rotate41 (AnnotatedSentence annotation) sortParam pat variable)
+    }
+
+deriving instance
+    ( Eq1 (pat variable)
+    , Eq sortParam
+    , EqMetaOrObject variable
+    , Eq annotation
+    ) => Eq (AnnotatedUnifiedSentence annotation sortParam pat variable)
+
+deriving instance
+    ( Show1 (pat variable), Show (pat variable (Fix (pat variable)))
+    , Show sortParam
+    , ShowMetaOrObject variable
+    , Show annotation
+    ) => Show (AnnotatedUnifiedSentence annotation sortParam pat variable)
+
+instance
+    ( Pretty sortParam
+    , Pretty (Fix (pat variable))
+    , Pretty (variable Meta)
+    , Pretty (variable Object)
+    , Functor (pat variable)
+    ) => Pretty (AnnotatedUnifiedSentence annotation sortParam pat variable)
+  where
+    pretty = applyAnnotatedUnifiedSentence pretty pretty
+
+type AnnotatedKoreSentence annotation =
+    AnnotatedUnifiedSentence
+        annotation
+        UnifiedSortVariable
+        UnifiedPattern
+        Variable
+
+constructAnnotatedUnifiedSentence
+    :: (MetaOrObject level)
+    => (a -> AnnotatedSentence annotation level sortParam pat variable)
+    -> (a -> AnnotatedUnifiedSentence annotation sortParam pat variable)
+constructAnnotatedUnifiedSentence ctor =
+    AnnotatedUnifiedSentence . asUnified . Rotate41 . ctor
+
+-- |Given functions appliable to 'Meta' 'Sentence's and 'Object' 'Sentences's,
+-- builds a combined function which can be applied on 'UnifiedSentence's.
+applyAnnotatedUnifiedSentence
+    :: (AnnotatedSentence annotation Meta sortParam pat variable -> b)
+    -> (AnnotatedSentence annotation Object sortParam pat variable -> b)
+    -> (AnnotatedUnifiedSentence annotation sortParam pat variable -> b)
+applyAnnotatedUnifiedSentence metaT _ (AnnotatedUnifiedSentence (UnifiedMeta rs)) =
+    metaT (unRotate41 rs)
+applyAnnotatedUnifiedSentence _ objectT (AnnotatedUnifiedSentence (UnifiedObject rs)) =
+    objectT (unRotate41 rs)
+
 
 -- |'KoreModule' fully instantiates 'Module' to correspond to the second, third,
 -- and forth non-terminals of the @definition@ syntactic category from the
@@ -1029,6 +1147,12 @@ type KoreModule =
 
 type KoreDefinition =
     Definition UnifiedSentence UnifiedSortVariable UnifiedPattern Variable
+
+type AnnotatedKoreModule annotation =
+    AnnotatedModule annotation AnnotatedUnifiedSentence UnifiedSortVariable UnifiedPattern Variable
+
+type AnnotatedKoreDefinition annotation =
+    AnnotatedDefinition annotation AnnotatedUnifiedSentence UnifiedSortVariable UnifiedPattern Variable
 
 instance
     ( MetaOrObject level
