@@ -28,27 +28,16 @@ module Kore.AST.Kore
     , asMetaKorePattern
     , asObjectKorePattern
     , applyKorePattern
-      -- * Kore patterns with annotations
-    , AnnotatedKorePattern
-    , AnnotatedCommonKorePattern
-    , asAnnotatedKorePattern
-    , asAnnotatedMetaKorePattern
-    , asAnnotatedObjectKorePattern
-    , applyAnnotatedKorePattern
-    , annotateKorePattern
-    , unannotateKorePattern
       -- * Unified patterns
     , UnifiedPattern (..)
+    , pattern UnifiedMetaPattern
+    , pattern UnifiedObjectPattern
     , UnifiedSortVariable
     , UnifiedSort
     , asUnifiedPattern
     , transformUnifiedPattern
     ) where
 
-import Control.Comonad.Cofree
-       ( Cofree )
-import Control.Comonad.Trans.Cofree
-       ( CofreeF ((:<)) )
 import Data.Functor.Classes
 import Data.Functor.Foldable
 
@@ -66,6 +55,16 @@ allow using toghether both 'Meta' and 'Object' patterns.
 -}
 newtype UnifiedPattern variable child = UnifiedPattern
     { getUnifiedPattern :: Unified (Rotate31 Pattern variable child) }
+
+{-# COMPLETE UnifiedMetaPattern, UnifiedObjectPattern #-}
+
+pattern UnifiedMetaPattern
+    :: Pattern Meta var child -> UnifiedPattern var child
+pattern UnifiedMetaPattern pat = UnifiedPattern (UnifiedMeta (Rotate31 pat))
+
+pattern UnifiedObjectPattern
+    :: Pattern Object var child -> UnifiedPattern var child
+pattern UnifiedObjectPattern pat = UnifiedPattern (UnifiedObject (Rotate31 pat))
 
 instance (EqMetaOrObject variable) => Eq1 (UnifiedPattern variable) where
     liftEq liftedEq (UnifiedPattern a) (UnifiedPattern b) =
@@ -198,121 +197,3 @@ applyKorePattern metaT objectT korePattern =
 
 type UnifiedSortVariable = Unified SortVariable
 type UnifiedSort = Unified Sort
-
-{-| Kore patterns at the 'Meta' and 'Object' level with annotations.
-
-Annotated Kore patterns are defined as a @Cofree@ comonad to hold annotations at
-each node. The type of annotation has been omitted from the definition to allow
-@AnnotatedKorePattern@ to be partially applied; if all type parameters were
-specified explicitly, the definition would be:
-
-@
-type AnnotatedKorePattern variable annotation =
-    Cofree (UnifiedPattern variable) annotation
-@
-
-Construct an @AnnotatedKorePattern@ using 'asAnnotatedKorePattern' or
-'Data.Functor.Foldable.Corecursive'.
-
-Deconstruct an @AnnotatedKorePattern@ using 'Data.Functor.Foldable.Recursive'.
-
--}
-type AnnotatedKorePattern variable {- annotation -} =
-    Cofree (UnifiedPattern variable) {- annotation -}
-
-{- | Specialize 'AnnotatedKorePattern' to common 'Variable's.
-
-See also: 'CommonKorePattern'
-
--}
-type AnnotatedCommonKorePattern = AnnotatedKorePattern Variable
-
-{- | View a 'Meta' or an 'Object' 'Pattern' as an 'AnnotatedKorePattern'.
-
-The provided annotation is used for the top-level node.
-
--}
-asAnnotatedKorePattern
-    :: (MetaOrObject level)
-    => annotation
-    -> Pattern level variable (AnnotatedKorePattern variable annotation)
-    -> AnnotatedKorePattern variable annotation
-asAnnotatedKorePattern annotation pat =
-    embed (annotation :< asUnifiedPattern pat)
-
-{- | View a 'Meta'-level 'Pattern' as an 'AnnotatedKorePattern'.
-
-The provided annotation is used for the top-level node.
-
-Specializes: 'asAnnotatedKorePattern'.
-
--}
-asAnnotatedMetaKorePattern
-    :: annotation
-    -> Pattern Meta variable (AnnotatedKorePattern variable annotation)
-    -> AnnotatedKorePattern variable annotation
-asAnnotatedMetaKorePattern = asAnnotatedKorePattern
-
-{- | View an 'Object'-level 'Pattern' as an 'AnnotatedKorePattern'
-
-The provided annotation is used for the top-level node.
-
-Specializes: 'asAnnotatedKorePattern'.
-
--}
-asAnnotatedObjectKorePattern
-    :: annotation
-    -> Pattern Object variable (AnnotatedKorePattern variable annotation)
-    -> AnnotatedKorePattern variable annotation
-asAnnotatedObjectKorePattern = asAnnotatedKorePattern
-
-{- | Apply a pair of functions to both levels of an 'AnnotatedKorePattern'.
-
-See also: 'applyKorePattern'
-
--}
-applyAnnotatedKorePattern
-    :: (   annotation
-        -> Pattern Meta variable (AnnotatedKorePattern variable annotation)
-        -> b
-       )
-       -- ^ function applied to meta-level patterns
-    -> (   annotation
-        -> Pattern Object variable (AnnotatedKorePattern variable annotation)
-        -> b
-       )
-       -- ^ function applied to object-level patterns
-    -> (AnnotatedKorePattern variable annotation -> b)
-applyAnnotatedKorePattern metaT objectT korePattern =
-    let
-        (annotation :< unifiedPattern) = project korePattern
-    in
-        case getUnifiedPattern unifiedPattern of
-            UnifiedMeta metaPattern -> metaT annotation (unRotate31 metaPattern)
-            UnifiedObject objectPattern ->
-                objectT annotation (unRotate31 objectPattern)
-
-{- | Apply annotations to a 'KorePattern'.
-
-See also: 'unannotateKorePattern'
-
--}
-annotateKorePattern
-    :: (UnifiedPattern var annotation -> annotation)
-       -- ^ generate an annotation at a node, given the child annotations
-    -> KorePattern var
-       -- ^ 'KorePattern' to annotate
-    -> AnnotatedKorePattern var annotation
-annotateKorePattern annotate =
-    unfold (\pat -> fold annotate pat :< project pat)
-
-{- | Forget the annotations of an 'AnnotatedKorePattern'.
-
-See also: 'annotateKorePattern'
-
--}
-unannotateKorePattern
-    :: AnnotatedKorePattern var annotation
-    -> KorePattern var
-unannotateKorePattern =
-    unfold (\ann -> let _ :< pat = project ann in pat)
