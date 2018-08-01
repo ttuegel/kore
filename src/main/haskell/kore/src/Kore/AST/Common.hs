@@ -22,7 +22,61 @@ an AST term in a single data type (e.g. 'UnifiedSort' that can be either
 Please refer to Section 9 (The Kore Language) of the
 <http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf Semantics of K>.
 -}
-module Kore.AST.Common where
+module Kore.AST.Common
+    (
+      -- * Identifiers and variables
+      Id (..)
+    , module Kore.AST.Location
+    , noLocationId
+    , Variable (..)
+    , SortedVariable (..)
+      -- * Literals
+    , CharLiteral (..)
+    , StringLiteral (..)
+      -- * Sorts
+    , SortActual (..)
+    , SortVariable (..)
+    , Sort (..)
+    , MetaBasicSortType (..)
+    , metaBasicSortsList
+    , MetaSortType (..)
+    , metaSortTypeString
+    , metaSortsList
+    , metaSortsListWithString
+    , dummySort
+      -- * Symbols and aliases
+    , Symbol (..)
+    , Alias (..)
+    , SymbolOrAlias (..)
+    , Application (..)
+      -- * Quantifiers
+    , Exists (..)
+    , Forall (..)
+      -- * Connectives
+    , And (..)
+    , Bottom (..)
+    , Ceil (..)
+    , DomainValue (..)
+    , Equals (..)
+    , Floor (..)
+    , Iff (..)
+    , Implies (..)
+    , In (..)
+    , Next (..)
+    , Not (..)
+    , Or (..)
+    , Rewrites (..)
+    , Top (..)
+      -- * Patterns
+    , MLPatternType (..)
+    , patternString
+    , allPatternTypes
+    , Pattern (..)
+    , SortedPattern (..)
+    , UnifiedPatternInterface (..)
+    , PatternStub (..)
+    , withSort
+    ) where
 
 import Data.Deriving
        ( deriveEq1, deriveOrd1, deriveShow1 )
@@ -46,16 +100,19 @@ import qualified Kore.AST.Pretty as Pretty
 import           Kore.Parser.CString
                  ( escapeCString )
 
-{-|'Id' corresponds to the @object-identifier@ and @meta-identifier@
-syntactic categories from the Semantics of K, Section 9.1.1 (Lexicon).
+{- | Object- and meta-level identifiers.
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
+@Id@ corresponds to the @object-identifier@ and @meta-identifier@
+syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
+Section 9.1.1 (Lexicon).
 
-We may chage the Id's representation in the future so one should treat it as
-an opaque entity as much as possible.
+The @level@ type parameter is used to distiguish between the meta- and object-
+versions of symbol declarations. It should implement 'MetaOrObject'.
 
-Note that Id comparison ignores the AstLocation.
+The representation of @Id@ is subject to change; treat it as an opaque entity as
+much as possible.
+
 -}
 data Id level = Id
     { getId      :: !String
@@ -76,9 +133,12 @@ instance Hashable (Id level)
 instance Pretty (Id level) where
     pretty Id { getId } = fromString getId
 
-{-| 'noLocationId' creates an Id without a source location. While there are some
-narrow cases where this makes sense, you should really consider other options
-(including adding a new entry to the `AstLocation` data definition).
+{- | Create an 'Id' without a source location.
+
+While there are some narrow cases where this makes sense, you should really
+consider other options (including adding a new entry to the 'AstLocation' data
+definition).
+
 -}
 noLocationId :: String -> Id level
 noLocationId value = Id
@@ -86,8 +146,12 @@ noLocationId value = Id
     , idLocation = AstLocationNone
     }
 
-{-|'StringLiteral' corresponds to the @string@ literal from the Semantics of K,
+{- | Literal string patterns.
+
+@StringLiteral@ corresponds to the @string@ literal in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.1 (Lexicon).
+
 -}
 newtype StringLiteral = StringLiteral { getStringLiteral :: String }
     deriving (Show, Eq, Ord, Generic)
@@ -98,8 +162,12 @@ instance Pretty StringLiteral where
     pretty StringLiteral {..} =
         (Pretty.dquotes . fromString . escapeCString) getStringLiteral
 
-{-|'CharLiteral' corresponds to the @char@ literal from the Semantics of K,
+{- | Literal character patterns.
+
+@CharLiteral@ corresponds to the @char@ literal in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.1 (Lexicon).
+
 -}
 newtype CharLiteral = CharLiteral { getCharLiteral :: Char }
     deriving (Show, Eq, Ord, Generic)
@@ -110,12 +178,15 @@ instance Pretty CharLiteral where
     pretty CharLiteral {..} =
         (Pretty.squotes . fromString . escapeCString . (: [])) getCharLiteral
 
-{-|'SymbolOrAlias' corresponds to the @head{sort-list}@ branch of the
-@object-head@ and @meta-head@ syntactic categories from the Semantics of K,
+{- | A meta- or object-level symbol or alias in a pattern head.
+
+@SymbolOrAlias@ corresponds to the @head{sort-list}@ branch of the
+@object-head@ and @meta-head@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.3 (Heads).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 data SymbolOrAlias level = SymbolOrAlias
     { symbolOrAliasConstructor :: !(Id level)
@@ -129,15 +200,18 @@ instance Pretty (SymbolOrAlias level) where
     pretty SymbolOrAlias {..} =
         pretty symbolOrAliasConstructor <> Pretty.parameters symbolOrAliasParams
 
-{-|'Symbol' corresponds to the
-@object-head-constructor{object-sort-variable-list}@ part of the
-@object-symbol-declaration@ and @meta-symbol-declaration@ syntactic categories
-from the Semantics of K, Section 9.1.6 (Declaration and Definitions).
+{- | A meta- or object-level symbol appearing in a declaration.
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
+@Symbol@ corresponds to the @object-head-constructor{object-sort-variable-list}@
+part of the @object-symbol-declaration@ and @meta-symbol-declaration@ syntactic
+categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
+Section 9.1.6 (Declaration and Definitions).
 
-Note that this is very similar to 'SymbolOrAlias'.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
+
+See also: 'SymbolOrAlias' (symbols in pattern heads)
 -}
 data Symbol level = Symbol
     { symbolConstructor :: !(Id level)
@@ -151,15 +225,18 @@ instance Pretty (Symbol level) where
     pretty Symbol {..} =
         pretty symbolConstructor <> Pretty.parameters symbolParams
 
-{-|'Alias' corresponds to the
-@object-head-constructor{object-sort-variable-list}@ part of the
-@object-alias-declaration@ and @meta-alias-declaration@ syntactic categories
-from the Semantics of K, Section 9.1.6 (Declaration and Definitions).
+{- | A meta- or object-level alias appearing in a declaration.
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
+@Alias@ corresponds to the @object-head-constructor{object-sort-variable-list}@
+part of the @object-alias-declaration@ and @meta-alias-declaration@ syntactic
+categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
+Section 9.1.6 (Declaration and Definitions).
 
-Note that this is very similar to 'SymbolOrAlias'.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
+
+See also: 'SymbolOrAlias' (aliases in pattern heads)
 -}
 data Alias level = Alias
     { aliasConstructor :: !(Id level)
@@ -173,12 +250,15 @@ instance Pretty (Alias level) where
     pretty Alias {..} =
         pretty aliasConstructor <> Pretty.parameters aliasParams
 
-{-|'SortVariable' corresponds to the @object-sort-variable@ and
-@meta-sort-variable@ syntactic categories from the Semantics of K,
+{- | A meta- or object-level sort variable.
+
+@SortVariable@ corresponds to the @object-sort-variable@ and
+@meta-sort-variable@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.2 (Sorts).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 newtype SortVariable level = SortVariable
     { getSortVariable  :: Id level }
@@ -189,12 +269,15 @@ instance Hashable (SortVariable level)
 instance Pretty (SortVariable level) where
     pretty = pretty . getSortVariable
 
-{-|'SortActual' corresponds to the @sort-constructor{sort-list}@ branch of the
-@object-sort@ and @meta-sort@ syntactic categories from the Semantics of K,
+{-| A concrete meta- or object-level sort.
+
+@SortActual@ corresponds to the @sort-constructor{sort-list}@ branch of the
+@object-sort@ and @meta-sort@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.2 (Sorts).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 data SortActual level = SortActual
     { sortActualName  :: !(Id level)
@@ -208,12 +291,14 @@ instance Pretty (SortActual level) where
     pretty SortActual {..} =
         pretty sortActualName <> Pretty.parameters sortActualSorts
 
-{-|'Sort' corresponds to the @object-sort@ and
-@meta-sort@ syntactic categories from the Semantics of K,
+{-| A meta- or object-level sort.
+
+@Sort@ corresponds to the @object-sort@ and @meta-sort@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.2 (Sorts).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
+The @level@ type parameter is used to distiguish between the meta- and object-
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 data Sort level
     = SortVariableSort !(SortVariable level)
@@ -285,12 +370,15 @@ metaSortTypeString StringSort            = "String"
 instance Show MetaSortType where
     show sortType = '#' : metaSortTypeString sortType
 
-{-|'Variable' corresponds to the @object-variable@ and
-@meta-variable@ syntactic categories from the Semantics of K,
+{-| A meta- or object-level variable.
+
+@Variable@ corresponds to the @object-variable@ and @meta-variable@ syntactic
+categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.4 (Patterns).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 data Variable level = Variable
     { variableName :: !(Id level)
@@ -312,8 +400,7 @@ class SortedVariable variable where
 instance SortedVariable Variable where
     sortedVariableSort = variableSort
 
-{-|Enumeration of patterns starting with @\@
--}
+{- | Enumeration of patterns starting with @\\@ -}
 data MLPatternType
     = AndPatternType
     | BottomPatternType
@@ -377,19 +464,19 @@ patternString pt = case pt of
     RewritesPatternType    -> "rewrites"
     TopPatternType         -> "top"
 
-{-|'And' corresponds to the @\and@ branches of the @object-pattern@ and
-@meta-pattern@ syntactic categories from the Semantics of K,
+{- | Matching logic conjunction (@andFirst ∧ andSecond@).
+
+@And@ corresponds to the @\\and@ branches of the @object-pattern@ and
+@meta-pattern@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.4 (Patterns).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
-
-'andSort' is both the sort of the operands and the sort of the result.
-
-This represents the 'andFirst ∧ andSecond' Matching Logic construct.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 data And level child = And
     { andSort   :: !(Sort level)
+      -- ^ The sort of both operands and the result
     , andFirst  :: !child
     , andSecond :: !child
     }
@@ -407,14 +494,15 @@ instance Pretty child => Pretty (And level child) where
         <> Pretty.parameters [andSort]
         <> Pretty.arguments [andFirst, andSecond]
 
-{-|'Application' corresponds to the @head(pattern-list)@ branches of the
-@object-pattern@ and @meta-pattern@ syntactic categories from
-the Semantics of K, Section 9.1.4 (Patterns).
+{- | Matching logic symbol or alias application (@σ(φ1, ..., φn)@).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
+@Application@ corresponds to the @head(pattern-list)@ branches of the
+@object-pattern@ and @meta-pattern@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
+Section 9.1.4 (Patterns).
 
-This represents the σ(φ1, ..., φn) symbol patterns in Matching Logic.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 data Application level child = Application
     { applicationSymbolOrAlias :: !(SymbolOrAlias level)
@@ -432,16 +520,15 @@ instance Pretty child => Pretty (Application level child) where
     pretty Application {..} =
         pretty applicationSymbolOrAlias <> Pretty.arguments applicationChildren
 
-{-|'Bottom' corresponds to the @\bottom@ branches of the @object-pattern@ and
-@meta-pattern@ syntactic categories from the Semantics of K,
+{- | Matching logic bottom pattern (@⊥@).
+
+@Bottom@ corresponds to the @\\bottom@ branches of the @object-pattern@ and
+@meta-pattern@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.4 (Patterns).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
-
-'bottomSort' is the sort of the result.
-
-This represents the ⌈BottomPattern⌉ Matching Logic construct.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 newtype Bottom level child = Bottom { bottomSort :: Sort level}
     deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
@@ -456,18 +543,15 @@ instance Pretty child => Pretty (Bottom level child) where
     pretty Bottom {..} =
         "\\bottom" <> Pretty.parameters [bottomSort] <> Pretty.noArguments
 
-{-|'Ceil' corresponds to the @\ceil@ branches of the @object-pattern@ and
-@meta-pattern@ syntactic categories from the Semantics of K,
+{- | Matching logic definedness (@⌈ceilChild⌉@).
+
+@Ceil@ corresponds to the @\\ceil@ branches of the @object-pattern@ and
+@meta-pattern@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.4 (Patterns).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
-
-'ceilOperandSort' is the sort of the operand.
-
-'ceilResultSort' is the sort of the result.
-
-This represents the ⌈ceilPattern⌉ Matching Logic construct.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 data Ceil level child = Ceil
     { ceilOperandSort :: !(Sort level)
@@ -488,20 +572,20 @@ instance Pretty child => Pretty (Ceil level child) where
         <> Pretty.parameters [ceilOperandSort, ceilResultSort]
         <> Pretty.arguments [ceilChild]
 
-{-|'DomainValue' corresponds to the @\dv@ branch of the @object-pattern@
-syntactic category, which are not yet in the Semantics of K document,
-but they should appear in Section 9.1.4 (Patterns) at some point.
+{- | The domain value object pattern.
 
-Although there is no 'Meta' version of 'DomainValue's, for uniformity,
-the 'level' type parameter is used to distiguish between the hypothetical
-meta- and object- versions of symbol declarations. It should verify
-'MetaOrObject level'.
+@DomainValue@ corresponds to the @\\dv@ branch of the @object-pattern@
+syntactic category in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
+Section 9.1.4 (Patterns).
 
-'domainValueSort' is the sort of the result.
+The @level@ type parameter is accepted for uniformity with the other pattern
+types, but there are no meta-level domain values. Therefore, it should satisfy
+@level ~ Object@.
 
-This represents the encoding of an object constant, e.g. we may use
-\dv{Int{}}{"123"} instead of a representation based on constructors,
-e.g. succesor(succesor(...succesor(0)...))
+@\\dv@ represents the encoding of an object constant, e.g. we may use
+@\\dv{Int{}}{"123"}@ instead of a representation based on constructors,
+e.g. @succesor(succesor(...succesor(0)...))@
 -}
 data DomainValue level child = DomainValue
     { domainValueSort  :: !(Sort level)
@@ -521,18 +605,15 @@ instance Pretty child => Pretty (DomainValue level child) where
         <> Pretty.parameters [domainValueSort]
         <> Pretty.arguments [domainValueChild]
 
-{-|'Equals' corresponds to the @\equals@ branches of the @object-pattern@ and
-@meta-pattern@ syntactic categories from the Semantics of K,
+{-| Matching logic equality (@equalsFirst = equalsSecond@).
+
+@Equals@ corresponds to the @\\equals@ branches of the @object-pattern@ and
+@meta-pattern@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.4 (Patterns).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
-
-'equalsOperandSort' is the sort of the operand.
-
-'equalsResultSort' is the sort of the result.
-
-This represents the 'equalsFirst = equalsSecond' Matching Logic construct.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 data Equals level child = Equals
     { equalsOperandSort :: !(Sort level)
@@ -554,16 +635,15 @@ instance Pretty child => Pretty (Equals level child) where
         <> Pretty.parameters [equalsOperandSort, equalsResultSort]
         <> Pretty.arguments [equalsFirst, equalsSecond]
 
-{-|'Exists' corresponds to the @\exists@ branches of the @object-pattern@ and
-@meta-pattern@ syntactic categories from the Semantics of K,
+{- | Matching logic existential quantification (@∃ existsVariable. existsChild@)
+
+@Exists@ corresponds to the @\\exists@ branches of the @object-pattern@ and
+@meta-pattern@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.4 (Patterns).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
-
-'existsSort' is both the sort of the operands and the sort of the result.
-
-This represents the '∃existsVariable(existsChild)' Matching Logic construct.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 data Exists level v child = Exists
     { existsSort     :: !(Sort level)
@@ -601,18 +681,15 @@ instance (Pretty child, Pretty (variable level)) =>
         <> Pretty.parameters [existsSort]
         <> Pretty.arguments' [pretty existsVariable, pretty existsChild]
 
-{-|'Floor' corresponds to the @\floor@ branches of the @object-pattern@ and
-@meta-pattern@ syntactic categories from the Semantics of K,
+{- | Matching logic totality (@⌊floorChild⌋@).
+
+@Floor@ corresponds to the @\\floor@ branches of the @object-pattern@ and
+@meta-pattern@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.4 (Patterns).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
-
-'floorOperandSort' is the sort of the operand.
-
-'floorResultSort' is the sort of the result.
-
-This represents the '⌊floorPattern⌋' Matching Logic construct.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 data Floor level child = Floor
     { floorOperandSort :: !(Sort level)
@@ -633,16 +710,15 @@ instance Pretty child => Pretty (Floor level child) where
         <> Pretty.parameters [floorOperandSort, floorResultSort]
         <> Pretty.arguments [floorChild]
 
-{-|'Forall' corresponds to the @\forall@ branches of the @object-pattern@ and
-@meta-pattern@ syntactic categories from the Semantics of K,
+{- | Matching logic universal quantification (@∀ forallVariable. forallChild@).
+
+@Forall@ corresponds to the @\\forall@ branches of the @object-pattern@ and
+@meta-pattern@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.4 (Patterns).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
-
-'forallSort' is both the sort of the operands and the sort of the result.
-
-This represents the '∀forallVariable(forallChild)' Matching Logic construct.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 data Forall level v child = Forall
     { forallSort     :: !(Sort level)
@@ -680,19 +756,19 @@ instance (Pretty child, Pretty (variable level)) =>
         <> Pretty.parameters [forallSort]
         <> Pretty.arguments' [pretty forallVariable, pretty forallChild]
 
-{-|'Iff' corresponds to the @\iff@ branches of the @object-pattern@ and
-@meta-pattern@ syntactic categories from the Semantics of K,
+{- | Matching logic if-and-only-if (@iffFirst ⭤ iffSecond@).
+
+@Iff@ corresponds to the @\\iff@ branches of the @object-pattern@ and
+@meta-pattern@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.4 (Patterns).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
-
-'iffSort' is both the sort of the operands and the sort of the result.
-
-This represents the 'iffFirst ⭤ iffSecond' Matching Logic construct.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 data Iff level child = Iff
     { iffSort   :: !(Sort level)
+      -- ^ The sort of both operands and the result
     , iffFirst  :: !child
     , iffSecond :: !child
     }
@@ -710,19 +786,19 @@ instance Pretty child => Pretty (Iff level child) where
         <> Pretty.parameters [iffSort]
         <> Pretty.arguments [iffFirst, iffSecond]
 
-{-|'Implies' corresponds to the @\implies@ branches of the @object-pattern@ and
-@meta-pattern@ syntactic categories from the Semantics of K,
+{- | Matching logic implication (@impliesFirst ⭢ impliesSecond@).
+
+@Implies@ corresponds to the @\\implies@ branches of the @object-pattern@ and
+@meta-pattern@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.4 (Patterns).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
-
-'impliesSort' is both the sort of the operands and the sort of the result.
-
-This represents the 'impliesFirst ⭢ impliesSecond' Matching Logic construct.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 data Implies level child = Implies
     { impliesSort   :: !(Sort level)
+      -- ^ The sort of both operands and the result
     , impliesFirst  :: !child
     , impliesSecond :: !child
     }
@@ -740,21 +816,19 @@ instance Pretty child => Pretty (Implies level child) where
         <> Pretty.parameters [impliesSort]
         <> Pretty.arguments [impliesFirst, impliesSecond]
 
-{-|'In' corresponds to the @\in@ branches of the @object-pattern@ and
-@meta-pattern@ syntactic categories from the Semantics of K,
+{- | Matching logic membership (@inContainedChild ∊ inContainingChild@).
+
+@In@ corresponds to the @\\in@ branches of the @object-pattern@ and
+@meta-pattern@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.4 (Patterns).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 
-'inOperandSort' is the sort of the operands.
-
-'inResultSort' is the sort of the result.
-
-This represents the 'inContainedChild ∊ inContainingChild' Matching Logic
-construct, which, when 'inContainedChild' is a singleton (e.g. a variable),
-represents the set membership. However, in general, it actually means that the
-two patterns have a non-empty intersection.
+When @inContainedChild@ is a singleton (e.g. a variable), @In@ represents set
+membership. In general, @In@ actually means that two patterns have a non-empty
+intersection.
 -}
 data In level child = In
     { inOperandSort     :: !(Sort level)
@@ -777,16 +851,16 @@ instance Pretty child => Pretty (In level child) where
         <> Pretty.arguments [inContainedChild, inContainingChild]
 
 
-{-|'Next' corresponds to the @\next@ branch of the @object-pattern@
-syntactic category from the Semantics of K, Section 9.1.4 (Patterns).
+{- | Matching logic "next" construct (@∘ nextChild@).
 
-Although there is no 'meta' version of @\next@, there is a 'level' type
-parameter which will always be 'Object'. The object-only restriction is
-done at the 'Pattern' level.
+@Next@ corresponds to the @\\next@ branch of the @object-pattern@
+syntactic category in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
+Section 9.1.4 (Patterns).
 
-'nextSort' is both the sort of the operand and the sort of the result.
-
-This represents the '∘ nextChild' Matching Logic construct.
+The @level@ type parameter is accepted for uniformity with the other pattern
+types, but there are no meta-level domain values. Therefore, it should satisfy
+@level ~ Object@.
 -}
 data Next level child = Next
     { nextSort  :: !(Sort level)
@@ -806,16 +880,15 @@ instance Pretty child => Pretty (Next level child) where
         <> Pretty.parameters [nextSort]
         <> Pretty.arguments [nextChild]
 
-{-|'Not' corresponds to the @\not@ branches of the @object-pattern@ and
-@meta-pattern@ syntactic categories from the Semantics of K,
+{- | Matching logic negation (@¬ notChild@).
+
+@Not@ corresponds to the @\\not@ branches of the @object-pattern@ and
+@meta-pattern@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.4 (Patterns).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
-
-'notSort' is both the sort of the operand and the sort of the result.
-
-This represents the '¬ notChild' Matching Logic construct.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 data Not level child = Not
     { notSort  :: !(Sort level)
@@ -835,19 +908,19 @@ instance Pretty child => Pretty (Not level child) where
         <> Pretty.parameters [notSort]
         <> Pretty.arguments [notChild]
 
-{-|'Or' corresponds to the @\or@ branches of the @object-pattern@ and
-@meta-pattern@ syntactic categories from the Semantics of K,
+{- | Matching logic disjunction (@orFirst ∨ orSecond@).
+
+@Or@ corresponds to the @\\or@ branches of the @object-pattern@ and
+@meta-pattern@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.4 (Patterns).
 
-The 'level' type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
-
-'orSort' is both the sort of the operands and the sort of the result.
-
-This represents the 'orFirst ∨ orSecond' Matching Logic construct.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 data Or level child = Or
     { orSort   :: !(Sort level)
+      -- ^ The sort of both operands and the result
     , orFirst  :: !child
     , orSecond :: !child
     }
@@ -865,20 +938,20 @@ instance Pretty child => Pretty (Or level child) where
         <> Pretty.parameters [orSort]
         <> Pretty.arguments [orFirst, orSecond]
 
-{-|'Rewrites' corresponds to the @\rewrites@ branch of the @object-pattern@
-syntactic category from the Semantics of K, Section 9.1.4 (Patterns).
+{- | Matching logic "rewrites" construct (@rewritesFirst ⇒ rewritesSecond@).
 
-Although there is no 'Meta' version of @\rewrites@, there is a 'level' type
-parameter which will always be 'Object'. The object-only restriction is
-done at the Pattern level.
+@Rewrites@ corresponds to the @\\rewrites@ branch of the @object-pattern@
+syntactic category in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
+Section 9.1.4 (Patterns).
 
-'rewritesSort' is both the sort of the operands and the sort of the result.
-
-This represents the 'rewritesFirst ⇒ rewritesSecond' Matching Logic construct.
+The @level@ type parameter is accepted for uniformity with the other pattern
+types, but there are no meta-level domain values. Therefore, it should satisfy
+@level ~ Object@.
 -}
-
 data Rewrites level child = Rewrites
     { rewritesSort   :: !(Sort level)
+      -- ^ The sort of both operands and the result
     , rewritesFirst  :: !child
     , rewritesSecond :: !child
     }
@@ -897,16 +970,15 @@ instance Pretty child => Pretty (Rewrites level child) where
         <> Pretty.parameters [rewritesSort]
         <> Pretty.arguments [rewritesFirst, rewritesSecond]
 
-{-|'Top' corresponds to the @\top@ branches of the @object-pattern@ and
-@meta-pattern@ syntactic categories from the Semantics of K,
+{- | Matching logic top pattern (@⊤@).
+
+@Top@ corresponds to the @\\top@ branches of the @object-pattern@ and
+@meta-pattern@ syntactic categories in
+<http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf The Semantics of K>,
 Section 9.1.4 (Patterns).
 
-The 'level type parameter is used to distiguish between the meta- and object-
-versions of symbol declarations. It should verify 'MetaOrObject level'.
-
-'topSort' is the sort of the result.
-
-This represents the ⌈TopPattern⌉ Matching Logic construct.
+The @level@ type parameter is used to distiguish between the meta- and object-level
+versions of symbol declarations. It should implement 'MetaOrObject'.
 -}
 newtype Top level child = Top { topSort :: Sort level}
     deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
