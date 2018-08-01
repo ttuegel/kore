@@ -36,6 +36,7 @@ import Data.String
 import GHC.Generics
        ( Generic )
 
+import           Kore.AST.Location
 import           Kore.AST.MetaOrObject
 import           Kore.AST.Pretty
                  ( Pretty (..), (<>) )
@@ -44,59 +45,6 @@ import           Data.Text.Prettyprint.Doc.Orphans
 import qualified Kore.AST.Pretty as Pretty
 import           Kore.Parser.CString
                  ( escapeCString )
-
-{-| 'FileLocation' represents a position in a source file.
--}
-data FileLocation = FileLocation
-    { fileName :: FilePath
-    , line     :: Int
-    , column   :: Int
-    }
-    deriving (Eq, Show, Generic)
-
-instance Hashable FileLocation
-
-{-| 'AstLocation' represents the origin of an AST node.
-
-Its representation may change, e.g. the `AstLocationFile` branch could become a
-range instead of a single character position. You should treat the entire
-AstLocation as much as possible as an opaque token, i.e. hopefully only
-the kore parsing code and pretty printing code below would access
-the AstLocationFile branch.
--}
-data AstLocation
-    = AstLocationNone
-    | AstLocationImplicit
-    | AstLocationGeneratedVariable
-    | AstLocationTest
-    | AstLocationFile FileLocation
-    | AstLocationLifted AstLocation
-    | AstLocationUnknown
-    -- ^ This should not be used and should be eliminated in further releases
-    deriving (Eq, Show, Generic)
-
-instance Hashable AstLocation
-
-{-| 'prettyPrintAstLocation' displays an `AstLocation` in a way that's
-(sort of) user friendly.
--}
-prettyPrintAstLocation :: AstLocation -> String
-prettyPrintAstLocation AstLocationNone = "<unknown location>"
-prettyPrintAstLocation AstLocationImplicit = "<implicitly defined entity>"
-prettyPrintAstLocation AstLocationGeneratedVariable =
-    "<variable generated internally>"
-prettyPrintAstLocation AstLocationTest = "<test data>"
-prettyPrintAstLocation
-    (AstLocationFile FileLocation
-        { fileName = name
-        , line = line'
-        , column = column'
-        }
-    )
-    = name ++ " " ++ show line' ++ ":" ++ show column'
-prettyPrintAstLocation (AstLocationLifted location) =
-    "<lifted(" ++ prettyPrintAstLocation location ++ ")>"
-prettyPrintAstLocation AstLocationUnknown = "<unknown location>"
 
 {-|'Id' corresponds to the @object-identifier@ and @meta-identifier@
 syntactic categories from the Semantics of K, Section 9.1.1 (Lexicon).
