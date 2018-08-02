@@ -26,6 +26,7 @@ dependencies:
   - array
   - bytestring >= 0.10
   - bytestring-trie
+  - comonad
   - containers
   - clock
   - data-default

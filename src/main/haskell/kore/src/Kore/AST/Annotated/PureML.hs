@@ -16,10 +16,13 @@ module Kore.AST.Annotated.PureML
     , unannotatePurePattern
     ) where
 
-import Control.Comonad.Cofree
-       ( Cofree )
+import Control.Comonad
 import Control.Comonad.Trans.Cofree
-       ( CofreeF ((:<)) )
+       ( Cofree, CofreeF ((:<)) )
+import Data.Functor.Compose
+       ( Compose (..) )
+import Data.Functor.Identity
+       ( Identity (..) )
 import Data.Functor.Foldable
 
 import Data.Annotation
@@ -42,12 +45,13 @@ asPurePattern
     :: ann
     -> Pattern level var (PureMLPattern ann level var)
     -> PureMLPattern ann level var
-asPurePattern ann pat = embed (Annotation ann :< pat)
+asPurePattern ann pat = (embed . Compose . Identity) (Annotation ann :< pat)
 
 fromPurePattern
     :: PureMLPattern ann level var
     -> Pattern level var (PureMLPattern ann level var)
-fromPurePattern purePattern = let (_ :< pat) = project purePattern in pat
+fromPurePattern purePattern =
+    let Compose (Identity (_ :< pat)) = project purePattern in pat
 
 {- | Apply annotations to a 'Unannotated.PureMLPattern'.
 
@@ -55,16 +59,24 @@ See also: 'unannotatePurePattern'
 
 -}
 annotatePurePattern
-    :: (Pattern level var ann -> ann)
+    :: forall level var ann.
+       (Pattern level var ann -> ann)
        -- ^ generate an annotation at a node, given the child annotations
     -> Unannotated.PureMLPattern level var
        -- ^ 'Unannotated.PureMLPattern' to annotate
     -> PureMLPattern ann level var
 annotatePurePattern annotate =
-    unfold annotate1
+    -- fold: build the new tree starting at the bottom of the old tree
+    fold annotate1
   where
+    annotate1
+        :: Pattern level var (PureMLPattern ann level var)
+        -> PureMLPattern ann level var
     annotate1 pat =
-        fold (Annotation . annotate . fmap getAnnotation) pat :< project pat
+        let
+            ann = annotate (getAnnotation . extract <$> pat)
+        in
+            embed (Compose (Identity (Annotation ann :< pat)))
 
 {- | Forget the annotations of an 'PureMLPattern'.
 
@@ -75,4 +87,4 @@ unannotatePurePattern
     :: PureMLPattern ann level var
     -> Unannotated.PureMLPattern level var
 unannotatePurePattern =
-    unfold (\ann -> let _ :< pat = project ann in pat)
+    unfold (\ann -> let Compose (Identity (_ :< pat)) = project ann in pat)

@@ -56,12 +56,13 @@ module Kore.AST.Annotated.Sentence
     , KoreDefinition
     ) where
 
-import Control.Comonad.Cofree
-       ( Cofree )
 import Control.Comonad.Trans.Cofree
-       ( CofreeF ((:<)) )
-import Data.Functor.Classes
+       ( Cofree, CofreeF ((:<)), tailF )
+import Data.Functor.Compose
+       ( Compose (..) )
 import Data.Functor.Foldable
+import Data.Functor.Identity
+       ( Identity (..) )
 
 import           Data.Annotation
                  ( Annotation (..) )
@@ -135,7 +136,18 @@ data SentenceAlias
     , sentenceAliasAttributes   :: !(Attributes ann)
     , sentenceAliasAnnotation   :: !(Annotation ann)
     }
-  deriving (Eq, Show)
+
+deriving instance
+    ( Eq (var level)
+    , Eq (pat var (Cofree (pat var) (Annotation ann)))
+    ) =>
+    Eq (SentenceAlias ann level pat var)
+
+deriving instance
+    ( Show ann, Show (var level)
+    , Show (pat var (Cofree (pat var) (Annotation ann)))
+    ) =>
+    Show (SentenceAlias ann level pat var)
 
 instance
     ( Functor (pat variable)
@@ -165,14 +177,22 @@ unannotateSentenceAlias
     , sentenceAliasResultSort = sentenceAliasResultSort
     , sentenceAliasLeftPattern =
         let
-            _ :< _pat = sentenceAliasLeftPattern
+            unannotate ann =
+                let
+                    Compose (Identity (_ :< pat)) = project ann
+                in
+                    pat
         in
-            unfold (\ann -> let _ :< _pat = project ann in _pat) <$> _pat
+            unfold unannotate <$> tailF sentenceAliasLeftPattern
     , sentenceAliasRightPattern =
         let
-            _ :< _pat = sentenceAliasRightPattern
+            unannotate ann =
+                let
+                    Compose (Identity (_ :< pat)) = project ann
+                in
+                    pat
         in
-            unfold (\ann -> let _ :< _pat = project ann in _pat) <$> _pat
+            unfold unannotate <$> tailF sentenceAliasRightPattern
     , sentenceAliasAttributes = unannotateAttributes sentenceAliasAttributes
     }
 
@@ -324,7 +344,18 @@ data SentenceAxiom
     , sentenceAxiomAttributes :: !(Attributes ann)
     , sentenceAxiomAnnotation :: !(Annotation ann)
     }
-  deriving (Eq, Show)
+
+deriving instance
+    ( Eq sorts
+    , Eq (pat var (Cofree (pat var) (Annotation ann)))
+    ) =>
+    Eq (SentenceAxiom ann sorts pat var)
+
+deriving instance
+    ( Show ann, Show sorts
+    , Show (pat var (Cofree (pat var) (Annotation ann)))
+    ) =>
+    Show (SentenceAxiom ann sorts pat var)
 
 instance
     ( Pretty param
@@ -348,7 +379,12 @@ unannotateSentenceAxiom
     Unannotated.SentenceAxiom
     { sentenceAxiomParameters = sentenceAxiomParameters
     , sentenceAxiomPattern =
-        unfold (\ann -> let _ :< pat = project ann in pat) sentenceAxiomPattern
+        let
+            unannotate ann =
+                let Compose (Identity (_ :< pat)) = project ann
+                in pat
+        in
+            unfold unannotate sentenceAxiomPattern
     , sentenceAxiomAttributes =
         unannotateAttributes sentenceAxiomAttributes
     }
@@ -418,13 +454,13 @@ data Sentence
 
 deriving instance
     ( Eq sorts, Eq (var level)
-    , Eq1 (pat var)
+    , Eq (pat var (Cofree (pat var) (Annotation ann)))
     ) =>
     Eq (Sentence ann level sorts pat var)
 
 deriving instance
     ( Show ann, Show sorts, Show (var level)
-    , Show1 (pat var)
+    , Show (pat var (Cofree (pat var) (Annotation ann)))
     ) =>
     Show (Sentence ann level sorts pat var)
 

@@ -20,11 +20,14 @@ module Kore.AST.Annotated.Kore
     , unannotateKorePattern
     ) where
 
-import Control.Comonad.Cofree
-       ( Cofree )
+import Control.Comonad
 import Control.Comonad.Trans.Cofree
-       ( CofreeF ((:<)) )
+       ( Cofree, CofreeF ((:<)) )
+import Data.Functor.Compose
+       ( Compose (..) )
 import Data.Functor.Foldable
+import Data.Functor.Identity
+       ( Identity (..) )
 
 import Data.Annotation
        ( Annotation (..) )
@@ -67,7 +70,7 @@ asKorePattern
     -> Pattern level variable (KorePattern ann variable)
     -> KorePattern ann variable
 asKorePattern ann pat =
-    embed (Annotation ann :< asUnifiedPattern pat)
+    (embed . Compose . Identity) (Annotation ann :< asUnifiedPattern pat)
 
 {- | View a 'Meta'-level 'Pattern' as a 'KorePattern'.
 
@@ -108,7 +111,8 @@ applyKorePattern
     -> (KorePattern ann variable -> b)
 applyKorePattern metaT objectT korePattern =
     let
-        (Annotation ann :< unifiedPattern) = project korePattern
+        Compose (Identity (Annotation ann :< unifiedPattern)) =
+            project korePattern
     in
         case unifiedPattern of
             UnifiedMetaPattern pat -> metaT ann pat
@@ -120,16 +124,24 @@ See also: 'unannotateKorePattern'
 
 -}
 annotateKorePattern
-    :: (UnifiedPattern var ann -> ann)
+    :: forall var ann.
+       (UnifiedPattern var ann -> ann)
        -- ^ generate an annotation at a node, given the child annotations
     -> Unannotated.KorePattern var
        -- ^ 'KorePattern' to annotate
     -> KorePattern ann var
 annotateKorePattern annotate =
-    unfold annotate1
+    -- fold: build the new tree starting at the bottom of the old tree
+    fold annotate1
   where
+    annotate1
+        :: UnifiedPattern var (KorePattern ann var)
+        -> KorePattern ann var
     annotate1 pat =
-        fold (Annotation . annotate . fmap getAnnotation) pat :< project pat
+        let
+            ann = annotate (getAnnotation . extract <$> pat)
+        in
+            embed (Compose (Identity (Annotation ann :< pat)))
 
 {- | Forget the annotations of an 'AnnotatedKorePattern'.
 
@@ -140,4 +152,4 @@ unannotateKorePattern
     :: KorePattern ann var
     -> Unannotated.KorePattern var
 unannotateKorePattern =
-    unfold (\ann -> let _ :< pat = project ann in pat)
+    unfold (\ann -> let Compose (Identity (_ :< pat)) = project ann in pat)
