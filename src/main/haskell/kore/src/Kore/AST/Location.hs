@@ -1,5 +1,7 @@
 module Kore.AST.Location where
 
+import Control.DeepSeq
+       ( NFData )
 import Data.Hashable
        ( Hashable )
 import GHC.Generics
@@ -14,6 +16,8 @@ data FileLocation = FileLocation
     deriving (Eq, Generic, Read, Show)
 
 instance Hashable FileLocation
+
+instance NFData FileLocation
 
 {- | The origin of an AST node.
 
@@ -37,6 +41,8 @@ data AstLocation
     deriving (Eq, Generic, Read, Show)
 
 instance Hashable AstLocation
+
+instance NFData AstLocation
 
 -- | Display an 'AstLocation' in a user-friendly way.
 prettyPrintAstLocation :: AstLocation -> String

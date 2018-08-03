@@ -38,8 +38,12 @@ module Kore.AST.Kore
     , transformUnifiedPattern
     ) where
 
+import Control.DeepSeq
+       ( NFData )
 import Data.Functor.Classes
 import Data.Functor.Foldable
+import GHC.Generics
+       ( Generic )
 
 import Data.Functor.Impredicative
        ( Rotate31 (..) )
@@ -55,6 +59,13 @@ allow using toghether both 'Meta' and 'Object' patterns.
 -}
 newtype UnifiedPattern variable child = UnifiedPattern
     { getUnifiedPattern :: Unified (Rotate31 Pattern variable child) }
+  deriving ( Generic )
+
+instance
+    ( NFData child
+    , NFData (variable Meta), NFData (variable Object)
+    ) =>
+    NFData (UnifiedPattern variable child)
 
 {-# COMPLETE UnifiedMetaPattern, UnifiedObjectPattern #-}
 
@@ -88,7 +99,7 @@ instance (ShowMetaOrObject variable) => Show1 (UnifiedPattern variable) where
             (getUnifiedPattern up)
         . showString " }"
       where
-        liftShowsPrecRotate31 :: Show (variable level)
+        liftShowsPrecRotate31 :: (Show level, Show (variable level))
                               => Rotate31 Pattern variable a level
                               -> ShowS
         liftShowsPrecRotate31 r =

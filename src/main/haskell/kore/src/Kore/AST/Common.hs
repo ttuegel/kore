@@ -78,6 +78,8 @@ module Kore.AST.Common
     , withSort
     ) where
 
+import Control.DeepSeq
+       ( NFData (..) )
 import Data.Deriving
        ( deriveEq1, deriveOrd1, deriveShow1 )
 import Data.Functor.Classes
@@ -90,12 +92,12 @@ import Data.String
 import GHC.Generics
        ( Generic )
 
+import           Control.DeepSeq.Orphans ()
+import           Data.Text.Prettyprint.Doc.Orphans ()
 import           Kore.AST.Location
 import           Kore.AST.MetaOrObject
 import           Kore.AST.Pretty
                  ( Pretty (..), (<>) )
-import           Data.Text.Prettyprint.Doc.Orphans
-                 ()
 import qualified Kore.AST.Pretty as Pretty
 import           Kore.Parser.CString
                  ( escapeCString )
@@ -130,6 +132,8 @@ instance Eq (Id level) where
 
 instance Hashable (Id level)
 
+instance NFData (Id level)
+
 instance Pretty (Id level) where
     pretty Id { getId } = fromString getId
 
@@ -158,6 +162,8 @@ newtype StringLiteral = StringLiteral { getStringLiteral :: String }
 
 instance Hashable StringLiteral
 
+instance NFData StringLiteral
+
 instance Pretty StringLiteral where
     pretty StringLiteral {..} =
         (Pretty.dquotes . fromString . escapeCString) getStringLiteral
@@ -173,6 +179,8 @@ newtype CharLiteral = CharLiteral { getCharLiteral :: Char }
     deriving (Show, Eq, Ord, Generic)
 
 instance Hashable CharLiteral
+
+instance NFData CharLiteral
 
 instance Pretty CharLiteral where
     pretty CharLiteral {..} =
@@ -195,6 +203,8 @@ data SymbolOrAlias level = SymbolOrAlias
     deriving (Show, Eq, Ord, Generic)
 
 instance Hashable (SymbolOrAlias level)
+
+instance NFData (SymbolOrAlias level)
 
 instance Pretty (SymbolOrAlias level) where
     pretty SymbolOrAlias {..} =
@@ -221,6 +231,8 @@ data Symbol level = Symbol
 
 instance Hashable (Symbol level)
 
+instance NFData (Symbol level)
+
 instance Pretty (Symbol level) where
     pretty Symbol {..} =
         pretty symbolConstructor <> Pretty.parameters symbolParams
@@ -246,6 +258,8 @@ data Alias level = Alias
 
 instance Hashable (Alias level)
 
+instance NFData (Alias level)
+
 instance Pretty (Alias level) where
     pretty Alias {..} =
         pretty aliasConstructor <> Pretty.parameters aliasParams
@@ -265,6 +279,8 @@ newtype SortVariable level = SortVariable
     deriving (Show, Eq, Ord, Generic)
 
 instance Hashable (SortVariable level)
+
+instance NFData (SortVariable level)
 
 instance Pretty (SortVariable level) where
     pretty = pretty . getSortVariable
@@ -287,6 +303,8 @@ data SortActual level = SortActual
 
 instance Hashable (SortActual level)
 
+instance NFData (SortActual level)
+
 instance Pretty (SortActual level) where
     pretty SortActual {..} =
         pretty sortActualName <> Pretty.parameters sortActualSorts
@@ -306,6 +324,8 @@ data Sort level
     deriving (Show, Eq, Ord, Generic)
 
 instance Hashable (Sort level)
+
+instance NFData (Sort level)
 
 instance Pretty (Sort level) where
     pretty (SortVariableSort sortVariable) = pretty sortVariable
@@ -387,6 +407,8 @@ data Variable level = Variable
     deriving (Show, Eq, Ord, Generic)
 
 instance Hashable (Variable level)
+
+instance NFData (Variable level)
 
 instance Pretty (Variable level) where
     pretty Variable {..} =
@@ -488,6 +510,8 @@ deriveShow1 ''And
 
 instance Hashable child => Hashable (And level child)
 
+instance NFData child => NFData (And level child)
+
 instance Pretty child => Pretty (And level child) where
     pretty And {..} =
         "\\and"
@@ -516,6 +540,8 @@ deriveShow1 ''Application
 
 instance Hashable child => Hashable (Application level child)
 
+instance NFData child => NFData (Application level child)
+
 instance Pretty child => Pretty (Application level child) where
     pretty Application {..} =
         pretty applicationSymbolOrAlias <> Pretty.arguments applicationChildren
@@ -538,6 +564,8 @@ deriveOrd1 ''Bottom
 deriveShow1 ''Bottom
 
 instance Hashable (Bottom level child)
+
+instance NFData (Bottom level child)
 
 instance Pretty child => Pretty (Bottom level child) where
     pretty Bottom {..} =
@@ -565,6 +593,8 @@ deriveOrd1 ''Ceil
 deriveShow1 ''Ceil
 
 instance Hashable child => Hashable (Ceil level child)
+
+instance NFData child => NFData (Ceil level child)
 
 instance Pretty child => Pretty (Ceil level child) where
     pretty Ceil {..} =
@@ -599,6 +629,8 @@ deriveShow1 ''DomainValue
 
 instance Hashable child => Hashable (DomainValue level child)
 
+instance NFData child => NFData (DomainValue level child)
+
 instance Pretty child => Pretty (DomainValue level child) where
     pretty DomainValue {..} =
         "\\dv"
@@ -628,6 +660,8 @@ deriveOrd1 ''Equals
 deriveShow1 ''Equals
 
 instance Hashable child => Hashable (Equals level child)
+
+instance NFData child => NFData (Equals level child)
 
 instance Pretty child => Pretty (Equals level child) where
     pretty Equals {..} =
@@ -674,6 +708,8 @@ instance (Show (Sort level), Show (v level)) => Show1 (Exists level v) where
 
 instance (Hashable child, Hashable (v level)) => Hashable (Exists level v child)
 
+instance (NFData child, NFData (var level)) => NFData (Exists level var child)
+
 instance (Pretty child, Pretty (variable level)) =>
     Pretty (Exists level variable child) where
     pretty Exists {..} =
@@ -703,6 +739,8 @@ deriveOrd1 ''Floor
 deriveShow1 ''Floor
 
 instance Hashable child => Hashable (Floor level child)
+
+instance NFData child => NFData (Floor level child)
 
 instance Pretty child => Pretty (Floor level child) where
     pretty Floor {..} =
@@ -749,6 +787,8 @@ instance (Show (Sort level), Show (v level)) => Show1 (Forall level v) where
 
 instance (Hashable child, Hashable (v level)) => Hashable (Forall level v child)
 
+instance (NFData child, NFData (v level)) => NFData (Forall level v child)
+
 instance (Pretty child, Pretty (variable level)) =>
     Pretty (Forall level variable child) where
     pretty Forall {..} =
@@ -780,6 +820,8 @@ deriveShow1 ''Iff
 
 instance Hashable child => Hashable (Iff level child)
 
+instance NFData child => NFData (Iff level child)
+
 instance Pretty child => Pretty (Iff level child) where
     pretty Iff {..} =
         "\\iff"
@@ -809,6 +851,8 @@ deriveOrd1 ''Implies
 deriveShow1 ''Implies
 
 instance Hashable child => Hashable (Implies level child)
+
+instance NFData child => NFData (Implies level child)
 
 instance Pretty child => Pretty (Implies level child) where
     pretty Implies {..} =
@@ -844,6 +888,8 @@ deriveShow1 ''In
 
 instance Hashable child => Hashable (In level child)
 
+instance NFData child => NFData (In level child)
+
 instance Pretty child => Pretty (In level child) where
     pretty In {..} =
         "\\in"
@@ -874,6 +920,8 @@ deriveShow1 ''Next
 
 instance Hashable child => Hashable (Next level child)
 
+instance NFData child => NFData (Next level child)
+
 instance Pretty child => Pretty (Next level child) where
     pretty Next {..} =
         "\\next"
@@ -901,6 +949,8 @@ deriveOrd1 ''Not
 deriveShow1 ''Not
 
 instance Hashable child => Hashable (Not level child)
+
+instance NFData child => NFData (Not level child)
 
 instance Pretty child => Pretty (Not level child) where
     pretty Not {..} =
@@ -932,6 +982,8 @@ deriveShow1 ''Or
 
 instance Hashable child => Hashable (Or level child)
 
+instance NFData child => NFData (Or level child)
+
 instance Pretty child => Pretty (Or level child) where
     pretty Or {..} =
         "\\or"
@@ -961,8 +1013,9 @@ deriveEq1 ''Rewrites
 deriveOrd1 ''Rewrites
 deriveShow1 ''Rewrites
 
-
 instance Hashable child => Hashable (Rewrites level child)
+
+instance NFData child => NFData (Rewrites level child)
 
 instance Pretty child => Pretty (Rewrites level child) where
     pretty Rewrites {..} =
@@ -988,6 +1041,8 @@ deriveOrd1 ''Top
 deriveShow1 ''Top
 
 instance Hashable (Top level child)
+
+instance NFData (Top level child)
 
 instance Pretty child => Pretty (Top level child) where
     pretty Top {..} =
@@ -1048,7 +1103,7 @@ data Pattern level variable child where
     VariablePattern
         :: !(variable level) -> Pattern level variable child
 
-instance Ord (variable level) => Ord1 (Pattern level variable) where
+instance (Ord level, Ord (variable level)) => Ord1 (Pattern level variable) where
     liftCompare liftedCompare a b =
         case (a, b) of
             (AndPattern a', AndPattern b') -> liftCompare liftedCompare a' b'
@@ -1111,7 +1166,7 @@ instance Ord (variable level) => Ord1 (Pattern level variable) where
             (_, TopPattern _) -> GT
             (VariablePattern a', VariablePattern b') -> compare a' b'
 
-instance Eq (variable level) => Eq1 (Pattern level variable) where
+instance (Eq level, Eq (variable level)) => Eq1 (Pattern level variable) where
     liftEq liftedEq a b =
         case (a, b) of
             (AndPattern a', AndPattern b') -> liftEq liftedEq a' b'
@@ -1138,7 +1193,7 @@ instance Eq (variable level) => Eq1 (Pattern level variable) where
             (VariablePattern a', VariablePattern b') -> a' == b'
             _ -> False
 
-instance Show (variable level) => Show1 (Pattern level variable) where
+instance (Show level, Show (variable level)) => Show1 (Pattern level variable) where
     liftShowsPrec showsPrec_ showList_ prec pat =
         showParen (prec > 9)
         (case pat of
@@ -1234,6 +1289,31 @@ instance (Hashable child, Hashable (variable level))
     TopPattern           p -> hashWithSalt s p
     VariablePattern      p -> hashWithSalt s p
     -- FIXME: How to factor this out? with existentials?
+
+instance (NFData child, NFData (var level)) => NFData (Pattern level var child) where
+    rnf =
+        \case
+            AndPattern p -> rnf p
+            ApplicationPattern p -> rnf p
+            BottomPattern p -> rnf p
+            CeilPattern p -> rnf p
+            DomainValuePattern p -> rnf p
+            EqualsPattern p -> rnf p
+            ExistsPattern p -> rnf p
+            FloorPattern p -> rnf p
+            ForallPattern p -> rnf p
+            IffPattern p -> rnf p
+            ImpliesPattern p -> rnf p
+            InPattern p -> rnf p
+            NextPattern p -> rnf p
+            NotPattern p -> rnf p
+            OrPattern p -> rnf p
+            RewritesPattern p -> rnf p
+            StringLiteralPattern p -> rnf p
+            CharLiteralPattern p -> rnf p
+            TopPattern p -> rnf p
+            VariablePattern p -> rnf p
+
 deriving instance
     ( Eq child
     , Eq (variable level)
