@@ -37,6 +37,8 @@ Conventions used:
 -}
 module Kore.Parser.ParserImpl where
 
+import           Control.Applicative
+                 ( Alternative ((<|>)) )
 import           Control.Arrow
                  ( (&&&) )
 import           Control.Monad
@@ -106,22 +108,23 @@ BNF definition:
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
 sortParser
-    :: MetaOrObject level
+    :: forall level.
+       MetaOrObject level
     => level        -- ^ Distinguishes between the meta and non-meta elements.
     -> Parser (Sort level)
 sortParser x = do
     identifier <- idParser x
-    c <- ParserUtils.peekChar
-    case c of
-        Just '{' -> actualSortParser identifier
-        _        -> return (SortVariableSort $ SortVariable identifier)
+    parseSortActual identifier <|> parseSortVariable identifier
   where
-    actualSortParser identifier = do
-        sorts <- inCurlyBracesListParser (sortParser x)
-        return $ SortActualSort SortActual
-            { sortActualName = stringNameNormalizer identifier
-            , sortActualSorts = sorts
-            }
+    parseSortActual :: Id level -> Parser (Sort level)
+    parseSortActual identifier =
+        SortActualSort . SortActual (stringNameNormalizer identifier)
+        <$> inCurlyBracesListParser (sortParser x)
+
+    parseSortVariable :: Id level -> Parser (Sort level)
+    parseSortVariable identifier =
+        pure (SortVariableSort (SortVariable identifier))
+
     stringNameNormalizer :: Id level -> Id level
     stringNameNormalizer identifier@Id {getId = i} =
         if isMeta x && (i == show StringSort)
