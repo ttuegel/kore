@@ -11,20 +11,35 @@ import Kore.ASTVerifier.DefinitionVerifier
        ( defaultAttributesVerification, verifyDefinition )
 import Kore.Parser.Parser
        ( fromKore )
+import Kore.Step.StepperAttributes
+       ( StepperAttributes )
 
 import qualified Paths
 
 main :: IO ()
 main =
     defaultMain
-    [ parse "kore.kore" (Paths.dataFileName "../../kore/kore.kore")
-    , parse "bool.kore" (Paths.dataFileName "../../../test/resources/bool.kore")
-    , parse "imp.kore" (Paths.dataFileName "../../../test/resources/imp.kore")
-    , parse "imp2.kore" (Paths.dataFileName "../../../test/resources/imp2.kore")
-    , parse "lambda.kore" (Paths.dataFileName "../../../test/resources/lambda.kore")
-    , parse "list.kore" (Paths.dataFileName "../../../test/resources/list.kore")
-    , parse "nat.kore" (Paths.dataFileName "../../../test/resources/nat.kore")
-    , parse "user-meta-nat.kore" (Paths.dataFileName "../../../test/resources/user-meta-nat.kore")
+    [ bgroup "Parse" (map parse koreFiles)
+    , bgroup "Read and parse" (map readAndParse koreFiles)
+      -- 'kore.kore' cannot be verified
+    , bgroup "Verify" (map verify (tail koreFiles))
+    ]
+
+{- | List of Kore files
+
+The benchmarks in this module test parsing the following list of files.
+-}
+koreFiles :: [FilePath]
+koreFiles =
+    map Paths.dataFileName
+    [ "../../kore/kore.kore"
+    , "../../../test/resources/bool.kore"
+    , "../../../test/resources/imp.kore"
+    , "../../../test/resources/imp2.kore"
+    , "../../../test/resources/lambda.kore"
+    , "../../../test/resources/list.kore"
+    , "../../../test/resources/nat.kore"
+    , "../../../test/resources/user-meta-nat.kore"
     ]
 
 {- | Declare a parser benchmark
@@ -34,10 +49,9 @@ before the benchmark is run because Criterion may repeat a benchmark many times
 to gather timing statistics.
 -}
 parse
-    :: String  -- ^ benchmark name (for the report)
-    -> FilePath  -- ^ name of file to parse
+    :: FilePath  -- ^ name of file to parse
     -> Benchmark
-parse name filename =
+parse filename =
     env (readFile filename)  -- Read Kore definition once before benchmark
     (bench name . nf (fromKore filename))  -- Benchmark parsing step only
   where
