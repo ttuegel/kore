@@ -9,11 +9,6 @@ import Test.Tasty.QuickCheck
        ( forAll, testProperty )
 
 import Data.Functor.Impredicative
-import Kore.AST.Annotated.Kore
-       ( unannotateKorePattern )
-import Kore.AST.Annotated.Sentence
-       ( unannotateAttributes, unannotateDefinition, unannotateModule,
-       unannotateUnifiedSentence )
 import Kore.AST.Common
 import Kore.AST.Kore
 import Kore.AST.MetaOrObject
@@ -21,8 +16,8 @@ import Kore.AST.Pretty
        ( Pretty (..) )
 import Kore.AST.Sentence
 import Kore.Parser.LexemeImpl
-import Kore.Parser.ParserImpl
-import Kore.Parser.ParserUtils
+import Kore.Parser.Parser
+import Kore.Parser.ParserUtils ( parseOnly, endOfInput )
 import Kore.Unparser.Unparse
 
 import Test.Kore
@@ -104,8 +99,7 @@ test_unparse =
             "module t\n\
             \endmodule\n\
             \[]"
-        , unparseParseTest
-            (unannotateDefinition <$> koreDefinitionParser)
+        , unparseParseTest koreParser
             Definition
                 { definitionAttributes = Attributes {getAttributes = []}
                 , definitionModules =
@@ -227,29 +221,24 @@ test_parse =
         -}
         , testProperty "CommonKorePattern"
             (forAll korePatternGen
-             (unparseParseProp (unannotateKorePattern <$> korePatternParser)))
+             (unparseParseProp korePatternParser))
         , testProperty "Attributes"
             (forAll
                 attributesGen
-                (unparseParseProp (unannotateAttributes <$> attributesParser))
+                (unparseParseProp attributesParser)
             )
         , testProperty "Sentence"
             (forAll koreSentenceGen
-             (unparseParseProp
-              (unannotateUnifiedSentence <$> koreSentenceParser)))
+             (unparseParseProp koreSentenceParser))
         , testProperty "Module"
             (forAll
                 (moduleGen koreSentenceGen)
-                (unparseParseProp
-                    (unannotateModule . snd <$> moduleParser koreSentenceParser)
-                )
+                (unparseParseProp koreModuleParser)
             )
         , testProperty "Definition"
             (forAll
                 (definitionGen koreSentenceGen)
-                (unparseParseProp
-                    (unannotateDefinition <$> definitionParser koreSentenceParser)
-                )
+                (unparseParseProp koreParser)
             )
         ]
 

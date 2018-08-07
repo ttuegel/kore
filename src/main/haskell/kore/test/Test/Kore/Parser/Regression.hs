@@ -26,7 +26,6 @@ import           System.Directory
 import           System.FilePath
                  ( addExtension, splitFileName, (</>) )
 
-import Kore.AST.Annotated.Sentence ( unannotateDefinition )
 import Kore.AST.PureToKore
        ( definitionPureToKore )
 import Kore.AST.Sentence
@@ -104,8 +103,7 @@ runParser inputFileName verifyRequest = do
         withCurrentDirectory (Paths.dataFileName ".") (readFile inputFileName)
     let
         definition = do
-            unverifiedDefinition <-
-                unannotateDefinition <$> fromKore inputFileName fileContent
+            unverifiedDefinition <- fromKore inputFileName fileContent
             verifiedDefinition <- case verifyRequest of
                 VerifyRequestWithLifting -> verify unverifiedDefinition
                 VerifyRequestYes         -> verify unverifiedDefinition

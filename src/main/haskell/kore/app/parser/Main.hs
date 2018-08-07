@@ -11,10 +11,10 @@ import           Options.Applicative
                  ( InfoMod, Parser, argument, fullDesc, header, help, long,
                  metavar, progDesc, str, strOption, value )
 
-import Kore.AST.Annotated.Kore
-       ( CommonKorePattern, unannotateKorePattern )
-import Kore.AST.Annotated.Sentence
-       ( KoreDefinition, ModuleName (..), unannotateDefinition )
+import Kore.AST.Kore
+       ( CommonKorePattern )
+import Kore.AST.Sentence
+       ( KoreDefinition, ModuleName (..) )
 import Kore.ASTPrettyPrint
        ( prettyPrintToString )
 import Kore.ASTVerifier.DefinitionVerifier
@@ -27,7 +27,7 @@ import Kore.Error
 import Kore.IndexedModule.IndexedModule
        ( KoreIndexedModule )
 import Kore.Parser.Parser
-       ( LocatedString, fromKore, fromKorePattern )
+       ( fromKore, fromKorePattern )
 import Kore.Step.StepperAttributes
        ( StepperAttributes )
 
@@ -117,7 +117,7 @@ main = do
             then mainVerify willChkAttr parsedDefinition
             else return Map.empty
         when willPrintDefinition $
-            putStrLn (prettyPrintToString (unannotateDefinition parsedDefinition))
+            putStrLn (prettyPrintToString parsedDefinition)
 
         when (patternFileName /= "") $ do
             parsedPattern <- mainPatternParse patternFileName
@@ -126,7 +126,7 @@ main = do
                     mainModule (ModuleName mainModuleName) indexedModules
                 mainPatternVerify indexedModule parsedPattern
             when willPrintPattern $
-                putStrLn (prettyPrintToString (unannotateKorePattern parsedPattern))
+                putStrLn (prettyPrintToString parsedPattern)
 
 mainModule
     :: ModuleName
@@ -144,12 +144,12 @@ mainModule name modules =
 
 -- | IO action that parses a kore definition from a filename and prints timing
 -- information.
-mainDefinitionParse :: String -> IO (KoreDefinition LocatedString)
+mainDefinitionParse :: String -> IO KoreDefinition
 mainDefinitionParse = mainParse fromKore
 
 -- | IO action that parses a kore pattern from a filename and prints timing
 -- information.
-mainPatternParse :: String -> IO (CommonKorePattern LocatedString)
+mainPatternParse :: String -> IO CommonKorePattern
 mainPatternParse = mainParse fromKorePattern
 
 -- | IO action that parses a kore AST entity from a filename and prints timing
@@ -171,7 +171,7 @@ mainParse parser fileName = do
 -- timing information.
 mainVerify
     :: Bool -- ^ whether to check (True) or ignore attributes during verification
-    -> KoreDefinition LocatedString -- ^ Parsed definition to check well-formedness
+    -> KoreDefinition -- ^ Parsed definition to check well-formedness
     -> IO (Map.Map ModuleName (KoreIndexedModule StepperAttributes))
 mainVerify willChkAttr definition =
     let attributesVerification =
@@ -181,8 +181,7 @@ mainVerify willChkAttr definition =
     in do
       verifyResult <-
         clockSomething "Verifying the definition"
-            (verifyAndIndexDefinition attributesVerification
-                (unannotateDefinition definition))
+            (verifyAndIndexDefinition attributesVerification definition)
       case verifyResult of
         Left err1            -> error (printError err1)
         Right indexedModules -> return indexedModules
@@ -193,14 +192,13 @@ mainVerify willChkAttr definition =
 mainPatternVerify
     :: KoreIndexedModule StepperAttributes
     -- ^ Module containing definitions visible in the pattern
-    -> CommonKorePattern LocatedString -- ^ Parsed pattern to check well-formedness
+    -> CommonKorePattern -- ^ Parsed pattern to check well-formedness
     -> IO ()
 mainPatternVerify indexedModule patt =
     do
       verifyResult <-
         clockSomething "Verifying the pattern"
-            (verifyStandalonePattern indexedModule
-                (unannotateKorePattern patt))
+            (verifyStandalonePattern indexedModule patt)
       case verifyResult of
         Left err1 -> error (printError err1)
         Right _   -> return ()

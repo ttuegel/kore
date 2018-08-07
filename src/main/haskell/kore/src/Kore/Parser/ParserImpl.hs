@@ -851,7 +851,7 @@ definitionParser
 definitionParser sentenceParser =
     pure Definition
         <*> attributesParser
-        <*> some (moduleParser sentenceParser)
+        <*> some (liftAnnotation <$> parseLocated (moduleParser sentenceParser))
 
 {-|'moduleParser' parses the module part of a Kore @definition@
 
@@ -862,9 +862,9 @@ BNF definition fragment:
 -}
 moduleParser
     :: Parser (sentence LocatedString sortParam pat variable)
-    -> Parser (Annotation LocatedString, Module LocatedString sentence sortParam pat variable)
+    -> Parser (Module LocatedString sentence sortParam pat variable)
 moduleParser sentenceParser =
-    liftAnnotation <$> parseLocated moduleParser0
+    moduleParser0
   where
     moduleParser0 = do
         mlLexemeParser "module"
