@@ -123,6 +123,7 @@ applyKorePattern metaT objectT korePattern =
 See also: 'unannotateKorePattern'
 
 -}
+-- TODO (thomas.tuegel): Test this in the sort verifier.
 annotateKorePattern
     :: forall var ann.
        (UnifiedPattern var ann -> ann)
