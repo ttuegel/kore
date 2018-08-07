@@ -45,6 +45,7 @@ import           Control.Comonad.Trans.Cofree
                  ( CofreeF ((:<)) )
 import           Control.Monad
                  ( unless, void )
+import           Data.Bifunctor ( first )
 import           Data.Functor.Compose ( Compose (Compose) )
 import           Data.Functor.Identity ( Identity (Identity) )
 import           Data.Functor.Foldable
@@ -783,15 +784,15 @@ korePatternParser = do
     c <- ParserUtils.peekChar'
     case c of
         '\\' -> koreMLConstructorParser
-        '"'  -> koreStringLiteralParser 
+        '"'  -> koreStringLiteralParser
         '\'' -> koreCharLiteralParser
         _    -> koreVariableOrTermPatternParser
   where
     koreStringLiteralParser = do
-        (ann, lit) <- stringLiteralParser
+        (ann, lit) <- parseLocated stringLiteralParser
         pure (asKorePattern ann (StringLiteralPattern lit))
     koreCharLiteralParser = do
-        (ann, lit) <- charLiteralParser
+        (ann, lit) <- parseLocated charLiteralParser
         pure (asKorePattern ann (CharLiteralPattern lit))
 
 
@@ -851,7 +852,9 @@ definitionParser
 definitionParser sentenceParser =
     pure Definition
         <*> attributesParser
-        <*> some (liftAnnotation <$> parseLocated (moduleParser sentenceParser))
+        <*> some (first Annotation <$> parseModule)
+  where
+    parseModule = parseLocated (moduleParser sentenceParser)
 
 {-|'moduleParser' parses the module part of a Kore @definition@
 
@@ -868,9 +871,9 @@ moduleParser sentenceParser =
   where
     moduleParser0 = do
         mlLexemeParser "module"
-        (_, name) <- moduleNameParser
+        name <- moduleNameParser
         sentences <- ParserUtils.manyUntilChar 'e'
-                     (liftAnnotation <$> parseLocated sentenceParser)
+                     (first Annotation <$> parseLocated sentenceParser)
         mlLexemeParser "endmodule"
         attributes <- attributesParser
         return Module
@@ -878,9 +881,6 @@ moduleParser sentenceParser =
               , moduleSentences = sentences
               , moduleAttributes = attributes
               }
-
-liftAnnotation :: (a, b) -> (Annotation a, b)
-liftAnnotation (a, b) = (Annotation a, b)
 
 {-|Enum for the sentence types that have meta- and object- versions.
 -}
@@ -1035,7 +1035,7 @@ BNF example:
 importSentenceRemainderParser :: Parser (KoreSentence LocatedString)
 importSentenceRemainderParser =
     constructUnifiedSentence SentenceImportSentence
-    <$> (SentenceImport <$> (snd <$> moduleNameParser) <*> attributesParser)
+    <$> (SentenceImport <$> moduleNameParser <*> attributesParser)
 
 {-|'axiomSentenceRemainderParser' parses the part after the starting
 'axiom' keyword of an axiom-declaration and constructs it.
@@ -1116,10 +1116,10 @@ leveledPatternParser patternParser level = do
             IsObject -> variableOrTermPatternParser patternParser Object
   where
     stringLiteral = do
-        (ann, lit) <- stringLiteralParser
+        (ann, lit) <- parseLocated stringLiteralParser
         (pure . Compose . Identity) (Annotation ann :< StringLiteralPattern lit)
     charLiteral = do
-        (ann, lit) <- charLiteralParser
+        (ann, lit) <- parseLocated charLiteralParser
         (pure . Compose . Identity) (Annotation ann :< CharLiteralPattern lit)
 
 purePatternParser

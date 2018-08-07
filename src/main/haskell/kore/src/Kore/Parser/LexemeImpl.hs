@@ -50,7 +50,6 @@ import           Kore.AST.Sentence
 import qualified Kore.Parser.CharDict as CharDict
 import           Kore.Parser.CharSet as CharSet
 import           Kore.Parser.CString
-import           Kore.Parser.Location
 import           Kore.Parser.ParserUtils as ParserUtils
 
 sourcePosToFileLocation :: SourcePos -> FileLocation
@@ -77,14 +76,14 @@ idParser x =
   case isMetaOrObject (toProxy x) of
     IsObject -> do
         pos <- sourcePosToFileLocation <$> getPosition
-        (_, name) <- lexeme (objectIdRawParser KeywordsForbidden)
+        name <- lexeme (objectIdRawParser KeywordsForbidden)
         return Id
             { getId = name
             , idLocation = AstLocationFile pos
             }
     IsMeta -> do
         pos <- sourcePosToFileLocation <$> getPosition
-        (_, name) <- lexeme metaIdRawParser
+        name <- lexeme metaIdRawParser
         return Id
             { getId = name
             , idLocation = AstLocationFile pos
@@ -94,25 +93,25 @@ idParser x =
 
 Always starts with @"@.
 -} {- " -}
-stringLiteralParser :: Parser (LocatedString, StringLiteral)
+stringLiteralParser :: Parser StringLiteral
 stringLiteralParser = lexeme stringLiteralRawParser
 
 {-|'charLiteralParser' parses a C-style char literal, unescaping it.
 
 Always starts with @'@.
 -}
-charLiteralParser :: Parser (LocatedString, CharLiteral)
+charLiteralParser :: Parser CharLiteral
 charLiteralParser = lexeme charLiteralRawParser
 
 {-|'moduleNameParser' parses a module name.-}
-moduleNameParser :: Parser (LocatedString, ModuleName)
+moduleNameParser :: Parser ModuleName
 moduleNameParser = lexeme moduleNameRawParser
 
 {-|'lexeme' transforms a raw parser into one that skips the whitespace and any
 comments after the parsed element.
 -}
-lexeme :: Parser a -> Parser (LocatedString, a)
-lexeme child = parseLocated child <* skipWhitespace
+lexeme :: Parser a -> Parser a
+lexeme child = child <* skipWhitespace
 
 lexeme_ :: Parser a -> Parser ()
 lexeme_ = void . L.lexeme skipWhitespace

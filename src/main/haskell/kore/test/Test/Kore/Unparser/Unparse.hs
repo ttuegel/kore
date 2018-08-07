@@ -188,9 +188,9 @@ test_parse =
         , testProperty "Meta testId"
             (forAll (idGen Meta) (unparseParseProp (idParser Meta)))
         , testProperty "StringLiteral"
-            (forAll stringLiteralGen (unparseParseProp (snd <$> stringLiteralParser)))
+            (forAll stringLiteralGen (unparseParseProp stringLiteralParser))
         , testProperty "CharLiteral"
-            (forAll charLiteralGen (unparseParseProp (snd <$> charLiteralParser)))
+            (forAll charLiteralGen (unparseParseProp charLiteralParser))
         , testProperty "Object Symbol"
             (forAll (symbolGen Object) (unparseParseProp (symbolParser Object)))
         , testProperty "Meta Symbol"
