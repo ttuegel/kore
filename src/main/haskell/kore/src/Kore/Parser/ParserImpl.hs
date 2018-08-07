@@ -41,8 +41,12 @@ import           Control.Applicative
                  ( Alternative ((<|>)) )
 import           Control.Arrow
                  ( (&&&) )
+import           Control.Comonad.Trans.Cofree
+                 ( CofreeF ((:<)) )
 import           Control.Monad
                  ( unless, void )
+import           Data.Functor.Compose ( Compose (Compose) )
+import           Data.Functor.Identity ( Identity (Identity) )
 import           Data.Functor.Foldable
 import           Data.Maybe
                  ( isJust )
@@ -51,18 +55,19 @@ import           Text.Megaparsec
 import qualified Text.Megaparsec.Char as Parser
                  ( char )
 
+import           Data.Annotation ( Annotation (Annotation) )
 import           Data.Function.Compose
                  ( (<....>) )
 import           Data.Functor.Impredicative
                  ( Rotate31 (..) )
 import           Kore.AST.Common
-import           Kore.AST.Kore
+import           Kore.AST.Annotated.Kore
 import           Kore.AST.MetaOrObject
-import           Kore.AST.PureML
-                 ( CommonPurePattern )
-import           Kore.AST.Sentence
-import           Kore.MetaML.AST
+import           Kore.AST.Annotated.PureML
+                 ( CommonMetaPattern, CommonPurePattern, unannotatePurePattern )
+import           Kore.AST.Annotated.Sentence
 import           Kore.Parser.Lexeme
+import           Kore.Parser.Location
 import           Kore.Parser.ParserUtils
                  ( Parser )
 import qualified Kore.Parser.ParserUtils as ParserUtils
@@ -493,13 +498,22 @@ variableOrTermPatternParser
     :: MetaOrObject level
     => Parser child
     -> level  -- ^ Distinguishes between the meta and non-meta elements.
-    -> Parser (Pattern level Variable child)
+    -> Parser (Base (CommonPurePattern LocatedString level) child)
 variableOrTermPatternParser childParser x = do
     identifier <- idParser x
     c <- ParserUtils.peekChar'
     if c == ':'
-        then VariablePattern <$> variableRemainderParser x identifier
-        else symbolOrAliasPatternRemainderParser childParser x identifier
+        then variable identifier
+        else symbolOrAlias identifier
+  where
+    variable identifier = do
+        (ann, var) <- parseLocated (variableRemainderParser x identifier)
+        (pure . Compose . Identity) (Annotation ann :< VariablePattern var)
+    symbolOrAlias identifier = do
+        (ann, sym) <-
+            parseLocated
+            (symbolOrAliasPatternRemainderParser childParser x identifier)
+        (pure . Compose . Identity) (Annotation ann :< sym)
 
 {-|'koreVariableOrTermPatternParser' parses a variable pattern or an
 application one.
@@ -515,18 +529,30 @@ BNF definitions:
     | ⟨meta-head⟩ ‘(’ ⟨pattern-list⟩ ‘)’
 @
 -}
-koreVariableOrTermPatternParser :: Parser CommonKorePattern
+koreVariableOrTermPatternParser :: Parser (CommonKorePattern LocatedString)
 koreVariableOrTermPatternParser = do
     c <- ParserUtils.peekChar'
     if c == '#'
-        then
-            asKorePattern <$> variableOrTermPatternParser
-                korePatternParser
-                Meta
-        else
-            asKorePattern <$> variableOrTermPatternParser
-                korePatternParser
-                Object
+        then parseKorePattern (variableOrTerm Meta)
+        else parseKorePattern (variableOrTerm Object)
+  where
+    variableOrTerm level = variableOrTermPatternParser korePatternParser level
+
+-- TODO (thomas.tuegel): Avoid trailing whitespace in annotation
+parseKorePattern :: MetaOrObject level
+                 => Parser (Base (CommonPurePattern LocatedString level) (CommonKorePattern LocatedString))
+                 -> Parser (CommonKorePattern LocatedString)
+parseKorePattern parse = embed . unify <$> parse
+  where
+    unify (Compose (Identity (ann :< pat))) =
+        Compose (Identity (ann :< asUnifiedPattern pat))
+
+parseBasePurePattern :: Parser (Pattern level Variable child)
+                     -> Parser (Base (CommonPurePattern LocatedString level) child)
+parseBasePurePattern parse =
+    liftBase <$> parseLocated parse
+  where
+    liftBase (ann, pat) = (Compose . Identity) (Annotation ann :< pat)
 
 {-|'koreMLConstructorParser' parses a pattern starting with @\@.
 
@@ -569,7 +595,7 @@ BNF definitions:
 
 Always starts with @\@.
 -}
-koreMLConstructorParser :: Parser CommonKorePattern
+koreMLConstructorParser :: Parser (CommonKorePattern LocatedString)
 koreMLConstructorParser = do
     void (Parser.char '\\')
     mlPatternParser
@@ -583,18 +609,18 @@ koreMLConstructorParser = do
         openCurlyBraceParser
         c <- ParserUtils.peekChar'
         if c == '#'
-            then asKorePattern <$>
-                mlConstructorRemainderParser korePatternParser
-                    Meta patternType (unsupportedPatternType Meta)
-            else asKorePattern <$>
-                mlConstructorRemainderParser korePatternParser
-                    Object patternType objectMlConstructorRemainderParser
+            -- TODO (thomas.tuegel): Capture constructor in annotation
+            then parseKorePattern (mlConstructorRemainderParser korePatternParser
+                    Meta patternType (unsupportedPatternType Meta))
+            else parseKorePattern (mlConstructorRemainderParser korePatternParser
+                    Object patternType objectMlConstructorRemainderParser)
     objectMlConstructorRemainderParser patternType =
         case patternType of
             DomainValuePatternType -> DomainValuePattern <$>
                 (   DomainValue
                 <$> inCurlyBracesRemainderParser (sortParser Object)
-                <*> inParenthesesParser (purePatternParser Meta)
+                <*> inParenthesesParser
+                    (unannotatePurePattern <$> purePatternParser Meta)
                 )
             NextPatternType -> NextPattern <$>
                 unaryOperatorRemainderParser korePatternParser Object Next
@@ -633,7 +659,7 @@ leveledMLConstructorParser
     :: MetaOrObject level
     => Parser child
     -> level
-    -> Parser (Pattern level Variable child)
+    -> Parser (Base (CommonPurePattern LocatedString level) child)
 leveledMLConstructorParser childParser level = do
     void (Parser.char '\\')
     keywordBasedParsers
@@ -673,36 +699,39 @@ mlConstructorRemainderParser
     -> level
     -> MLPatternType
     -> (MLPatternType -> Parser (Pattern level Variable child))
-    -> Parser (Pattern level Variable child)
+    -> Parser (Base (CommonPurePattern LocatedString level) child)
 mlConstructorRemainderParser childParser x patternType otherParsers =
-    case patternType of
-        AndPatternType -> AndPattern <$>
-            binaryOperatorRemainderParser childParser x And
-        BottomPatternType -> BottomPattern <$>
-            topBottomRemainderParser x Bottom
-        CeilPatternType -> CeilPattern <$>
-            ceilFloorRemainderParser childParser x Ceil
-        EqualsPatternType -> EqualsPattern <$>
-            equalsInRemainderParser childParser x Equals
-        ExistsPatternType -> ExistsPattern <$>
-            existsForallRemainderParser childParser x Exists
-        FloorPatternType -> FloorPattern <$>
-            ceilFloorRemainderParser childParser x Floor
-        ForallPatternType -> ForallPattern <$>
-            existsForallRemainderParser childParser x Forall
-        IffPatternType -> IffPattern <$>
-            binaryOperatorRemainderParser childParser x Iff
-        ImpliesPatternType -> ImpliesPattern <$>
-            binaryOperatorRemainderParser childParser x Implies
-        InPatternType -> InPattern <$>
-            equalsInRemainderParser childParser x In
-        NotPatternType -> NotPattern <$>
-            unaryOperatorRemainderParser childParser x Not
-        OrPatternType -> OrPattern <$>
-            binaryOperatorRemainderParser childParser x Or
-        TopPatternType -> TopPattern <$>
-            topBottomRemainderParser x Top
-        _ -> otherParsers patternType
+    parseBasePurePattern parsePatternRemainder
+  where
+    parsePatternRemainder =
+        case patternType of
+            AndPatternType -> AndPattern <$>
+                binaryOperatorRemainderParser childParser x And
+            BottomPatternType -> BottomPattern <$>
+                topBottomRemainderParser x Bottom
+            CeilPatternType -> CeilPattern <$>
+                ceilFloorRemainderParser childParser x Ceil
+            EqualsPatternType -> EqualsPattern <$>
+                equalsInRemainderParser childParser x Equals
+            ExistsPatternType -> ExistsPattern <$>
+                existsForallRemainderParser childParser x Exists
+            FloorPatternType -> FloorPattern <$>
+                ceilFloorRemainderParser childParser x Floor
+            ForallPatternType -> ForallPattern <$>
+                existsForallRemainderParser childParser x Forall
+            IffPatternType -> IffPattern <$>
+                binaryOperatorRemainderParser childParser x Iff
+            ImpliesPatternType -> ImpliesPattern <$>
+                binaryOperatorRemainderParser childParser x Implies
+            InPatternType -> InPattern <$>
+                equalsInRemainderParser childParser x In
+            NotPatternType -> NotPattern <$>
+                unaryOperatorRemainderParser childParser x Not
+            OrPatternType -> OrPattern <$>
+                binaryOperatorRemainderParser childParser x Or
+            TopPatternType -> TopPattern <$>
+                topBottomRemainderParser x Top
+            _ -> otherParsers patternType
 
 {-|'korePatternParser' parses an unifiedPattern
 
@@ -749,14 +778,21 @@ BNF definitions:
 Note that the @meta-pattern@ can be a @string@, while the @object-pattern@
 can't.
 -}
-korePatternParser :: Parser CommonKorePattern
+korePatternParser :: Parser (CommonKorePattern LocatedString)
 korePatternParser = do
     c <- ParserUtils.peekChar'
     case c of
         '\\' -> koreMLConstructorParser
-        '"'  -> asKorePattern . StringLiteralPattern <$> stringLiteralParser
-        '\'' -> asKorePattern . CharLiteralPattern <$> charLiteralParser
+        '"'  -> koreStringLiteralParser 
+        '\'' -> koreCharLiteralParser
         _    -> koreVariableOrTermPatternParser
+  where
+    koreStringLiteralParser = do
+        (ann, lit) <- stringLiteralParser
+        pure (asKorePattern ann (StringLiteralPattern lit))
+    koreCharLiteralParser = do
+        (ann, lit) <- charLiteralParser
+        pure (asKorePattern ann (CharLiteralPattern lit))
 
 
 {-|'inSquareBracketsListParser' parses a @list@ of items delimited by
@@ -795,7 +831,7 @@ BNF definition:
 Always starts with @[@.
 -}
 attributesParser
-    :: Parser Attributes
+    :: Parser (Attributes LocatedString)
 attributesParser =
     Attributes <$> inSquareBracketsListParser korePatternParser
 
@@ -806,12 +842,12 @@ BNF definition:
 ⟨definition⟩ ::= ⟨attribute⟩ ‘module’ ⟨module-name⟩ ⟨declaration⟩ ∗ ‘endmodule’ ⟨attribute⟩
 @
 -}
-koreDefinitionParser :: Parser KoreDefinition
+koreDefinitionParser :: Parser (KoreDefinition LocatedString)
 koreDefinitionParser = definitionParser koreSentenceParser
 
 definitionParser
-    :: Parser (sentence sortParam pat variable)
-    -> Parser (Definition sentence sortParam pat variable)
+    :: Parser (sentence LocatedString sortParam pat variable)
+    -> Parser (Definition LocatedString sentence sortParam pat variable)
 definitionParser sentenceParser =
     pure Definition
         <*> attributesParser
@@ -825,19 +861,26 @@ BNF definition fragment:
 @
 -}
 moduleParser
-    :: Parser (sentence sortParam pat variable)
-    -> Parser (Module sentence sortParam pat variable)
-moduleParser sentenceParser = do
-    mlLexemeParser "module"
-    name <- moduleNameParser
-    sentences <- ParserUtils.manyUntilChar 'e' sentenceParser
-    mlLexemeParser "endmodule"
-    attributes <- attributesParser
-    return Module
-           { moduleName = name
-           , moduleSentences = sentences
-           , moduleAttributes = attributes
-           }
+    :: Parser (sentence LocatedString sortParam pat variable)
+    -> Parser (Annotation LocatedString, Module LocatedString sentence sortParam pat variable)
+moduleParser sentenceParser =
+    liftAnnotation <$> parseLocated moduleParser0
+  where
+    moduleParser0 = do
+        mlLexemeParser "module"
+        (_, name) <- moduleNameParser
+        sentences <- ParserUtils.manyUntilChar 'e'
+                     (liftAnnotation <$> parseLocated sentenceParser)
+        mlLexemeParser "endmodule"
+        attributes <- attributesParser
+        return Module
+              { moduleName = name
+              , moduleSentences = sentences
+              , moduleAttributes = attributes
+              }
+
+liftAnnotation :: (a, b) -> (Annotation a, b)
+liftAnnotation (a, b) = (Annotation a, b)
 
 {-|Enum for the sentence types that have meta- and object- versions.
 -}
@@ -869,7 +912,7 @@ BNF definition fragments:
 ⟨hook-declararion⟩ ::= ‘hooked-sort ... | 'hooked-symbol' ...
 @
 -}
-koreSentenceParser :: Parser KoreSentence
+koreSentenceParser :: Parser (KoreSentence LocatedString)
 koreSentenceParser = keywordBasedParsers
     [ ( "alias", sentenceConstructorRemainderParser AliasSentenceType )
     , ( "axiom", axiomSentenceRemainderParser )
@@ -880,7 +923,7 @@ koreSentenceParser = keywordBasedParsers
     , ( "hooked-symbol", hookedSymbolSentenceRemainderParser )
     ]
 
-sentenceConstructorRemainderParser :: SentenceType -> Parser KoreSentence
+sentenceConstructorRemainderParser :: SentenceType -> Parser (KoreSentence LocatedString)
 sentenceConstructorRemainderParser sentenceType
       = do
         c <- ParserUtils.peekChar'
@@ -908,7 +951,7 @@ sentenceConstructorRemainderParser sentenceType
                     (symbolParser Object)
                     (Rotate31 <....> SentenceSymbol)
 
-sentenceSortRemainderParser :: Parser KoreSentence
+sentenceSortRemainderParser :: Parser (KoreSentence LocatedString)
 sentenceSortRemainderParser = do
   c <- ParserUtils.peekChar'
   case c of
@@ -937,13 +980,12 @@ symbolSentenceRemainderParser
     -> (m level
         -> [Sort level]
         -> Sort level
-        -> Attributes
+        -> Attributes LocatedString
         -> as level
        )
     -- ^ Element constructor.
     -> Parser (as level)
-symbolSentenceRemainderParser  x aliasSymbolParser constructor
-  = do
+symbolSentenceRemainderParser x aliasSymbolParser constructor = do
     aliasSymbol <- aliasSymbolParser
     sorts <- inParenthesesListParser (sortParser x)
     colonParser
@@ -967,18 +1009,17 @@ The @meta-@ version always starts with @#@, while the @object-@ one does not.
 aliasSentenceRemainderParser
     :: MetaOrObject level
     => level  -- ^ Distinguishes between the meta and non-meta elements.
-    -> Parser ((Rotate31 SentenceAlias UnifiedPattern Variable) level)
-aliasSentenceRemainderParser x
-  = do
+    -> Parser ((Rotate31 (SentenceAlias LocatedString) UnifiedPattern Variable) level)
+aliasSentenceRemainderParser x = do
     aliasSymbol <- (aliasParser x)
     sorts <- inParenthesesListParser (sortParser x)
     colonParser
     resultSort <- sortParser x
     mlLexemeParser "where"
     -- Note: constraints for left pattern checked in verifySentence
-    leftPattern <- leveledPatternParser korePatternParser x
+    Compose (Identity leftPattern) <- leveledPatternParser korePatternParser x
     mlLexemeParser ":="
-    rightPattern <- leveledPatternParser korePatternParser x
+    Compose (Identity rightPattern) <- leveledPatternParser korePatternParser x
     attributes <- attributesParser
     return (Rotate31 (SentenceAlias aliasSymbol sorts resultSort leftPattern rightPattern attributes))
 
@@ -991,13 +1032,10 @@ BNF example:
 ⟨import-declaration⟩ ::= ... ⟨module-name⟩ ⟨attribute⟩
 @
 -}
-importSentenceRemainderParser :: Parser KoreSentence
+importSentenceRemainderParser :: Parser (KoreSentence LocatedString)
 importSentenceRemainderParser =
-    constructUnifiedSentence SentenceImportSentence <$>
-    ( pure SentenceImport
-        <*> moduleNameParser
-        <*> attributesParser
-    )
+    constructUnifiedSentence SentenceImportSentence
+    <$> (SentenceImport <$> (snd <$> moduleNameParser) <*> attributesParser)
 
 {-|'axiomSentenceRemainderParser' parses the part after the starting
 'axiom' keyword of an axiom-declaration and constructs it.
@@ -1010,10 +1048,11 @@ BNF example:
 
 Always starts with @{@.
 -}
-axiomSentenceRemainderParser :: Parser KoreSentence
-axiomSentenceRemainderParser = asSentence <$>
-    ( pure SentenceAxiom
-        <*> inCurlyBracesListParser unifiedSortVariableParser
+axiomSentenceRemainderParser :: Parser (KoreSentence LocatedString)
+axiomSentenceRemainderParser =
+    asSentence
+    <$> (   SentenceAxiom
+        <$> inCurlyBracesListParser unifiedSortVariableParser
         <*> korePatternParser
         <*> attributesParser
     )
@@ -1032,7 +1071,7 @@ Always starts with @{@.
 sortSentenceRemainderParser
   :: MetaOrObject level
   => level
-  -> Parser (KoreSentenceSort level)
+  -> Parser (KoreSentenceSort LocatedString level)
 sortSentenceRemainderParser x =
     pure SentenceSort
         <*> idParser x
@@ -1043,7 +1082,7 @@ sortSentenceRemainderParser x =
 @hooked-symbol@ keyword of an hook-declaration as a 'SentenceSymbol' and
 constructs the corresponding 'SentenceHook'.
 -}
-hookedSymbolSentenceRemainderParser :: Parser KoreSentence
+hookedSymbolSentenceRemainderParser :: Parser (KoreSentence LocatedString)
 hookedSymbolSentenceRemainderParser =
     constructUnifiedSentence SentenceHookSentence . SentenceHookedSymbol . unRotate31
     <$>
@@ -1056,7 +1095,7 @@ hookedSymbolSentenceRemainderParser =
 'hooked-sort@ keyword of a sort-declaration as a 'SentenceSort' and constructs
 the corresponding 'SentenceHook'.
 -}
-hookedSortSentenceRemainderParser :: Parser KoreSentence
+hookedSortSentenceRemainderParser :: Parser (KoreSentence LocatedString)
 hookedSortSentenceRemainderParser =
     asSentence . SentenceHookedSort <$> sortSentenceRemainderParser Object
 
@@ -1064,24 +1103,31 @@ leveledPatternParser
     :: MetaOrObject level
     => Parser child
     -> level
-    -> Parser (Pattern level Variable child)
+    -> Parser (Base (CommonPurePattern LocatedString level) child)
 leveledPatternParser patternParser level = do
     c <- ParserUtils.peekChar'
     case c of
         '\\' -> leveledMLConstructorParser patternParser level
         _ -> case isMetaOrObject (toProxy level) of
             IsMeta -> case c of
-                '"'  -> StringLiteralPattern <$> stringLiteralParser
-                '\'' -> CharLiteralPattern <$> charLiteralParser
+                '"'  -> stringLiteral
+                '\'' -> charLiteral
                 _    -> variableOrTermPatternParser patternParser Meta
             IsObject -> variableOrTermPatternParser patternParser Object
+  where
+    stringLiteral = do
+        (ann, lit) <- stringLiteralParser
+        (pure . Compose . Identity) (Annotation ann :< StringLiteralPattern lit)
+    charLiteral = do
+        (ann, lit) <- charLiteralParser
+        (pure . Compose . Identity) (Annotation ann :< CharLiteralPattern lit)
 
 purePatternParser
     :: MetaOrObject level
     => level
-    -> Parser (CommonPurePattern level)
+    -> Parser (CommonPurePattern LocatedString level)
 purePatternParser level =
-    Fix <$> leveledPatternParser (purePatternParser level) level
+    embed <$> leveledPatternParser (purePatternParser level) level
 
-metaPatternParser :: Parser CommonMetaPattern
+metaPatternParser :: Parser (CommonMetaPattern LocatedString)
 metaPatternParser = purePatternParser Meta

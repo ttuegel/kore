@@ -7,9 +7,19 @@ import Kore.AST.Common
 import Kore.AST.MetaOrObject
 import Kore.AST.Sentence
 import Kore.Parser.Lexeme
+import Kore.Parser.ParserUtils (Parser)
 
 import Test.Kore
 import Test.Kore.Parser
+
+unannotatedModuleNameParser :: Parser ModuleName
+unannotatedModuleNameParser = snd <$> moduleNameParser
+
+unannotatedStringLiteralParser :: Parser StringLiteral
+unannotatedStringLiteralParser = snd <$> stringLiteralParser
+
+unannotatedCharLiteralParser :: Parser CharLiteral
+unannotatedCharLiteralParser = snd <$> charLiteralParser
 
 test_koreLexeme :: [TestTree]
 test_koreLexeme =
@@ -46,7 +56,7 @@ commaParserTests =
 
 curlyPairParserTests :: [TestTree]
 curlyPairParserTests =
-    parseTree (curlyPairParser (idParser Object) moduleNameParser)
+    parseTree (curlyPairParser (idParser Object) unannotatedModuleNameParser)
         [ success "{a,B}" (testId "a", ModuleName "B")
         , success "{ a , B } " (testId "a", ModuleName "B")
         , success "{/**/a/**/,/**/B/**/}/**/" (testId "a", ModuleName "B")
@@ -189,7 +199,7 @@ mlLexemeParserTests =
 
 moduleNameParserTests :: [TestTree]
 moduleNameParserTests =
-    parseTree moduleNameParser
+    parseTree unannotatedModuleNameParser
         [ success "A" (ModuleName "A")
         , success "A-" (ModuleName "A-")
         , success "A2" (ModuleName "A2")
@@ -203,7 +213,7 @@ moduleNameParserTests =
 
 parenPairParserTests :: [TestTree]
 parenPairParserTests =
-    parseTree (parenPairParser (idParser Object) moduleNameParser)
+    parseTree (parenPairParser (idParser Object) unannotatedModuleNameParser)
         [ success "(a,B)" (testId "a", ModuleName "B")
         , success "( a , B ) " (testId "a", ModuleName "B")
         , success "(/**/a/**/,/**/B/**/)/**/" (testId "a", ModuleName "B")
@@ -233,7 +243,7 @@ skipWhitespaceTests =
 
 stringLiteralParserTests :: [TestTree]
 stringLiteralParserTests =
-    parseTree stringLiteralParser
+    parseTree unannotatedStringLiteralParser
         [ success "\"\"" (StringLiteral "")
         , success "\"a\"" (StringLiteral "a")
         , success "\"\\'\"" (StringLiteral "'")
@@ -279,7 +289,7 @@ stringLiteralParserTests =
 
 charLiteralParserTests :: [TestTree]
 charLiteralParserTests =
-    parseTree charLiteralParser
+    parseTree unannotatedCharLiteralParser
         [ success "'a'" (CharLiteral 'a')
         , success "'\\''" (CharLiteral '\'')
         , success "'\\\"'" (CharLiteral '\"')

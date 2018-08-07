@@ -48,21 +48,31 @@ module Kore.AST.Annotated.Sentence
     , KoreSentence
     , Sentence (..)
     , unannotateSentence
+    , unannotateUnifiedSentence
       -- * Modules
     , Module (..)
     , KoreModule
+    , unannotateModule
       -- * Definitions
     , Definition (..)
     , KoreDefinition
+    , unannotateDefinition
     ) where
 
 import Control.Comonad.Trans.Cofree
        ( Cofree, CofreeF ((:<)), tailF )
+import Control.DeepSeq
+       ( NFData (..) )
+import Control.DeepSeq.Orphans ()
 import Data.Functor.Compose
        ( Compose (..) )
 import Data.Functor.Foldable
 import Data.Functor.Identity
        ( Identity (..) )
+import Data.Maybe
+       ( catMaybes )
+import GHC.Generics
+       ( Generic )
 
 import           Data.Annotation
                  ( Annotation (..) )
@@ -73,9 +83,10 @@ import           Kore.AST.Annotated.Kore
 import           Kore.AST.Common
 import           Kore.AST.MetaOrObject
 import           Kore.AST.Pretty
-                 ( Pretty (..) )
+                 ( Pretty (..), (<+>) )
 import qualified Kore.AST.Pretty as Pretty
-import           Kore.AST.Sentence ( ModuleName (..) )
+import           Kore.AST.Sentence
+                 ( AsSentence (..), ModuleName (..) )
 import qualified Kore.AST.Sentence as Unannotated
 
 {- | Annotated Kore attributes.
@@ -84,7 +95,9 @@ See also: 'Unannotated.Attributes', 'CommonKorePattern'
 
 -}
 newtype Attributes ann = Attributes { getAttributes :: [CommonKorePattern ann] }
-  deriving (Eq, Show)
+  deriving (Eq, Generic, Show)
+
+instance NFData ann => NFData (Attributes ann)
 
 instance Pretty (Attributes annotation) where
     pretty =
@@ -134,8 +147,8 @@ data SentenceAlias
           (Annotation ann)
           (Cofree (pat variable) (Annotation ann)))
     , sentenceAliasAttributes   :: !(Attributes ann)
-    , sentenceAliasAnnotation   :: !(Annotation ann)
     }
+  deriving (Generic)
 
 deriving instance
     ( Eq (var level)
@@ -148,6 +161,14 @@ deriving instance
     , Show (pat var (Cofree (pat var) (Annotation ann)))
     ) =>
     Show (SentenceAlias ann level pat var)
+
+instance
+    ( Functor (pat var)
+    , NFData ann
+    , NFData (var level)
+    , NFData (pat var (Cofree (pat var) (Annotation ann)))
+    ) =>
+    NFData (SentenceAlias ann level pat var)
 
 instance
     ( Functor (pat variable)
@@ -212,9 +233,10 @@ data SentenceSymbol
     , sentenceSymbolSorts      :: ![Sort level]
     , sentenceSymbolResultSort :: !(Sort level)
     , sentenceSymbolAttributes :: !(Attributes ann)
-    , sentenceSymbolAnnotation :: !(Annotation ann)
     }
-  deriving (Eq, Show)
+  deriving (Eq, Generic, Show)
+
+instance NFData ann => NFData (SentenceSymbol ann level pat var)
 
 instance
     ( Functor (pat variable)
@@ -256,9 +278,10 @@ data SentenceImport
     SentenceImport
     { sentenceImportModuleName :: !ModuleName
     , sentenceImportAttributes :: !(Attributes ann)
-    , sentenceImportAnnotation :: !(Annotation ann)
     }
-  deriving (Eq, Show)
+  deriving (Eq, Generic, Show)
+
+instance NFData ann => NFData (SentenceImport ann pat var)
 
 instance
     ( Functor (pat variable)
@@ -298,9 +321,10 @@ data SentenceSort
     { sentenceSortName       :: !(Id level)
     , sentenceSortParameters :: ![SortVariable level]
     , sentenceSortAttributes :: !(Attributes ann)
-    , sentenceSortAnnotation :: !(Annotation ann)
     }
-  deriving (Eq, Show)
+  deriving (Eq, Generic, Show)
+
+instance NFData ann => NFData (SentenceSort ann level pat var)
 
 instance
     ( Functor (pat variable)
@@ -342,8 +366,8 @@ data SentenceAxiom
     { sentenceAxiomParameters :: ![sortParam]
     , sentenceAxiomPattern    :: !(Cofree (pat variable) (Annotation ann))
     , sentenceAxiomAttributes :: !(Attributes ann)
-    , sentenceAxiomAnnotation :: !(Annotation ann)
     }
+  deriving (Generic)
 
 deriving instance
     ( Eq sorts
@@ -356,6 +380,13 @@ deriving instance
     , Show (pat var (Cofree (pat var) (Annotation ann)))
     ) =>
     Show (SentenceAxiom ann sorts pat var)
+
+instance
+    ( Functor (pat var)
+    , NFData ann
+    , NFData sorts
+    , NFData (pat var (Cofree (pat var) (Annotation ann)))
+    ) => NFData (SentenceAxiom ann sorts pat var)
 
 instance
     ( Pretty param
@@ -403,7 +434,9 @@ data SentenceHook
   =
       SentenceHookedSort !(SentenceSort ann level pat variable)
     | SentenceHookedSymbol !(SentenceSymbol ann level pat variable)
-  deriving (Eq, Show)
+  deriving (Eq, Generic, Show)
+
+instance NFData ann => NFData (SentenceHook ann level pat var)
 
 instance
     ( Functor (pat variable)
@@ -465,6 +498,21 @@ deriving instance
     Show (Sentence ann level sorts pat var)
 
 instance
+    ( Functor (pat var)
+    , NFData ann
+    , NFData sorts
+    , NFData (var level)
+    , NFData (pat var (Cofree (pat var) (Annotation ann)))
+    ) => NFData (Sentence ann level sorts pat var)
+  where
+    rnf (SentenceHookSentence s) = rnf s
+    rnf (SentenceAliasSentence s) = rnf s
+    rnf (SentenceSymbolSentence s) = rnf s
+    rnf (SentenceImportSentence s) = rnf s
+    rnf (SentenceAxiomSentence s) = rnf s
+    rnf (SentenceSortSentence s) = rnf s
+
+instance
     ( Pretty sortParam
     , Pretty (Fix (pat variable))
     , Pretty (variable level)
@@ -490,6 +538,15 @@ unannotateSentence (SentenceAxiomSentence ann) =
 unannotateSentence (SentenceSortSentence ann) =
     Unannotated.SentenceSortSentence (unannotateSentenceSort ann)
 
+unannotateUnifiedSentence
+    :: Functor (pat var)
+    => UnifiedSentence ann param pat var
+    -> Unannotated.UnifiedSentence param pat var
+unannotateUnifiedSentence =
+    applyUnifiedSentence
+    (Unannotated.UnifiedMetaSentence . unannotateSentence)
+    (Unannotated.UnifiedObjectSentence . unannotateSentence)
+
 {- | Kore module with annotations.
 
 See also: 'Unannotated.Module'
@@ -504,11 +561,47 @@ data Module
   =
     Module
     { moduleName       :: !ModuleName
-    , moduleSentences  :: ![sentence ann sortParam pat variable]
+    , moduleSentences  :: ![(Annotation ann, sentence ann sortParam pat variable)]
     , moduleAttributes :: !(Attributes ann)
-    , moduleAnnotation :: !(Annotation ann)
     }
-  deriving (Eq, Show)
+  deriving (Eq, Generic, Show)
+
+instance
+    (NFData ann, NFData (sentence ann sortParam pat variable)) =>
+    NFData (Module ann sentence sortParam pat variable)
+
+instance
+    ( Pretty (sentence ann sort pat variable)
+    , Pretty (Fix (pat variable))
+    ) => Pretty (Module ann sentence sort pat variable)
+  where
+    pretty Module {..} =
+        (Pretty.vsep . catMaybes)
+        [ Just ("module" <+> pretty moduleName)
+        , case moduleSentences of
+            [] -> Nothing
+            _ -> (Just . Pretty.indent 4 . Pretty.vsep)
+                 (pretty . snd <$> moduleSentences)
+        , Just "endmodule"
+        , Just (pretty moduleAttributes)
+        ]
+
+unannotateModule
+    :: Functor (pat var)
+    => Module ann UnifiedSentence param pat var
+    -> Unannotated.Module Unannotated.UnifiedSentence param pat var
+unannotateModule
+    Module
+    { moduleName
+    , moduleSentences
+    , moduleAttributes
+    }
+  =
+    Unannotated.Module
+    { moduleName
+    , moduleSentences = unannotateUnifiedSentence . snd <$> moduleSentences
+    , moduleAttributes = unannotateAttributes moduleAttributes
+    }
 
 {-| Annotated Kore definitions.
 
@@ -524,10 +617,37 @@ data Definition
   =
     Definition
     { definitionAttributes :: !(Attributes ann)
-    , definitionModules    :: ![Module ann sentence sortParam pat variable]
-    , definitionAnnotation :: !(Annotation ann)
+    , definitionModules    :: ![(Annotation ann, Module ann sentence sortParam pat variable)]
     }
-  deriving (Eq, Show)
+  deriving (Eq, Generic, Show)
+
+instance
+    (NFData ann, NFData (sentence ann sortParam pat variable)) =>
+    NFData (Definition ann sentence sortParam pat variable)
+
+instance
+    ( Pretty (sentence ann sort pat variable)
+    , Pretty (Fix (pat variable))
+    ) => Pretty (Definition ann sentence sort pat variable)
+  where
+    pretty Definition {..} =
+        Pretty.vsep
+        (pretty definitionAttributes : map (pretty . snd) definitionModules)
+
+unannotateDefinition
+    :: Functor (pat var)
+    => Definition ann UnifiedSentence sorts pat var
+    -> Unannotated.Definition Unannotated.UnifiedSentence sorts pat var
+unannotateDefinition
+    Definition
+    { definitionAttributes
+    , definitionModules
+    }
+  =
+    Unannotated.Definition
+    { definitionAttributes = unannotateAttributes definitionAttributes
+    , definitionModules = unannotateModule . snd <$> definitionModules
+    }
 
 type KoreSentenceAlias ann level =
     SentenceAlias ann level UnifiedPattern Variable
@@ -553,6 +673,13 @@ newtype UnifiedSentence ann sortParam pat variable =
     { getUnifiedSentence ::
         Unified (Rotate41 (Sentence ann) sortParam pat variable)
     }
+  deriving (Generic)
+
+instance
+    ( NFData (Sentence ann Meta sorts pat var)
+    , NFData (Sentence ann Object sorts pat var)
+    ) =>
+    NFData (UnifiedSentence ann sorts pat var)
 
 {-# COMPLETE UnifiedMetaSentence, UnifiedObjectSentence #-}
 
@@ -603,3 +730,29 @@ type KoreModule ann =
 type KoreDefinition ann =
     Definition ann UnifiedSentence UnifiedSortVariable UnifiedPattern Variable
 
+instance
+    ( MetaOrObject level
+    ) => AsSentence (KoreSentence ann) (KoreSentenceAlias ann level)
+  where
+    asSentence = constructUnifiedSentence SentenceAliasSentence
+
+instance
+    ( MetaOrObject level
+    ) => AsSentence (KoreSentence ann) (KoreSentenceSymbol ann level)
+  where
+    asSentence = constructUnifiedSentence SentenceSymbolSentence
+
+instance AsSentence (KoreSentence ann) (KoreSentenceImport ann) where
+    asSentence = constructUnifiedSentence SentenceImportSentence
+
+instance AsSentence (KoreSentence ann) (KoreSentenceAxiom ann) where
+    asSentence = constructUnifiedSentence SentenceAxiomSentence
+
+instance
+    ( MetaOrObject level
+    ) => AsSentence (KoreSentence ann) (KoreSentenceSort ann level)
+  where
+    asSentence = constructUnifiedSentence SentenceSortSentence
+
+instance AsSentence (KoreSentence ann) (KoreSentenceHook ann) where
+    asSentence = constructUnifiedSentence SentenceHookSentence

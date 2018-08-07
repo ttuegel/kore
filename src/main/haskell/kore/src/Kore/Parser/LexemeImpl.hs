@@ -50,6 +50,7 @@ import           Kore.AST.Sentence
 import qualified Kore.Parser.CharDict as CharDict
 import           Kore.Parser.CharSet as CharSet
 import           Kore.Parser.CString
+import           Kore.Parser.Location
 import           Kore.Parser.ParserUtils as ParserUtils
 
 sourcePosToFileLocation :: SourcePos -> FileLocation
@@ -76,14 +77,14 @@ idParser x =
   case isMetaOrObject (toProxy x) of
     IsObject -> do
         pos <- sourcePosToFileLocation <$> getPosition
-        name <- lexeme (objectIdRawParser KeywordsForbidden)
+        (_, name) <- lexeme (objectIdRawParser KeywordsForbidden)
         return Id
             { getId = name
             , idLocation = AstLocationFile pos
             }
     IsMeta -> do
         pos <- sourcePosToFileLocation <$> getPosition
-        name <- lexeme metaIdRawParser
+        (_, name) <- lexeme metaIdRawParser
         return Id
             { getId = name
             , idLocation = AstLocationFile pos
@@ -93,25 +94,28 @@ idParser x =
 
 Always starts with @"@.
 -} {- " -}
-stringLiteralParser :: Parser StringLiteral
+stringLiteralParser :: Parser (LocatedString, StringLiteral)
 stringLiteralParser = lexeme stringLiteralRawParser
 
 {-|'charLiteralParser' parses a C-style char literal, unescaping it.
 
 Always starts with @'@.
 -}
-charLiteralParser :: Parser CharLiteral
+charLiteralParser :: Parser (LocatedString, CharLiteral)
 charLiteralParser = lexeme charLiteralRawParser
 
 {-|'moduleNameParser' parses a module name.-}
-moduleNameParser :: Parser ModuleName
+moduleNameParser :: Parser (LocatedString, ModuleName)
 moduleNameParser = lexeme moduleNameRawParser
 
 {-|'lexeme' transforms a raw parser into one that skips the whitespace and any
 comments after the parsed element.
 -}
-lexeme :: Parser a -> Parser a
-lexeme = L.lexeme skipWhitespace
+lexeme :: Parser a -> Parser (LocatedString, a)
+lexeme child = parseLocated child <* skipWhitespace
+
+lexeme_ :: Parser a -> Parser ()
+lexeme_ = void . L.lexeme skipWhitespace
 
 {-|'skipWhitespace' skips whitespace and any comments.
 -}
@@ -383,8 +387,7 @@ skipString = void . Parser.string
 followed by a character which could be part of an @object-identifier@.
 -}
 mlLexemeParser :: String -> Parser ()
-mlLexemeParser s =
-    lexeme (void (Parser.string s <* keywordEndParser))
+mlLexemeParser s = lexeme_ (Parser.string s <* keywordEndParser)
 
 {-|'keywordEndParser' checks that the next character cannot be part of an
 @object-identifier@.

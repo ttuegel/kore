@@ -32,27 +32,31 @@ module Kore.Parser.Parser
     , fromKorePattern
     , koreParser
     , korePatternParser
+    , module Kore.Parser.Location
     ) where
 
-import           Kore.AST.Kore           (CommonKorePattern)
-import           Kore.AST.Sentence
-import           Kore.Parser.Lexeme      (skipWhitespace)
-import qualified Kore.Parser.ParserImpl  as KoreParser (koreDefinitionParser,
-                                                        korePatternParser)
+import           Kore.AST.Annotated.Kore
+                 ( CommonKorePattern )
+import           Kore.AST.Annotated.Sentence
+import           Kore.Parser.Lexeme
+                 ( skipWhitespace )
+import           Kore.Parser.Location
+import qualified Kore.Parser.ParserImpl as KoreParser
+                 ( koreDefinitionParser, korePatternParser )
 import           Kore.Parser.ParserUtils
 
 {-|'koreParser' is a parser for Kore.
 
 The input must contain a full valid Kore defininition and nothing else.
 -}
-koreParser :: Parser KoreDefinition
+koreParser :: Parser (KoreDefinition LocatedString)
 koreParser = skipWhitespace *> KoreParser.koreDefinitionParser <* endOfInput
 
 {-|'korePatternParser' is a parser for Kore patterns.
 
 The input must contain a full valid Kore pattern and nothing else.
 -}
-korePatternParser :: Parser CommonKorePattern
+korePatternParser :: Parser (CommonKorePattern LocatedString)
 korePatternParser = skipWhitespace *> KoreParser.korePatternParser <* endOfInput
 
 {-|'fromKore' takes a string representation of a Kore Definition and returns
@@ -60,7 +64,7 @@ a 'KoreDefinition' or a parse error.
 
 The input must contain a full valid Kore definition and nothing else.
 -}
-fromKore :: FilePath -> String -> Either String KoreDefinition
+fromKore :: FilePath -> String -> Either String (KoreDefinition LocatedString)
 fromKore = parseOnly koreParser
 
 {-|'fromKorePattern' takes a string representation of a Kore Pattern and returns
@@ -68,5 +72,7 @@ a 'KorePattern' or a parse error.
 
 The input must contain a full valid Kore pattern and nothing else.
 -}
-fromKorePattern :: FilePath -> String -> Either String CommonKorePattern
+fromKorePattern :: FilePath
+                -> String
+                -> Either String (CommonKorePattern LocatedString)
 fromKorePattern = parseOnly korePatternParser

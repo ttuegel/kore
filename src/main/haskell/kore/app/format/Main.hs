@@ -13,10 +13,10 @@ import Options.Applicative
 import System.IO
        ( stdout )
 
-import Kore.AST.Sentence
+import Kore.AST.Annotated.Sentence
        ( KoreDefinition )
 import Kore.Parser.Parser
-       ( fromKore )
+       ( LocatedString, fromKore )
 
 import GlobalMain
 
@@ -67,6 +67,6 @@ main =
                     renderIO stdout (layoutPretty layoutOptions $ pretty defn)
 
 -- | Read a 'KoreDefinition' from the given file name or signal an error.
-readKoreOrDie :: FilePath -> IO KoreDefinition
+readKoreOrDie :: FilePath -> IO (KoreDefinition LocatedString)
 readKoreOrDie fileName =
     readFile fileName >>= either error return . fromKore fileName

@@ -1,5 +1,7 @@
 module Data.Annotation where
 
+import Control.DeepSeq
+       ( NFData )
 import Control.Lens.Wrapped
        ( Wrapped (..) )
 import Data.Hashable
@@ -19,11 +21,13 @@ newtype Annotation ann = Annotation { getAnnotation :: ann }
 instance Eq (Annotation ann) where
     (==) _ _ = True
 
+-- | TODO (thomas.tuegel): Should 'Hashable' consider annotations?
+instance Hashable ann => Hashable (Annotation ann)
+
+instance NFData ann => NFData (Annotation ann)
+
 instance Ord (Annotation ann) where
     compare _ _ = EQ
 
 instance Wrapped (Annotation ann) where
     type Unwrapped (Annotation ann) = ann
-
--- | TODO (thomas.tuegel): Should 'Hashable' consider annotations?
-instance Hashable ann => Hashable (Annotation ann)

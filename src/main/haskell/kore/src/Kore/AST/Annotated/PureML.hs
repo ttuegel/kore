@@ -10,6 +10,8 @@ Portability : portable
 -}
 module Kore.AST.Annotated.PureML
     ( PureMLPattern
+    , CommonPurePattern
+    , CommonMetaPattern
     , asPurePattern
     , fromPurePattern
     , annotatePurePattern
@@ -28,6 +30,8 @@ import Data.Functor.Foldable
 import Data.Annotation
        ( Annotation (..) )
 import Kore.AST.Common
+import Kore.AST.MetaOrObject
+       ( Meta )
 import qualified Kore.AST.PureML as Unannotated
 
 {-| Annotated matching logic patterns at a fixed, specified level.
@@ -40,6 +44,9 @@ See also: 'Unannotated.PureMLPattern'
 -}
 type PureMLPattern ann level variable =
     Cofree (Pattern level variable) (Annotation ann)
+
+type CommonPurePattern ann level = PureMLPattern ann level Variable
+type CommonMetaPattern ann = CommonPurePattern ann Meta
 
 asPurePattern
     :: ann

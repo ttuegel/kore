@@ -46,6 +46,8 @@ module Kore.AST.Sentence
       -- * Sentences
     , Sentence (..)
     , UnifiedSentence (..)
+    , pattern UnifiedMetaSentence
+    , pattern UnifiedObjectSentence
     , KoreSentence
     , constructUnifiedSentence
     , applyUnifiedSentence
@@ -479,6 +481,16 @@ to allow using toghether both 'Meta' and 'Object' sentences.
 newtype UnifiedSentence sortParam pat variable = UnifiedSentence
     { getUnifiedSentence :: Unified (Rotate41 Sentence sortParam pat variable) }
   deriving (Generic)
+
+{-# COMPLETE UnifiedMetaSentence, UnifiedObjectSentence #-}
+
+pattern UnifiedMetaSentence
+    :: Sentence Meta sorts pat var -> UnifiedSentence sorts pat var
+pattern UnifiedMetaSentence pat = UnifiedSentence (UnifiedMeta (Rotate41 pat))
+
+pattern UnifiedObjectSentence
+    :: Sentence Object sorts pat var -> UnifiedSentence sorts pat var
+pattern UnifiedObjectSentence pat = UnifiedSentence (UnifiedObject (Rotate41 pat))
 
 deriving instance
     ( Eq1 (pat variable)

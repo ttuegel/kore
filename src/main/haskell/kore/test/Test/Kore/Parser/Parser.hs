@@ -3,17 +3,23 @@ module Test.Kore.Parser.Parser (test_koreParser) where
 import Test.Tasty
        ( TestTree, testGroup )
 
+import Kore.AST.Annotated.Kore
+       ( unannotateKorePattern )
+import Kore.AST.Annotated.Sentence
+       ( unannotateAttributes, unannotateDefinition, unannotateModule,
+       unannotateUnifiedSentence )
 import Kore.AST.Builders
        ( sort_ )
 import Kore.AST.Common
 import Kore.AST.Kore
 import Kore.AST.MetaOrObject
 import Kore.AST.PureToKore
-       (patternPureToKore)
+       ( patternPureToKore )
 import Kore.AST.Sentence
 import Kore.ASTUtils.SmartPatterns
 import Kore.Implicit.ImplicitSorts
 import Kore.Parser.ParserImpl
+import Kore.Parser.ParserUtils
 
 import Test.Kore
 import Test.Kore.Parser
@@ -349,9 +355,12 @@ variableParserTests =
         , FailureWithoutMessage ["", "var", "v:", ":s"]
         ]
 
+unannotatedKorePatternParser :: Parser CommonKorePattern
+unannotatedKorePatternParser = unannotateKorePattern <$> korePatternParser
+
 andPatternParserTests :: [TestTree]
 andPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\\and{s}(\"a\", \"b\")"
             ( asKorePattern $ AndPattern And
                 { andSort = sortVariableSort "s" :: Sort Object
@@ -372,7 +381,7 @@ andPatternParserTests =
         ]
 applicationPatternParserTests :: [TestTree]
 applicationPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "#v:#Char"
             ( asKorePattern $ VariablePattern Variable
                 { variableName = testId "#v" :: Id Meta
@@ -424,7 +433,7 @@ applicationPatternParserTests =
         ]
 bottomPatternParserTests :: [TestTree]
 bottomPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\\bottom{#Sort}()"
             (asKorePattern $ BottomPattern $ Bottom
                 (sortVariableSort "#Sort" :: Sort Meta)
@@ -439,7 +448,7 @@ bottomPatternParserTests =
         ]
 ceilPatternParserTests :: [TestTree]
 ceilPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\\ceil{s1, s2}(\"a\")"
             (asKorePattern $ CeilPattern Ceil
                     { ceilOperandSort = sortVariableSort "s1" :: Sort Object
@@ -458,7 +467,7 @@ ceilPatternParserTests =
         ]
 domainValuePatternParserTests :: [TestTree]
 domainValuePatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\\dv{s1}(\"a\")"
             ( patternPureToKore
             $ DV_ (sortVariableSort "s1") (StringLiteral_ (StringLiteral "a"))
@@ -472,7 +481,7 @@ domainValuePatternParserTests =
         ]
 equalsPatternParserTests :: [TestTree]
 equalsPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\\equals{s1, s2}(\"a\", \"b\")"
             ( asKorePattern $ EqualsPattern Equals
                     { equalsOperandSort = sortVariableSort "s1" :: Sort Object
@@ -494,7 +503,7 @@ equalsPatternParserTests =
         ]
 existsPatternParserTests :: [TestTree]
 existsPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\\exists{#s}(#v:#Char, \"b\")"
             (asKorePattern $ ExistsPattern Exists
                     { existsSort = sortVariableSort "#s" :: Sort Meta
@@ -524,7 +533,7 @@ existsPatternParserTests =
         ]
 floorPatternParserTests :: [TestTree]
 floorPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\\floor{s1, s2}(\"a\")"
             ( asKorePattern $ FloorPattern Floor
                     { floorOperandSort = sortVariableSort "s1" :: Sort Object
@@ -543,7 +552,7 @@ floorPatternParserTests =
         ]
 forallPatternParserTests :: [TestTree]
 forallPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\\forall{s}(v:s1, \"b\")"
             ( asKorePattern $ ForallPattern Forall
                     { forallSort = sortVariableSort "s" :: Sort Object
@@ -573,7 +582,7 @@ forallPatternParserTests =
         ]
 iffPatternParserTests :: [TestTree]
 iffPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\\iff{s}(\"a\", \"b\")"
             ( asKorePattern $ IffPattern Iff
                     { iffSort = sortVariableSort "s" :: Sort Object
@@ -593,7 +602,7 @@ iffPatternParserTests =
         ]
 impliesPatternParserTests :: [TestTree]
 impliesPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\\implies{s}(\"a\", \"b\")"
             ( asKorePattern $ ImpliesPattern Implies
                     { impliesSort = sortVariableSort "s" :: Sort Object
@@ -613,7 +622,7 @@ impliesPatternParserTests =
         ]
 memPatternParserTests :: [TestTree]
 memPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\\in{s1,s2}(v:s3, \"b\")"
             ( asKorePattern $ InPattern In
                     { inOperandSort = sortVariableSort "s1" :: Sort Object
@@ -654,7 +663,7 @@ memPatternParserTests =
         ]
 notPatternParserTests :: [TestTree]
 notPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\\not{s}(\"a\")"
             ( asKorePattern $ NotPattern Not
                     { notSort = sortVariableSort "s" :: Sort Object
@@ -674,7 +683,7 @@ notPatternParserTests =
         ]
 nextPatternParserTests :: [TestTree]
 nextPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\\next{s}(\"a\")"
             ( asKorePattern $ NextPattern Next
                     { nextSort = sortVariableSort "s"
@@ -700,7 +709,7 @@ nextPatternParserTests =
         ]
 orPatternParserTests :: [TestTree]
 orPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\\or{s}(\"a\", \"b\")"
             ( asKorePattern $ OrPattern Or
                     { orSort = sortVariableSort "s" :: Sort Object
@@ -720,7 +729,7 @@ orPatternParserTests =
         ]
 rewritesPatternParserTests :: [TestTree]
 rewritesPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\\rewrites{s}(\"a\", \"b\")"
             ( asKorePattern $ RewritesPattern Rewrites
                     { rewritesSort = sortVariableSort "s"
@@ -746,7 +755,7 @@ rewritesPatternParserTests =
         ]
 stringLiteralPatternParserTests :: [TestTree]
 stringLiteralPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\"hello\""
             (asKorePattern $ StringLiteralPattern (StringLiteral "hello"))
         , success "\"\""
@@ -757,7 +766,7 @@ stringLiteralPatternParserTests =
         ]
 topPatternParserTests :: [TestTree]
 topPatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "\\top{s}()"
             (asKorePattern $ TopPattern $ Top
                 (sortVariableSort "s" :: Sort Object)
@@ -767,7 +776,7 @@ topPatternParserTests =
         ]
 variablePatternParserTests :: [TestTree]
 variablePatternParserTests =
-    parseTree korePatternParser
+    parseTree unannotatedKorePatternParser
         [ success "v:s"
             ( asKorePattern $ VariablePattern Variable
                 { variableName = testId "v" :: Id Object
@@ -786,9 +795,12 @@ variablePatternParserTests =
             , FailureWithoutMessage ["", "var", "v:", ":s", "c(s)", "c{s}"]
         ]
 
+unannotatedKoreSentenceParser :: Parser KoreSentence
+unannotatedKoreSentenceParser = unannotateUnifiedSentence <$> koreSentenceParser
+
 sentenceAliasParserTests :: [TestTree]
 sentenceAliasParserTests =
-    parseTree koreSentenceParser
+    parseTree unannotatedKoreSentenceParser
         [
           success "alias a{s1}(s2) : s3 where a{s1}(X:s2) := g{}() [\"a\"]"
             ( constructUnifiedSentence SentenceAliasSentence $
@@ -935,7 +947,7 @@ sentenceAliasParserTests =
 
 sentenceAxiomParserTests :: [TestTree]
 sentenceAxiomParserTests =
-    parseTree koreSentenceParser
+    parseTree unannotatedKoreSentenceParser
         [ success "axiom{sv1}\"a\"[\"b\"]"
             ( constructUnifiedSentence SentenceAxiomSentence $
                 (SentenceAxiom
@@ -999,7 +1011,7 @@ sentenceAxiomParserTests =
 
 sentenceImportParserTests :: [TestTree]
 sentenceImportParserTests =
-    parseTree koreSentenceParser
+    parseTree unannotatedKoreSentenceParser
         [ success "import M[\"b\"]"
             ( constructUnifiedSentence SentenceImportSentence $
                 (SentenceImport
@@ -1022,7 +1034,7 @@ sentenceImportParserTests =
 
 sentenceSortParserTests :: [TestTree]
 sentenceSortParserTests =
-    parseTree koreSentenceParser
+    parseTree unannotatedKoreSentenceParser
         [ success "sort s1 { sv1 } [ \"a\" ]"
             ( constructUnifiedSentence SentenceSortSentence $
                 (SentenceSort
@@ -1060,7 +1072,7 @@ sentenceSortParserTests =
 
 sentenceSymbolParserTests :: [TestTree]
 sentenceSymbolParserTests =
-    parseTree koreSentenceParser
+    parseTree unannotatedKoreSentenceParser
         [ success "symbol sy1 { s1 } ( s1 ) : s1 [\"a\"] "
             ( constructUnifiedSentence SentenceSymbolSentence $
                 (SentenceSymbol
@@ -1105,7 +1117,7 @@ sentenceSymbolParserTests =
 
 sentenceHookedSortParserTests :: [TestTree]
 sentenceHookedSortParserTests =
-    parseTree koreSentenceParser
+    parseTree unannotatedKoreSentenceParser
         [ success "hooked-sort s1 { sv1 } [ \"a\" ]"
             ( constructUnifiedSentence SentenceHookSentence $
                 (SentenceHookedSort
@@ -1146,7 +1158,7 @@ sentenceHookedSortParserTests =
 
 sentenceHookedSymbolParserTests :: [TestTree]
 sentenceHookedSymbolParserTests =
-    parseTree koreSentenceParser
+    parseTree unannotatedKoreSentenceParser
         [ success "hooked-symbol sy1 { s1 } ( s1 ) : s1 [\"a\"] "
             ( constructUnifiedSentence SentenceHookSentence $
                 (SentenceHookedSymbol
@@ -1191,9 +1203,12 @@ sentenceHookedSymbolParserTests =
             ]
         ]
 
+unannotatedAttributesParser :: Parser Attributes
+unannotatedAttributesParser = unannotateAttributes <$> attributesParser
+
 attributesParserTests :: [TestTree]
 attributesParserTests =
-    parseTree attributesParser
+    parseTree unannotatedAttributesParser
         [ success "[\"a\"]"
             (Attributes
                 [asKorePattern $ StringLiteralPattern (StringLiteral "a")])
@@ -1209,7 +1224,7 @@ attributesParserTests =
 
 moduleParserTests :: [TestTree]
 moduleParserTests =
-    parseTree (moduleParser koreSentenceParser)
+    parseTree (unannotateModule . snd <$> moduleParser koreSentenceParser)
         [ success "module MN sort c{}[] endmodule [\"a\"]"
             Module
                 { moduleName = ModuleName "MN"
@@ -1266,7 +1281,7 @@ moduleParserTests =
 
 definitionParserTests :: [TestTree]
 definitionParserTests =
-    parseTree (definitionParser koreSentenceParser)
+    parseTree (unannotateDefinition <$> definitionParser koreSentenceParser)
         [ success "[\"a\"] module M sort c{}[] endmodule [\"b\"]"
             Definition
                 { definitionAttributes =
