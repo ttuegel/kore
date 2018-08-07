@@ -9,7 +9,6 @@ import qualified Data.Map as Map
 import           Data.Maybe
                  ( fromMaybe )
 
-import Kore.AST.Annotated.Sentence (unannotateUnifiedSentence)
 import Kore.AST.Builders
 import Kore.AST.Common
 import Kore.AST.Kore
@@ -24,8 +23,8 @@ import Kore.Error
 import Kore.IndexedModule.IndexedModule
        ( KoreIndexedModule )
 import Kore.Implicit.Attributes
-import Kore.Parser.ParserImpl
-import Kore.Parser.ParserUtils
+import Kore.Parser.Parser
+import Kore.Parser.ParserUtils (parseOnly, endOfInput)
 import Kore.Step.AxiomPatterns
 
 import Test.Kore
@@ -309,11 +308,9 @@ varStateCell = parameterizedVariable_ sortStateCell "VarDotVar0" AstLocationTest
 
 parseAxiom :: String -> Either (Error a) KoreSentence
 parseAxiom str =
-    case parseOnly parser "<test-string>" str of
+    case parseOnly (koreSentenceParser <* endOfInput) "<test-string>" str of
         Left err  -> koreFail err
         Right sen -> return sen
-  where
-    parser = unannotateUnifiedSentence <$> koreSentenceParser <* endOfInput
 
 extractIndexedModule
     :: String
