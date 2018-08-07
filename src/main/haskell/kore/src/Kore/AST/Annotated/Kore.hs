@@ -118,7 +118,7 @@ applyKorePattern metaT objectT korePattern =
             UnifiedMetaPattern pat -> metaT ann pat
             UnifiedObjectPattern pat -> objectT ann pat
 
-{- | Apply annotations to a 'KorePattern'.
+{- | Apply annotations to a 'Unannotated.KorePattern'.
 
 See also: 'unannotateKorePattern'
 
@@ -143,7 +143,7 @@ annotateKorePattern annotate =
         in
             embed (Compose (Identity (Annotation ann :< pat)))
 
-{- | Forget the annotations of an 'AnnotatedKorePattern'.
+{- | Forget the annotations of a 'KorePattern'.
 
 See also: 'annotateKorePattern'
 
