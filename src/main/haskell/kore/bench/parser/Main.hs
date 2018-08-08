@@ -6,7 +6,6 @@ import Data.Proxy ( Proxy (Proxy) )
 import System.FilePath
        ( takeFileName )
 
-import Kore.AST.Annotated.Sentence ( unannotateDefinition )
 import Kore.ASTVerifier.DefinitionVerifier
        ( defaultAttributesVerification, verifyDefinition )
 import Kore.Parser.Parser
@@ -89,7 +88,7 @@ verify filename =
         parsed <- fromKore filename <$> readFile filename
         case parsed of
             Left err -> error err
-            Right defn -> pure (unannotateDefinition defn)
+            Right defn -> pure defn
     -- | Verify the Kore definition.
     -- Runs once per benchmark iteration.
     verify1 defn =
