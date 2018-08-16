@@ -27,6 +27,7 @@ import qualified Kore.AST.Kore as Kore
 import           Kore.AST.MetaOrObject
                  ( IsMetaOrObject (..) )
 import qualified Kore.AST.PureML as Kore
+import qualified Kore.AST.Sentence as Kore
 import qualified Kore.Parser.CharSet as CharSet
 import qualified Kore.Parser.CString as Kore.Parser
 
@@ -257,7 +258,7 @@ assert2 as = fail $! "expected two arguments, found " ++ show (length as)
 koreConstructors
     :: (forall l. IsMetaOrObject l -> Parser (var l))
     -> Parser child
-    -> HashMap Text (IsMetaOrObject level -> Parser (Kore.Pattern level var child))
+    -> HashMap Tokens (IsMetaOrObject level -> Parser (Kore.Pattern level var child))
 koreConstructors parseVar parseChild =
     HashMap.fromList
     [ ("\\and", (<$>) Kore.AndPattern . parseAnd parseChild)
@@ -469,6 +470,67 @@ parseKorePattern parseVar =
 
 parseCommonKorePattern :: Parser Kore.CommonKorePattern
 parseCommonKorePattern = parseKorePattern parseVariable
+
+koreDeclarations :: HashMap Tokens (Parser Kore.KoreSentence)
+koreDeclarations =
+    HashMap.fromList
+    [ ("import", parseImportDeclaration)
+    , ("sort", parseSortDeclaration)
+    , ("symbol", parseSymbolDeclaration)
+    , ("alias", parseAliasDeclaration)
+    , ("axiom", parseAxiomDeclaration)
+    , ("hooked-sort", parseHookedSortDeclaration)
+    , ("hooked-symbol", parseHookedSymbolDeclaration)
+    ]
+
+parseImportDeclaration :: Parser Kore.KoreSentence
+parseImportDeclaration =
+    Kore.UnifiedMetaSentence . Kore.SentenceImportSentence
+    <$> _
+
+parseAxiomDeclaration :: Parser Kore.KoreSentence
+parseAxiomDeclaration =
+    Kore.UnifiedMetaSentence . Kore.SentenceAxiomSentence
+    <$> _
+
+parseHookedSortDeclaration :: Parser Kore.KoreSentence
+parseHookedSortDeclaration =
+    Kore.UnifiedObjectSentence . Kore.SentenceHookSentence . Kore.SentenceHookedSort
+    <$> _
+
+parseHookedSymbolDeclaration :: Parser Kore.KoreSentence
+parseHookedSymbolDeclaration =
+    Kore.UnifiedObjectSentence . Kore.SentenceHookSentence . Kore.SentenceHookedSymbol
+    <$> _
+
+parseSortDeclaration :: Parser Kore.KoreSentence
+parseSortDeclaration =
+    parseUnifiedSentence
+    (\level ->
+        Kore.SentenceSortSentence <$> _
+    )
+
+parseSymbolDeclaration :: Parser Kore.KoreSentence
+parseSymbolDeclaration =
+    parseUnifiedSentence
+    (\level ->
+        Kore.SentenceSymbolSentence <$> _
+    )
+
+parseAliasDeclaration :: Parser Kore.KoreSentence
+parseAliasDeclaration =
+    parseUnifiedSentence
+    (\level ->
+        Kore.SentenceAliasSentence <$> _
+    )
+
+parseUnifiedSentence
+    :: (forall l. IsMetaOrObject l -> Parser (Kore.Sentence l sorts pat var))
+    -> Parser (Kore.UnifiedSentence sorts pat var)
+parseUnifiedSentence parseSentence =
+    (Parsec.<|>)
+    (Kore.UnifiedMetaSentence <$> parseSentence IsMeta)
+    (Kore.UnifiedObjectSentence <$> parseSentence IsObject)
 
 impossible :: a
 impossible = error "The impossible happened!"
