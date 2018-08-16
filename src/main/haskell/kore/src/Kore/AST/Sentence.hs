@@ -424,6 +424,14 @@ newtype UnifiedSentence sortParam pat variable = UnifiedSentence
     { getUnifiedSentence :: Unified (Rotate41 Sentence sortParam pat variable) }
   deriving (Generic)
 
+pattern UnifiedMetaSentence :: () => (level ~ Meta) => Sentence level sorts pat var -> UnifiedSentence sorts pat var
+pattern UnifiedMetaSentence s = UnifiedSentence (UnifiedMeta (Rotate41 s))
+
+pattern UnifiedObjectSentence :: () => (level ~ Object) => Sentence level sorts pat var -> UnifiedSentence sorts pat var
+pattern UnifiedObjectSentence s = UnifiedSentence (UnifiedObject (Rotate41 s))
+
+{-# COMPLETE UnifiedMetaSentence, UnifiedObjectSentence #-}
+
 deriving instance
     ( Eq1 (pat variable), Eq (pat variable (Fix (pat variable)))
     , Eq sortParam
