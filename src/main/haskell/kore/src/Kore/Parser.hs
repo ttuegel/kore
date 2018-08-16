@@ -262,6 +262,30 @@ parseNullary wrap construct =
         (pure . wrap) (construct sort)
     )
 
+parseUnaryPredicate
+    :: (forall level. f level Kore.CommonKorePattern -> Kore.Pattern level Kore.Variable Kore.CommonKorePattern)
+    -> (forall level child. Kore.Sort level -> Kore.Sort level -> child -> f level child)
+    -> Parser Kore.CommonKorePattern
+parseUnaryPredicate wrap construct =
+    parseUnified
+    (\level -> do
+        (operandSort, resultSort) <- parseSortList level >>= assert2
+        arg <- parsePatternList parsePattern >>= assert1
+        (pure . wrap) (construct operandSort resultSort arg)
+    )
+
+parseBinaryPredicate
+    :: (forall level. f level Kore.CommonKorePattern -> Kore.Pattern level Kore.Variable Kore.CommonKorePattern)
+    -> (forall level child. Kore.Sort level -> Kore.Sort level -> child -> child -> f level child)
+    -> Parser Kore.CommonKorePattern
+parseBinaryPredicate wrap construct =
+    parseUnified
+    (\level -> do
+        (operandSort, resultSort) <- parseSortList level >>= assert2
+        (a, b) <- parsePatternList parsePattern >>= assert2
+        (pure . wrap) (construct operandSort resultSort a b)
+    )
+
 koreConstructors :: HashMap Text (Parser Kore.CommonKorePattern)
 koreConstructors =
     HashMap.fromList
@@ -272,10 +296,10 @@ koreConstructors =
     , ("\\not", parseUnaryOperator Kore.NotPattern Kore.Not)
     , ("\\top", parseNullary Kore.TopPattern Kore.Top)
     , ("\\bottom", parseNullary Kore.BottomPattern Kore.Bottom)
-    , ("\\equals", _)
-    , ("\\in", _)
+    , ("\\equals", parseBinaryPredicate Kore.EqualsPattern Kore.Equals)
+    , ("\\in", parseBinaryPredicate Kore.InPattern Kore.In)
     , ("\\ceil", parseUnaryPredicate Kore.CeilPattern Kore.Ceil)
-    , ("\\floor", _)
+    , ("\\floor", parseUnaryPredicate Kore.FloorPattern Kore.Floor)
     , ("\\forall", _)
     , ("\\exists", _)
     -- Object-level pattern constructors
