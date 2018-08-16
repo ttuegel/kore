@@ -2,13 +2,17 @@ module Kore.Parser where
 
 import qualified Control.Monad as Monad
 import qualified Data.Char as Char
+import           Data.Function
+                 ( fix )
+import qualified Data.Functor.Foldable
 import           Data.HashMap.Strict
                  ( HashMap )
 import qualified Data.HashMap.Strict as HashMap
 import           Data.HashSet
                  ( HashSet )
 import qualified Data.HashSet as HashSet
-import Data.Maybe ( fromMaybe )
+import           Data.Maybe
+                 ( fromMaybe )
 import           Data.Text
                  ( Text )
 import qualified Data.Text as Text
@@ -21,7 +25,8 @@ import qualified Text.Megaparsec.Char.Lexer as Parsec.Lexer
 import qualified Kore.AST.Common as Kore
 import qualified Kore.AST.Kore as Kore
 import           Kore.AST.MetaOrObject
-                 ( IsMetaOrObject (..), Unified (..) )
+                 ( IsMetaOrObject (..) )
+import qualified Kore.AST.PureML as Kore
 import qualified Kore.Parser.CharSet as CharSet
 import qualified Kore.Parser.CString as Kore.Parser
 
@@ -185,20 +190,42 @@ parseSortActual level =
     Parsec.label "non-variable sort"
     (Kore.SortActual <$> parseId level <*> parseSortList level)
 
+labelSortList :: Parser a -> Parser a
+labelSortList = Parsec.label "sort list" . braces
+
 parseSortList :: IsMetaOrObject level -> Parser [Kore.Sort level]
 parseSortList level =
-    Parsec.label "sort list"
-    (braces (Parsec.sepBy (parseSort level) comma))
+    labelSortList (Parsec.sepBy (parseSort level) comma)
+
+parseSortList1 :: IsMetaOrObject level -> Parser (Kore.Sort level)
+parseSortList1 level = labelSortList (parseSort level)
+
+parseSortList2
+    :: IsMetaOrObject level
+    -> Parser (Kore.Sort level, Kore.Sort level)
+parseSortList2 level =
+    labelSortList ((,) <$> parseSort level <* comma <*> parseSort level)
 
 parseHead :: IsMetaOrObject level -> Parser (Kore.SymbolOrAlias level)
 parseHead level =
     Parsec.label "symbol or alias head"
     (Kore.SymbolOrAlias <$> parseId level <*> parseSortList level)
 
+labelPatternList :: Parser a -> Parser a
+labelPatternList = Parsec.label "pattern list" . parens
+
 parsePatternList :: Parser child -> Parser [child]
-parsePatternList parseChild =
-    Parsec.label "pattern list"
-    (parens (Parsec.sepBy parseChild comma))
+parsePatternList parseChild = labelPatternList (Parsec.sepBy parseChild comma)
+
+parsePatternList0 :: Parser ()
+parsePatternList0 = labelPatternList (pure ())
+
+parsePatternList1 :: Parser child -> Parser child
+parsePatternList1 = labelPatternList
+
+parsePatternList2 :: Parser child -> Parser (child, child)
+parsePatternList2 parseChild =
+    labelPatternList ((,) <$> parseChild <* comma <*> parseChild)
 
 parseApplication :: IsMetaOrObject level -> Parser child -> Parser (Kore.Application level child)
 parseApplication level parseChild =
@@ -227,94 +254,221 @@ assert2 :: [a] -> Parser (a, a)
 assert2 [a, b] = pure (a, b)
 assert2 as = fail $! "expected two arguments, found " ++ show (length as)
 
-parseBinaryOperator
-    :: (forall level. f level Kore.CommonKorePattern -> Kore.Pattern level Kore.Variable Kore.CommonKorePattern)
-    -> (forall level child. Kore.Sort level -> child -> child -> f level child)
-    -> Parser Kore.CommonKorePattern
-parseBinaryOperator wrap construct =
-    parseUnified
-    (\level -> do
-        sort <- parseSortList level >>= assert1
-        (left, right) <- parsePatternList parsePattern >>= assert2
-        (pure . wrap) (construct sort left right)
-    )
-
-parseUnaryOperator
-    :: (forall level. f level Kore.CommonKorePattern -> Kore.Pattern level Kore.Variable Kore.CommonKorePattern)
-    -> (forall level child. Kore.Sort level -> child -> f level child)
-    -> Parser Kore.CommonKorePattern
-parseUnaryOperator wrap construct =
-    parseUnified
-    (\level -> do
-        sort <- parseSortList level >>= assert1
-        arg <- parsePatternList parsePattern >>= assert1
-        (pure . wrap) (construct sort arg)
-    )
-
-parseNullary
-    :: (forall level. f level Kore.CommonKorePattern -> Kore.Pattern level Kore.Variable Kore.CommonKorePattern)
-    -> (forall level child. Kore.Sort level -> f level child)
-    -> Parser Kore.CommonKorePattern
-parseNullary wrap construct =
-    parseUnified
-    (\level -> do
-        sort <- parseSortList level >>= assert1
-        (pure . wrap) (construct sort)
-    )
-
-parseUnaryPredicate
-    :: (forall level. f level Kore.CommonKorePattern -> Kore.Pattern level Kore.Variable Kore.CommonKorePattern)
-    -> (forall level child. Kore.Sort level -> Kore.Sort level -> child -> f level child)
-    -> Parser Kore.CommonKorePattern
-parseUnaryPredicate wrap construct =
-    parseUnified
-    (\level -> do
-        (operandSort, resultSort) <- parseSortList level >>= assert2
-        arg <- parsePatternList parsePattern >>= assert1
-        (pure . wrap) (construct operandSort resultSort arg)
-    )
-
-parseBinaryPredicate
-    :: (forall level. f level Kore.CommonKorePattern -> Kore.Pattern level Kore.Variable Kore.CommonKorePattern)
-    -> (forall level child. Kore.Sort level -> Kore.Sort level -> child -> child -> f level child)
-    -> Parser Kore.CommonKorePattern
-parseBinaryPredicate wrap construct =
-    parseUnified
-    (\level -> do
-        (operandSort, resultSort) <- parseSortList level >>= assert2
-        (a, b) <- parsePatternList parsePattern >>= assert2
-        (pure . wrap) (construct operandSort resultSort a b)
-    )
-
-koreConstructors :: HashMap Text (Parser Kore.CommonKorePattern)
-koreConstructors =
+koreConstructors
+    :: (forall l. IsMetaOrObject l -> Parser (var l))
+    -> Parser child
+    -> HashMap Text (IsMetaOrObject level -> Parser (Kore.Pattern level var child))
+koreConstructors parseVar parseChild =
     HashMap.fromList
-    [ ("\\and", parseBinaryOperator Kore.AndPattern Kore.And)
-    , ("\\or", parseBinaryOperator Kore.OrPattern Kore.Or)
-    , ("\\implies", parseBinaryOperator Kore.ImpliesPattern Kore.Implies)
-    , ("\\iff", parseBinaryOperator Kore.IffPattern Kore.Iff)
-    , ("\\not", parseUnaryOperator Kore.NotPattern Kore.Not)
-    , ("\\top", parseNullary Kore.TopPattern Kore.Top)
-    , ("\\bottom", parseNullary Kore.BottomPattern Kore.Bottom)
-    , ("\\equals", parseBinaryPredicate Kore.EqualsPattern Kore.Equals)
-    , ("\\in", parseBinaryPredicate Kore.InPattern Kore.In)
-    , ("\\ceil", parseUnaryPredicate Kore.CeilPattern Kore.Ceil)
-    , ("\\floor", parseUnaryPredicate Kore.FloorPattern Kore.Floor)
-    , ("\\forall", _)
-    , ("\\exists", _)
+    [ ("\\and", (<$>) Kore.AndPattern . parseAnd parseChild)
+    , ("\\or", (<$>) Kore.OrPattern . parseOr parseChild)
+    , ("\\implies", (<$>) Kore.ImpliesPattern . parseImplies parseChild)
+    , ("\\iff", (<$>) Kore.IffPattern . parseIff parseChild)
+
+    , ("\\not", (<$>) Kore.NotPattern . parseNot parseChild)
+
+    , ("\\top", (<$>) Kore.TopPattern . parseTop)
+    , ("\\bottom", (<$>) Kore.BottomPattern . parseBottom)
+
+    , ("\\equals", (<$>) Kore.EqualsPattern . parseEquals parseChild)
+    , ("\\in", (<$>) Kore.InPattern . parseIn parseChild)
+
+    , ("\\ceil", (<$>) Kore.CeilPattern . parseCeil parseChild)
+    , ("\\floor", (<$>) Kore.FloorPattern . parseFloor parseChild)
+
+    , ("\\exists", (<$>) Kore.ExistsPattern . parseExists parseVar parseChild)
+    , ("\\forall", (<$>) Kore.ForallPattern . parseForall parseVar parseChild)
+
     -- Object-level pattern constructors
-    , ("\\dv", Kore.asObjectKorePattern <$> _)
-    , ("\\next", Kore.asObjectKorePattern <$> _)
-    , ("\\rewrites", Kore.asObjectKorePattern <$> _)
+    , ("\\dv", parseDomainValuePattern)
+    , ("\\next", parseNextPattern parseChild)
+    , ("\\rewrites", parseRewritesPattern parseChild)
     ]
 
-parseConstructor :: Parser Kore.CommonKorePattern
-parseConstructor = do
-    continue <- Parsec.try (HashMap.lookup <$> parseObjectSlashId <*> pure koreConstructors)
-    fromMaybe Parsec.empty continue
+parseBinaryOperator
+    :: (Kore.Sort level -> child -> child -> f level child)
+    -> Parser child
+    -> IsMetaOrObject level
+    -> Parser (f level child)
+parseBinaryOperator construct = \parseChild level ->
+    (\sort (left, right) -> construct sort left right)
+    <$> parseSortList1 level
+    <*> parsePatternList2 parseChild
 
-parsePattern :: Parser Kore.CommonKorePattern
-parsePattern = _
+parseAnd :: Parser child -> IsMetaOrObject level -> Parser (Kore.And level child)
+parseAnd = parseBinaryOperator Kore.And
+
+parseOr :: Parser child -> IsMetaOrObject level -> Parser (Kore.Or level child)
+parseOr = parseBinaryOperator Kore.Or
+
+parseImplies :: Parser child -> IsMetaOrObject level -> Parser (Kore.Implies level child)
+parseImplies = parseBinaryOperator Kore.Implies
+
+parseIff :: Parser child -> IsMetaOrObject level -> Parser (Kore.Iff level child)
+parseIff = parseBinaryOperator Kore.Iff
+
+parseRewritesPattern :: Parser child -> IsMetaOrObject level -> Parser (Kore.Pattern level var child)
+parseRewritesPattern parseChild =
+    \case
+        IsObject -> Kore.RewritesPattern <$> parseBinaryOperator Kore.Rewrites parseChild IsObject
+        IsMeta -> fail "cannot have a \\rewrites meta-pattern"
+
+parseUnaryOperator
+    :: (Kore.Sort level -> child -> f level child)
+    -> Parser child
+    -> IsMetaOrObject level
+    -> Parser (f level child)
+parseUnaryOperator construct = \parseChild level ->
+    construct
+    <$> parseSortList1 level
+    <*> parsePatternList1 parseChild
+
+parseNot :: Parser child -> IsMetaOrObject level -> Parser (Kore.Not level child)
+parseNot = parseUnaryOperator Kore.Not
+
+parseNextPattern :: Parser child -> IsMetaOrObject level -> Parser (Kore.Pattern level var child)
+parseNextPattern parseChild =
+    \case
+        IsObject -> Kore.NextPattern <$> parseUnaryOperator Kore.Next parseChild IsObject
+        IsMeta -> fail "cannot have a \\next meta-pattern"
+
+parseDomainValuePattern :: IsMetaOrObject level -> Parser (Kore.Pattern level var child)
+parseDomainValuePattern =
+    \case
+        IsObject -> Kore.DomainValuePattern <$> parseUnaryOperator Kore.DomainValue (parseCommonPurePattern IsMeta) IsObject
+        IsMeta -> fail "cannot have a \\dv meta-pattern"
+
+parseConstant
+    :: (Kore.Sort level -> f level child)
+    -> IsMetaOrObject level
+    -> Parser (f level child)
+parseConstant construct = \level ->
+    construct <$> parseSortList1 level <* parsePatternList0
+
+parseTop :: IsMetaOrObject level -> Parser (Kore.Top level child)
+parseTop = parseConstant Kore.Top
+
+parseBottom :: IsMetaOrObject level -> Parser (Kore.Bottom level child)
+parseBottom = parseConstant Kore.Bottom
+
+parseBinaryPredicate
+    :: (Kore.Sort level -> Kore.Sort level -> child -> child -> f level child)
+    -> Parser child
+    -> IsMetaOrObject level
+    -> Parser (f level child)
+parseBinaryPredicate construct = \parseChild level ->
+    construct'
+    <$> parseSortList2 level
+    <*> parsePatternList2 parseChild
+  where
+    construct' (operandSort, resultSort) (left, right) =
+        construct operandSort resultSort left right
+
+parseEquals :: Parser child -> IsMetaOrObject level -> Parser (Kore.Equals level child)
+parseEquals = parseBinaryPredicate Kore.Equals
+
+parseIn :: Parser child -> IsMetaOrObject level -> Parser (Kore.In level child)
+parseIn = parseBinaryPredicate Kore.In
+
+parseUnaryPredicate
+    :: (Kore.Sort level -> Kore.Sort level -> child -> f level child)
+    -> Parser child
+    -> IsMetaOrObject level
+    -> Parser (f level child)
+parseUnaryPredicate construct = \parseChild level ->
+    construct'
+    <$> parseSortList2 level
+    <*> parsePatternList1 parseChild
+  where
+    construct' (operandSort, resultSort) = construct operandSort resultSort
+
+parseCeil :: Parser child -> IsMetaOrObject level -> Parser (Kore.Ceil level child)
+parseCeil = parseUnaryPredicate Kore.Ceil
+
+parseFloor :: Parser child -> IsMetaOrObject level -> Parser (Kore.Floor level child)
+parseFloor = parseUnaryPredicate Kore.Floor
+
+parseConstructor
+    :: (forall l. IsMetaOrObject l -> Parser (var l))
+    -> Parser child
+    -> IsMetaOrObject level
+    -> Parser (Kore.Pattern level var child)
+parseConstructor parseVar parseChild level = do
+    let constructors = koreConstructors parseVar parseChild
+    continue <- Parsec.try (HashMap.lookup <$> parseObjectSlashId <*> pure constructors)
+    fromMaybe (const Parsec.empty) continue level
+
+parseBinder
+    :: (Kore.Sort level -> var level -> child -> f level var child)
+    -> (forall l. IsMetaOrObject l -> Parser (var l))
+    -> Parser child
+    -> IsMetaOrObject level
+    -> Parser (f level var child)
+parseBinder construct = \parseVar parseChild level ->
+    construct'
+    <$> parseSortList1 level
+    <*> labelPatternList ((,) <$> parseVar level <* comma <*> parseChild)
+  where
+    construct' sort (var, child) = construct sort var child
+
+parseExists
+    :: (forall l. IsMetaOrObject l -> Parser (var l))
+    -> Parser child
+    -> IsMetaOrObject level
+    -> Parser (Kore.Exists level var child)
+parseExists = parseBinder Kore.Exists
+
+parseForall
+    :: (forall l. IsMetaOrObject l -> Parser (var l))
+    -> Parser child
+    -> IsMetaOrObject level
+    -> Parser (Kore.Forall level var child)
+parseForall = parseBinder Kore.Forall
+
+parsePattern
+    :: (forall l. IsMetaOrObject l -> Parser (var l))
+    -> IsMetaOrObject level
+    -> Parser child
+    -> Parser (Kore.Pattern level var child)
+parsePattern parseVar =
+    \case
+        IsObject -> \parseChild ->
+            parseConstructor parseVar parseChild IsObject
+            Parsec.<|> (Kore.VariablePattern <$> parseVar IsObject)
+        IsMeta -> \parseChild ->
+            parseConstructor parseVar parseChild IsMeta
+            Parsec.<|> (Kore.VariablePattern <$> parseVar IsMeta)
+            Parsec.<|> (Kore.StringLiteralPattern <$> parseStringLiteral)
+            Parsec.<|> (Kore.CharLiteralPattern <$> parseCharLiteral)
+
+parsePurePattern
+    :: (forall l. IsMetaOrObject l -> Parser (var l))
+    -> IsMetaOrObject level
+    -> Parser (Kore.PureMLPattern level var)
+parsePurePattern parseVar = \level ->
+    fix ((<$>) Data.Functor.Foldable.embed . parsePattern parseVar level)
+
+parseCommonPurePattern :: IsMetaOrObject level -> Parser (Kore.CommonPurePattern level)
+parseCommonPurePattern =
+    parsePurePattern parseVariable
+
+parseUnifiedPattern
+    :: (forall l. IsMetaOrObject l -> Parser (var l))
+    -> Parser child
+    -> Parser (Kore.UnifiedPattern var child)
+parseUnifiedPattern parseVar = \parseChild ->
+    (Parsec.<|>)
+    (Kore.UnifiedMetaPattern <$> parsePattern parseVar IsMeta parseChild)
+    (Kore.UnifiedObjectPattern <$> parsePattern parseVar IsObject parseChild)
+
+parseKorePattern
+    :: (forall l. IsMetaOrObject l -> Parser (var l))
+    -> Parser (Kore.KorePattern var)
+parseKorePattern parseVar =
+    fix ((<$>) Data.Functor.Foldable.embed . parseUnifiedPattern parseVar)
+
+parseCommonKorePattern :: Parser Kore.CommonKorePattern
+parseCommonKorePattern = parseKorePattern parseVariable
 
 impossible :: a
 impossible = error "The impossible happened!"
