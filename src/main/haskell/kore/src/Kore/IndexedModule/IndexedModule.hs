@@ -29,6 +29,8 @@ module Kore.IndexedModule.IndexedModule
     , SortDescription
     , getIndexedSentence
     , hookedObjectSymbolSentences
+    , IndexModuleError
+    , indexedModuleWithDefaultImports
     ) where
 
 import           Control.Arrow
