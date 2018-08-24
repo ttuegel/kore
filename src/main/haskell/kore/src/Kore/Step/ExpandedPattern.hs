@@ -54,18 +54,33 @@ import           Kore.Unification.Unifier
 import           Kore.Variables.Free
                  ( pureAllVariables )
 
-{-|'ExpandedPattern' is a representation of a PureMLPattern that is easier
-to use when executing Kore. It consists of an "and" between a term, a
-predicate and a substitution
--}
+{- | A representation of a pattern used when executing Kore.
+
+  @ExpandedPattern@ represents a particular form of 'PureMLPattern' used when
+  executing Kore. The pattern is a conjunction of the record fields:
+
+  @
+    term ∧ predicate ∧ substitution
+  @
+
+  where @predicate@ is a predicate (evaluates to 'Top' or 'Bottom') and
+  @substitution@ is a particular form of predicate:
+
+  @
+    substitution = (variable1 = term1) ∧ (variable2 = term2) ∧ ...
+  @
+
+ -}
 data ExpandedPattern level variable = ExpandedPattern
     { term         :: !(PureMLPattern level variable)
-    -- ^ Free-form pattern.
+    -- ^ Free-form pattern
     , predicate    :: !(Predicate level variable)
-    -- ^ pattern that only evaluates to Top or Bottom.
+    -- ^ Pattern that evaluates to 'Top' or 'Bottom'
     , substitution :: !(UnificationSubstitution level variable)
-    -- ^ special kind of predicate of the type
-    -- variable1 = term1 /\ variable2 = term2 /\ ...
+    -- ^ Predicate of the form
+    -- @
+    --   (variable1 = term1) ∧ (variable2 = term2) ∧ ...
+    -- @
     }
     deriving (Eq, Show)
 
@@ -76,8 +91,10 @@ data PredicateSubstitution level variable = PredicateSubstitution
     { predicate    :: !(Predicate level variable)
     -- ^ pattern that only evaluates to Top or Bottom.
     , substitution :: !(UnificationSubstitution level variable)
-    -- ^ special kind of predicate of the type
-    -- variable1 = term1 /\ variable2 = term2 /\ ...
+    -- ^ predicate of the form
+    -- @
+    --   variable1 = term1 ∧ variable2 = term2 ∧ ...
+    -- @
     }
     deriving (Eq, Show)
 
