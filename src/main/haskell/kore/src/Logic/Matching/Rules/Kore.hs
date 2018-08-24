@@ -4,9 +4,13 @@ Description: Matching logic rules for Kore patterns
 -}
 module Logic.Matching.Rules.Kore where
 
+import           Control.Monad.Except
+                 ( MonadError )
 import           Data.Functor.Foldable
 import qualified Data.Set as Set
 
+import           Control.Monad.Counter
+                 ( MonadCounter (..) )
 import           Kore.AST.Common
                  ( And (..), Application (..), Exists (..), Implies (..),
                  Not (..), Or (..), Pattern (..), SymbolOrAlias (..),
@@ -32,8 +36,6 @@ import           Kore.Substitution.Class
 import qualified Kore.Substitution.List as Substitution
 import           Kore.Unparser.Unparse
                  ( Unparse, unparseToString )
-import           Kore.Variables.Fresh.Class
-                 ( FreshVariablesClass (..) )
 import           Kore.Variables.Sort
                  ( TermWithSortVariablesClass (sortVariables) )
 import           Logic.Matching.Error
@@ -289,10 +291,6 @@ checkModusPonensDerivation phi1 psi1ImpliesPsi2 conclusion
     nameInKind name = name ++ " in " ++ kind
     nameInProposition name = name ++ " in ModusPonens(phi1, phi2, phi3)"
 
-instance FreshVariablesClass (Either (Error MLError)) Variable where
-    freshVariable _ = koreFail "Did not expect variable capturing"
-    freshVariableSuchThat v _ = freshVariable v
-
 type MetaPatternSubstitution =
     Substitution.Substitution (Unified Variable) CommonKorePattern
 
@@ -301,8 +299,15 @@ instance
         Substitution.Substitution
         Variable
         (Pattern Meta)
-        (Either (Error MLError))
-  where
+
+newtype NoCapture a = NoCapture { getNoCapture :: Either (Error MLError) a }
+  deriving (Applicative, Functor, Monad)
+
+deriving instance MonadError (Error MLError) NoCapture
+
+instance MonadCounter NoCapture where
+    get = koreFail "Did not expect variable capturing"
+    put _ = koreFail "Did not expect variable capturing"
 
 checkVariableSubstitution
     :: SubstitutingVariable (Variable Meta)
@@ -315,7 +320,7 @@ checkVariableSubstitution
     (SubstitutedVariable substituted)
     beforeSubstitution
     conclusion
-  = do
+  = getNoCapture $ do
     (var, psi1, psi2) <-
         case conclusion of
             Fix
@@ -928,10 +933,10 @@ testExtraPatternsEquality (x:xs) (y:ys) n current = do
     testExtraPatternsEquality xs ys (n-1) (current + 1)
 
 testFormulaEquality
-    :: (Eq p, Unparse p)
+    :: (Eq p, Unparse p, MonadError (Error MLError) m)
     => p -> String
     -> p -> String
-    -> Either (Error MLError) ()
+    -> m ()
 testFormulaEquality phi phiName psi psiName = do
     koreFailWhen (phi /= psi)
         (  "Expected " ++ phiName

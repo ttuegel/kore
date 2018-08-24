@@ -13,7 +13,6 @@ module Kore.Step.Step
     , MaxStepCount(..)
     ) where
 
-import qualified Control.Monad.Trans as Monad.Trans
 import           Data.Either
                  ( rights )
 import qualified Data.Map as Map
@@ -41,8 +40,7 @@ import qualified Kore.Step.Simplification.ExpandedPattern as ExpandedPattern
                  ( simplify )
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
-import           Kore.Variables.Fresh.IntCounter
-                 ( IntCounter )
+import           Kore.Variables.Fresh
 
 data MaxStepCount
     = MaxStepCount Integer
@@ -65,11 +63,10 @@ step
     -> Simplifier
         (CommonOrOfExpandedPattern level, StepProof level)
 step tools symbolIdToEvaluator axioms configuration = do
-    (stepPattern, stepProofs) <- Monad.Trans.lift
-        (OrOfExpandedPattern.traverseFlattenWithPairs
+    (stepPattern, stepProofs) <-
+        OrOfExpandedPattern.traverseFlattenWithPairs
             (baseStepWithPattern tools axioms)
             configuration
-        )
     (simplifiedPattern, simplificationProofs) <-
         OrOfExpandedPattern.traverseFlattenWithPairs
             (ExpandedPattern.simplify tools symbolIdToEvaluator)
@@ -81,13 +78,13 @@ step tools symbolIdToEvaluator axioms configuration = do
         )
 
 baseStepWithPattern
-    ::  ( MetaOrObject level)
+    :: (MetaOrObject level, MonadCounter m)
     => MetadataTools level StepperAttributes
     -> [AxiomPattern level]
     -- ^ Rewriting axioms
     -> CommonExpandedPattern level
     -- ^ Configuration being rewritten.
-    -> IntCounter (CommonOrOfExpandedPattern level, StepProof level)
+    -> m (CommonOrOfExpandedPattern level, StepProof level)
 baseStepWithPattern tools axioms configuration = do
     stepResultsWithProofs <- sequence (stepToList tools configuration axioms)
     let (results, proofs) = unzip stepResultsWithProofs
@@ -97,15 +94,13 @@ baseStepWithPattern tools axioms configuration = do
         )
 
 stepToList
-    ::  ( MetaOrObject level)
+    :: (MetaOrObject level, MonadCounter m)
     => MetadataTools level StepperAttributes
     -> CommonExpandedPattern level
     -- ^ Configuration being rewritten.
     -> [AxiomPattern level]
     -- ^ Rewriting axioms
-    ->  [ IntCounter
-            (CommonExpandedPattern level, StepProof level)
-        ]
+    -> [ m (CommonExpandedPattern level, StepProof level) ]
 stepToList tools configuration axioms =
     -- TODO: Stop ignoring Left results. Also, how would a result
     -- to which I can't apply an axiom look like?

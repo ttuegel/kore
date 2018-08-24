@@ -7,11 +7,13 @@ import Test.Tasty
 import Test.Tasty.HUnit
        ( testCase )
 
-import Control.Monad.Except
-       ( runExceptT )
+import Control.Monad.State.Strict
+       ( evalState )
 import Data.Reflection
        ( give )
 
+import           Control.Monad.Counter
+                 ( Counter (..) )
 import           Kore.AST.Common
                  ( And (..), AstLocation (..), Id (..), Sort (..),
                  SymbolOrAlias (..), Variable (..) )
@@ -41,10 +43,10 @@ import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
                  ( make )
 import           Kore.Step.Simplification.And
                  ( makeEvaluate, simplify )
+import           Kore.Step.Simplification.Data
+                 ( evalSimplifier )
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
-import           Kore.Variables.Fresh.IntCounter
-                 ( runIntCounter )
 
 import           Test.Kore.Comparators ()
 import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
@@ -377,18 +379,18 @@ evaluate
     :: And Object (CommonOrOfExpandedPattern Object)
     -> CommonOrOfExpandedPattern Object
 evaluate patt =
-    either (error . printError) fst $ fst $ runIntCounter
-        (runExceptT $ simplify mockMetadataTools patt)
-        0
+    either (error . printError) fst
+        $ evalSimplifier
+        $ simplify mockMetadataTools patt
 
 evaluatePatterns
     :: CommonExpandedPattern Object
     -> CommonExpandedPattern Object
     -> CommonExpandedPattern Object
 evaluatePatterns first second =
-    fst $ fst $ runIntCounter
+    fst $ evalState
         (makeEvaluate mockMetadataTools first second)
-        0
+        (Counter 0)
 
 evaluatePatternsWithAttributes
     :: [(SymbolOrAlias Object, StepperAttributes)]
@@ -396,13 +398,13 @@ evaluatePatternsWithAttributes
     -> CommonExpandedPattern Object
     -> CommonExpandedPattern Object
 evaluatePatternsWithAttributes attributes first second =
-    fst $ fst $ runIntCounter
+    fst $ evalState
         (makeEvaluate
             (mockMetadataToolsWithAttributes attributes)
             first
             second
         )
-        0
+        (Counter 0)
 
 mockSortTools :: SortTools Object
 mockSortTools = const

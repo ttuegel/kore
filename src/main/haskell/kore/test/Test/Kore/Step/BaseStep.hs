@@ -5,11 +5,13 @@ import Test.Tasty
 import Test.Tasty.HUnit
        ( testCase )
 
+import Control.Monad.State.Strict ( evalState )
 import Data.Default
        ( def )
 import Data.Reflection
        ( give )
 
+import Control.Monad.Counter ( Counter (..) )
 import Kore.AST.Common
        ( Application (..), AstLocation (..), Id (..),
        Pattern (ApplicationPattern), SymbolOrAlias (..), Variable )
@@ -42,7 +44,6 @@ import Kore.Unification.Error
        ( SubstitutionError (..) )
 import Kore.Unification.Unifier
        ( FunctionalProof (..), UnificationProof (..) )
-import Kore.Variables.Fresh.IntCounter
 
 import Test.Kore.Comparators ()
 import Test.Tasty.HUnit.Extensions
@@ -1269,5 +1270,5 @@ runStep
         (CommonExpandedPattern level, StepProof level)
 runStep metadataTools configuration axiom =
     case give metadataTools (stepWithAxiom metadataTools configuration axiom) of
-        Left err            -> Left (fst (runIntCounter err 0))
-        Right counterResult -> Right (fst (runIntCounter counterResult 0))
+        Left err            -> Left (evalState err (Counter 0))
+        Right counterResult -> Right (evalState counterResult (Counter 0))

@@ -11,7 +11,6 @@ module Kore.Step.Merging.ExpandedPattern
     ( mergeWithPredicateSubstitution
     ) where
 
-import qualified Control.Monad.Except as Except
 import           Data.Reflection
                  ( give )
 
@@ -40,10 +39,7 @@ import           Kore.Step.Substitution
                  ( mergePredicatesAndSubstitutions )
 import           Kore.Substitution.Class
                  ( Hashable )
-import           Kore.Variables.Fresh.IntCounter
-                 ( IntCounter )
-import           Kore.Variables.Int
-                 ( IntVariable (..) )
+import           Kore.Variables.Fresh
 
 
 {-| 'mergeWithPredicateSubstitution' ands the given predicate-substitution
@@ -56,7 +52,7 @@ mergeWithPredicateSubstitution
         , Ord (variable level)
         , Ord (variable Meta)
         , Ord (variable Object)
-        , IntVariable variable
+        , FreshVariable variable
         , Hashable variable
         )
     => MetadataTools level StepperAttributes
@@ -86,21 +82,17 @@ mergeWithPredicateSubstitution
             , substitution = mergedSubstitution
             }
         , _proof ) <-
-            Except.lift
-                (mergePredicatesAndSubstitutions
-                    tools
-                    [pattPredicate, conditionToMerge]
-                    [pattSubstitution, substitutionToMerge]
-                )
+            mergePredicatesAndSubstitutions
+                tools
+                [pattPredicate, conditionToMerge]
+                [pattSubstitution, substitutionToMerge]
     (evaluatedCondition, _) <-
         give (MetadataTools.sortTools tools)
             $ Predicate.evaluate simplifier mergedCondition
-    Except.lift
-        (mergeWithEvaluatedCondition
-            tools
-            patt {substitution = mergedSubstitution}
-            evaluatedCondition
-        )
+    mergeWithEvaluatedCondition
+        tools
+        patt {substitution = mergedSubstitution}
+        evaluatedCondition
 
 mergeWithEvaluatedCondition
     ::  ( MetaOrObject level
@@ -109,13 +101,14 @@ mergeWithEvaluatedCondition
         , Ord (variable level)
         , Ord (variable Meta)
         , Ord (variable Object)
-        , IntVariable variable
+        , FreshVariable variable
+        , MonadCounter m
         , Hashable variable
         )
     => MetadataTools level StepperAttributes
     -> ExpandedPattern level variable
     -> PredicateSubstitution level variable
-    -> IntCounter (ExpandedPattern level variable, SimplificationProof level)
+    -> m (ExpandedPattern level variable, SimplificationProof level)
 mergeWithEvaluatedCondition
     tools
     ExpandedPattern

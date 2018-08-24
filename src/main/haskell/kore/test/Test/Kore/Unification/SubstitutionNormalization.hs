@@ -6,9 +6,12 @@ import Test.Tasty
 import Test.Tasty.HUnit
        ( assertEqual, testCase )
 
+import Control.Monad.State.Strict
+       ( evalState )
 import Data.Default
        ( def )
 
+import           Control.Monad.Counter
 import           Kore.AST.Common
                  ( AstLocation (..), Sort (..), SortVariable (..), Variable,
                  noLocationId )
@@ -36,8 +39,6 @@ import           Kore.Unification.Error
 import           Kore.Unification.SubstitutionNormalization
 import           Kore.Unification.UnifierImpl
                  ( UnificationSubstitution )
-import           Kore.Variables.Fresh.IntCounter
-                 ( runIntCounter )
 
 test_substitutionNormalization :: [TestTree]
 test_substitutionNormalization =
@@ -212,8 +213,10 @@ runNormalizeSubstitution
 runNormalizeSubstitution substitution =
     case normalizeSubstitution mockMetadataTools substitution of
         Left err     -> Left err
-        Right action -> Right $ PredicateSubstitution.substitution
-                        $ fst $ runIntCounter action 0
+        Right action ->
+            Right
+            $ PredicateSubstitution.substitution
+            $ evalState action (Counter 0)
 
 mockStepperAttributes :: StepperAttributes
 mockStepperAttributes = StepperAttributes

@@ -5,8 +5,6 @@ import Test.Tasty
 import Test.Tasty.HUnit
        ( testCase )
 
-import           Control.Monad.Except
-                 ( runExceptT )
 import           Data.Default
                  ( def )
 import qualified Data.Map as Map
@@ -50,12 +48,10 @@ import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
                  ( make )
 import           Kore.Step.Simplification.Data
                  ( CommonPureMLPatternSimplifier, SimplificationProof (..),
-                 Simplifier )
+                 Simplifier, evalSimplifier )
 import qualified Kore.Step.Simplification.Pattern as Pattern
                  ( simplify )
 import           Kore.Step.StepperAttributes
-import           Kore.Variables.Fresh.IntCounter
-                 ( runIntCounter )
 
 import Test.Kore.Comparators ()
 import Test.Tasty.HUnit.Extensions
@@ -276,12 +272,9 @@ evaluate metadataTools functionIdToEvaluator patt =
         Right (p, _) -> p
         Left err -> error (printError err)
   where
-    (result, _) =
-        runIntCounter
-            (runExceptT
-                (Pattern.simplify metadataTools functionIdToEvaluator patt)
-            )
-            0
+    result =
+        evalSimplifier
+        $ Pattern.simplify metadataTools functionIdToEvaluator patt
 
 v1 :: MetaSort sort => sort -> MetaVariable sort
 v1 = metaVariable "#v1" AstLocationTest

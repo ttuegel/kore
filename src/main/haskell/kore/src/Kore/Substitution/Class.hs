@@ -33,7 +33,7 @@ import Kore.AST.MLPatterns
 import Kore.ASTTraversals
        ( patternTopDownVisitorM )
 import Kore.Variables.Free
-import Kore.Variables.Fresh.Class
+import Kore.Variables.Fresh
 
 {-|'SubstitutionClass' represents a substitution type @s@ mapping variables
 of type @v@ to terms of type @t@.
@@ -97,15 +97,16 @@ used for generating fresh variables.
 class ( UnifiedPatternInterface pat
       , Traversable (pat var)
       , SubstitutionClass s (Unified var) (Fix (pat var))
-      , FreshVariablesClass m var
+      , FreshVariable var
       , Ord (var Meta)
       , Ord (var Object)
       , Hashable var
       )
-    => PatternSubstitutionClass s var pat m
+    => PatternSubstitutionClass s var pat
   where
     substitute
-        :: Fix (pat var)
+        :: MonadCounter m
+        => Fix (pat var)
         -> s (Unified var) (Fix (pat var))
         -> m (Fix (pat var))
     substitute p s = runReaderT (substituteM p) SubstitutionAndQuantifiedVars
@@ -114,7 +115,7 @@ class ( UnifiedPatternInterface pat
         }
 
 substituteM
-    :: PatternSubstitutionClass s var pat m
+    :: (PatternSubstitutionClass s var pat, MonadCounter m)
     => Fix (pat var)
     -> ReaderT
         (SubstitutionAndQuantifiedVars s (Unified var) (Fix (pat var)))
@@ -123,7 +124,7 @@ substituteM
 substituteM = patternTopDownVisitorM substitutePreprocess substituteVariable
 
 substituteVariable
-    :: (PatternSubstitutionClass s var pat m, MetaOrObject level)
+    :: (PatternSubstitutionClass s var pat, MetaOrObject level, MonadCounter m)
     => Pattern level var (Fix (pat var))
     -> ReaderT
         (SubstitutionAndQuantifiedVars s (Unified var) (Fix (pat var)))
@@ -142,7 +143,7 @@ substituteVariable p = return . Fix $ unifyPattern p
 * if the pattern is not a binder recurse.
 -}
 substitutePreprocess
-    :: (PatternSubstitutionClass s var pat m, MetaOrObject level)
+    :: (PatternSubstitutionClass s var pat, MetaOrObject level, MonadCounter m)
     => Pattern level var (Fix (pat var))
     -> ReaderT (FixedSubstitutionAndQuantifiedVars s var pat)
         m
@@ -176,8 +177,10 @@ substitutePreprocess p
 -}
 binderPatternSubstitutePreprocess
     :: ( MLBinderPatternClass q
-       , PatternSubstitutionClass s var pat m
-       , MetaOrObject level)
+       , PatternSubstitutionClass s var pat
+       , MetaOrObject level
+       , MonadCounter m
+       )
     => FixedSubstitutionAndQuantifiedVars s var pat
     -> q level var (Fix (pat var))
     -> ReaderT (FixedSubstitutionAndQuantifiedVars s var pat)

@@ -63,12 +63,8 @@ import           Kore.Unification.Unifier
                  unificationProcedure )
 import           Kore.Variables.Free
                  ( pureAllVariables )
-import           Kore.Variables.Fresh.Class
-                 ( FreshVariablesClass (freshVariableSuchThat) )
-import           Kore.Variables.Fresh.IntCounter
-                 ( IntCounter )
-import           Kore.Variables.Int
-                 ( IntVariable (..) )
+import           Kore.Variables.Fresh
+
 {-| 'StepperConfiguration' represents the configuration to which a rewriting
 axiom is applied.
 
@@ -151,10 +147,11 @@ instance Hashable StepperVariable where
     -- hashes for axiom and configuration variables.
     getVariableHash = getVariableHash . getStepperVariableVariable
 
-instance IntVariable StepperVariable where
-    intVariable (AxiomVariable a) n = AxiomVariable (intVariable a n)
-    intVariable (ConfigurationVariable a) n =
-        ConfigurationVariable (intVariable a n)
+instance FreshVariable StepperVariable where
+    freshVariable (AxiomVariable a) =
+        AxiomVariable <$> freshVariable a
+    freshVariable (ConfigurationVariable a) =
+        ConfigurationVariable <$> freshVariable a
 
 {-| 'getStepperVariableVariable' extracts the initial variable from a stepper
 one.
@@ -178,17 +175,15 @@ sigma(x, y) => y    vs    a
 TODO: Decide if Left here also includes bottom results or only impossibilities.
 -}
 stepWithAxiom
-    ::  ( MetaOrObject level )
+    ::  (MetaOrObject level, MonadCounter m)
     => MetadataTools level StepperAttributes
     -> ExpandedPattern.CommonExpandedPattern level
     -- ^ Configuration being rewritten.
     -> AxiomPattern level
     -- ^ Rewriting axiom
     -> Either
-        (IntCounter (StepError level Variable))
-        (IntCounter
-            (ExpandedPattern.CommonExpandedPattern level, StepProof level)
-        )
+        (m (StepError level Variable))
+        (m (ExpandedPattern.CommonExpandedPattern level, StepProof level))
 stepWithAxiom
     tools
     expandedPattern
@@ -222,12 +217,12 @@ stepWithAxiom
 
         -- Remap unification and substitution errors into 'StepError'.
         normalizeUnificationError
-            :: MetaOrObject level
+            :: (MetaOrObject level, MonadCounter m)
             => a
             -- ^element of the target symbolizing a 'Bottom'-like result
             -> Set.Set (Variable level)
             -> Either (UnificationError level) a
-            -> Either (IntCounter (StepError level Variable)) a
+            -> Either (m (StepError level Variable)) a
         normalizeUnificationError bottom existingVariables action =
             stepperVariableToVariableForError
                 existingVariables (unificationToStepError bottom action)
@@ -335,10 +330,10 @@ stepWithAxiom
     -- | Unwrap 'StepperVariable's so that errors are not expressed in terms of
     -- internally-defined variables.
     stepperVariableToVariableForError
-        :: MetaOrObject level
+        :: (MetaOrObject level, MonadCounter m)
         => Set.Set (Variable level)
         -> Either (StepError level StepperVariable) a
-        -> Either (IntCounter (StepError level Variable)) a
+        -> Either (m (StepError level Variable)) a
     stepperVariableToVariableForError existingVars action =
         case action of
             Left err -> Left $ do
@@ -366,9 +361,11 @@ mergeConditionsWithAnd
     ::  ( MetaOrObject level
         , Given (SortTools level)
         , SortedVariable var
-        , Show (var level))
+        , Show (var level)
+        , MonadCounter m
+        )
     => [Predicate level var]
-    -> (IntCounter (Predicate level var), PredicateProof level)
+    -> (m (Predicate level var), PredicateProof level)
 mergeConditionsWithAnd conditions =
     let
         (predicate, proof) = makeMultipleAndPredicate conditions
@@ -376,11 +373,11 @@ mergeConditionsWithAnd conditions =
         (return predicate, proof)
 
 unificationProofStepVariablesToCommon
-    :: MetaOrObject level
+    :: (MetaOrObject level, MonadCounter m)
     => Set.Set (Variable level)
     -> Map.Map (StepperVariable level) (StepperVariable level)
     -> UnificationProof level StepperVariable
-    -> IntCounter
+    -> m
         ( Map.Map (StepperVariable level) (StepperVariable level)
         , UnificationProof level Variable
         )
@@ -468,11 +465,11 @@ unificationProofStepVariablesToCommon
         )
 
 listStepVariablesToCommon
-    :: MetaOrObject level
+    :: (MetaOrObject level, MonadCounter m)
     =>  (Set.Set (Variable level)
             -> Map.Map (StepperVariable level) (StepperVariable level)
             -> listElement StepperVariable
-            -> IntCounter
+            -> m
                 ( Map.Map (StepperVariable level) (StepperVariable level)
                 , listElement Variable
                 )
@@ -480,7 +477,7 @@ listStepVariablesToCommon
     -> Set.Set (Variable level)
     -> Map.Map (StepperVariable level) (StepperVariable level)
     -> [listElement StepperVariable]
-    -> IntCounter
+    -> m
         ( Map.Map (StepperVariable level) (StepperVariable level)
         , [listElement Variable]
         )
@@ -494,11 +491,11 @@ listStepVariablesToCommon elementMapper existingVars mapping (proof : proofs)
     return (newMapping2, mappedProof : mappedProofs)
 
 functionalProofStepVariablesToCommon
-    :: MetaOrObject level
+    :: (MetaOrObject level, MonadCounter m)
     => Set.Set (Variable level)
     -> Map.Map (StepperVariable level) (StepperVariable level)
     -> FunctionalProof level StepperVariable
-    -> IntCounter
+    -> m
         ( Map.Map (StepperVariable level) (StepperVariable level)
         , FunctionalProof level Variable
         )
@@ -514,11 +511,11 @@ functionalProofStepVariablesToCommon _ mapping (FunctionalDomainValue dv) =
     return (mapping, FunctionalDomainValue dv)
 
 variableStepVariablesToCommon
-    :: MetaOrObject level
+    :: (MetaOrObject level, MonadCounter m)
     => Set.Set (Variable level)
     -> Map.Map (StepperVariable level) (StepperVariable level)
     -> StepperVariable level
-    -> IntCounter
+    -> m
         ( Map.Map (StepperVariable level) (StepperVariable level)
         , Variable level
         )
@@ -544,11 +541,11 @@ variableStepVariablesToCommon existingVars mapping variable =
                         )
 
 predicateStepVariablesToCommon
-    :: MetaOrObject level
+    :: (MetaOrObject level, MonadCounter m)
     => Set.Set (Variable level)
     -> Map.Map (StepperVariable level) (StepperVariable level)
     -> Predicate level StepperVariable
-    -> IntCounter
+    -> m
         ( Map.Map (StepperVariable level) (StepperVariable level)
         , Predicate level Variable
         )
@@ -567,11 +564,11 @@ predicateStepVariablesToCommon existingVars mapped predicate' = do
         mapPatternVariables configurationVariableToCommon
 
 patternStepVariablesToCommon
-    :: MetaOrObject level
+    :: (MetaOrObject level, MonadCounter m)
     => Set.Set (Variable level)
     -> Map.Map (StepperVariable level) (StepperVariable level)
     -> PureMLPattern level StepperVariable
-    -> IntCounter
+    -> m
         ( Map.Map (StepperVariable level) (StepperVariable level)
         , PureMLPattern level Variable
         )
@@ -602,11 +599,11 @@ replacePatternVariables mapping =
         (\var -> fromMaybe var (Map.lookup var mapping))
 
 addAxiomVariablesAsConfig
-    :: MetaOrObject level
+    :: (MetaOrObject level, MonadCounter m)
     => Set.Set (Variable level)
     -> Map.Map (StepperVariable level) (StepperVariable level)
     -> [StepperVariable level]
-    -> IntCounter (Map.Map (StepperVariable level) (StepperVariable level))
+    -> m (Map.Map (StepperVariable level) (StepperVariable level))
 addAxiomVariablesAsConfig _ mapping [] = return mapping
 addAxiomVariablesAsConfig
     existingVars mapping (ConfigurationVariable _ : vars)
