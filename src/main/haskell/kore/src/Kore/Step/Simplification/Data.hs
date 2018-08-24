@@ -10,16 +10,20 @@ Portability : portable
 module Kore.Step.Simplification.Data
     ( SimplificationError
     , Simplifier
+    , SimplifierState (..)
     , evalSimplifier
+    , runSimplifier
     , PureMLPatternSimplifier (..)
     , CommonPureMLPatternSimplifier
     , SimplificationProof (..)
     ) where
 
-import Control.Monad.State.Strict
-       ( StateT, evalStateT )
-import Control.Monad.Except
-       ( Except, runExcept )
+import           Control.Monad.Except
+                 ( Except, MonadError, runExcept )
+import qualified Control.Monad.Except as Monad.Except
+import           Control.Monad.State.Strict
+                 ( MonadState, StateT, evalStateT, runStateT )
+import qualified Control.Monad.State.Strict as Monad.State
 
 import Control.Monad.Counter
 import Kore.AST.Common
@@ -50,7 +54,32 @@ data SimplificationProof level = SimplificationProof
  -}
 -- TODO (thomas.tuegel): Replace Counter with a single state carrying both
 -- the counter and the proof.
-type Simplifier = StateT Counter (Except (Error SimplificationError))
+newtype Simplifier a =
+    Simplifier
+    { getSimplifier
+        :: StateT SimplifierState (Except (Error SimplificationError)) a
+    }
+  deriving (Applicative, Functor, Monad)
+
+instance MonadState SimplifierState Simplifier where
+    state f = Simplifier (Monad.State.state f)
+
+instance MonadCounter Simplifier where
+    get = Simplifier (Monad.State.gets simplifierCounter)
+    put c = Simplifier (Monad.State.modify modify0)
+      where
+        modify0 state = state { simplifierCounter = c }
+
+instance MonadError (Error SimplificationError) Simplifier where
+    throwError e = Simplifier (Monad.Except.throwError e)
+    catchError a h =
+        Simplifier (Monad.Except.catchError a' h')
+      where
+        a' = getSimplifier a
+        h' e = getSimplifier (h e)
+
+newtype SimplifierState =
+    SimplifierState { simplifierCounter :: Counter }
 
 {- | Evaluate a simplifier computation.
 
@@ -59,7 +88,16 @@ type Simplifier = StateT Counter (Except (Error SimplificationError))
   -}
 evalSimplifier :: Simplifier a -> Either (Error SimplificationError) a
 evalSimplifier simp =
-    runExcept (evalStateT simp (Counter 0))
+    runExcept (evalStateT (getSimplifier simp) state)
+  where
+    state = SimplifierState { simplifierCounter = Counter 0 }
+
+runSimplifier
+    :: Simplifier a
+    -> SimplifierState
+    -> Either (Error SimplificationError) (a, SimplifierState)
+runSimplifier simplifier state =
+    runExcept (runStateT (getSimplifier simplifier) state)
 
 {-| 'PureMLPatternSimplifier' wraps a function that evaluates
 Kore functions on PureMLPatterns.

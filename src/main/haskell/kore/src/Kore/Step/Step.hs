@@ -13,19 +13,32 @@ module Kore.Step.Step
     , MaxStepCount(..)
     ) where
 
+import           Control.Monad.Except
+                 ( Except, MonadError )
+import qualified Control.Monad.Except as Monad.Except
+import           Control.Monad.State.Strict
+                 ( MonadState, StateT )
+import qualified Control.Monad.State.Strict as Monad.State
 import           Data.Either
                  ( rights )
 import qualified Data.Map as Map
 
+import           Control.Monad.Counter
+                 ( Counter, MonadCounter )
+import qualified Control.Monad.Counter as Monad.Counter
 import           Kore.AST.Common
                  ( Id )
 import           Kore.AST.MetaOrObject
                  ( MetaOrObject )
+import           Kore.Error
+                 ( Error )
+import qualified Kore.Error
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )
+import           Kore.Step.AxiomPatterns
+                 ( AxiomPattern, AxiomPhase )
 import           Kore.Step.BaseStep
-                 ( AxiomPattern, StepProof (..), simplifyStepProof,
-                 stepWithAxiom )
+                 ( StepProof (..), simplifyStepProof, stepWithAxiom )
 import           Kore.Step.ExpandedPattern
                  ( CommonExpandedPattern )
 import           Kore.Step.Function.Data
@@ -35,7 +48,7 @@ import           Kore.Step.OrOfExpandedPattern
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
                  ( extractPatterns, make, traverseFlattenWithPairs )
 import           Kore.Step.Simplification.Data
-                 ( Simplifier )
+                 ( Simplifier, SimplifierState (..), runSimplifier )
 import qualified Kore.Step.Simplification.ExpandedPattern as ExpandedPattern
                  ( simplify )
 import           Kore.Step.StepperAttributes
@@ -60,15 +73,15 @@ step
     -- ^ Rewriting axioms
     -> CommonOrOfExpandedPattern level
     -- ^ Configuration being rewritten.
-    -> Simplifier
-        (CommonOrOfExpandedPattern level, StepProof level)
+    -> Stepper level (CommonOrOfExpandedPattern level)
 step tools symbolIdToEvaluator axioms configuration = do
     (stepPattern, stepProofs) <-
         OrOfExpandedPattern.traverseFlattenWithPairs
             (baseStepWithPattern tools axioms)
             configuration
     (simplifiedPattern, simplificationProofs) <-
-        OrOfExpandedPattern.traverseFlattenWithPairs
+        liftSimplifier
+        $ OrOfExpandedPattern.traverseFlattenWithPairs
             (ExpandedPattern.simplify tools symbolIdToEvaluator)
             stepPattern
     return
@@ -125,7 +138,7 @@ pickFirstStepper
     -- ^ The maximum number of steps to be made
     -> CommonExpandedPattern level
     -- ^ Configuration being rewritten.
-    -> Simplifier (CommonExpandedPattern level, StepProof level)
+    -> Stepper level (CommonExpandedPattern level)
 pickFirstStepper _ _ _ (MaxStepCount 0) stepperConfiguration =
     return (stepperConfiguration, StepProofCombined [])
 pickFirstStepper _ _ _ (MaxStepCount n) _ | n < 0 =
@@ -160,7 +173,7 @@ pickFirstStepperSkipMaxCheck
     -- ^ The maximum number of steps to be made
     -> CommonExpandedPattern level
     -- ^ Configuration being rewritten.
-    -> Simplifier (CommonExpandedPattern level, StepProof level)
+    -> Stepper level (CommonExpandedPattern level)
 pickFirstStepperSkipMaxCheck
     tools symbolIdToEvaluator axioms maxStepCount stepperConfiguration
   = do
@@ -187,3 +200,61 @@ pickFirstStepperSkipMaxCheck
                 , simplifyStepProof
                     $ StepProofCombined [nextProof, finalProof]
                 )
+
+data StepperError
+
+data StepperState level =
+    StepperState
+        { stepperCounter :: !Counter
+        , stepperProof :: !(StepProof level)
+        , stepperLastPhase :: !AxiomPhase
+        , stepperNextPhase :: !AxiomPhase
+        }
+
+newtype Stepper level a =
+    Stepper
+      { getStepper
+          :: StateT (StepperState level) (Except (Error StepperError)) a
+      }
+  deriving (Applicative, Functor, Monad)
+
+instance MonadState (StepperState level) (Stepper level) where
+    state f = Stepper (Monad.State.state f)
+
+instance MonadCounter (Stepper level) where
+    get = Stepper (Monad.State.gets stepperCounter)
+    put c = Stepper (Monad.State.modify modify0)
+      where
+        modify0 state = state { stepperCounter = c }
+
+instance MonadError (Error StepperError) (Stepper level) where
+    throwError e = Stepper (Monad.Except.throwError e)
+    catchError a h =
+        Stepper (Monad.Except.catchError a' h')
+      where
+        a' = getStepper a
+        h' e = getStepper (h e)
+
+liftSimplifier :: Simplifier a -> Stepper level a
+liftSimplifier simplifier = do
+    initialStepperState <- Monad.State.get
+    let
+        initialSimplifierState =
+            SimplifierState
+                { simplifierCounter = stepperCounter initialStepperState }
+        run =
+            Kore.Error.castError
+                (runSimplifier simplifier initialSimplifierState)
+    case run of
+        Left err -> Monad.Except.throwError err
+        Right (result, finalSimplifierState) -> do
+            let
+                finalStepperState =
+                    initialStepperState
+                        { stepperCounter =
+                            simplifierCounter finalSimplifierState
+                        , stepperProof =
+                            StepProofCombined [ ]
+                        }
+            Monad.State.put finalStepperState
+            return result
