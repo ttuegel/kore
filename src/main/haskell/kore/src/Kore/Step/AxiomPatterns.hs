@@ -1,7 +1,8 @@
 module Kore.Step.AxiomPatterns
-    ( AxiomPattern(..)
-    , QualifiedAxiomPattern(..)
-    , AxiomPatternError(..)
+    ( AxiomPattern (..)
+    , QualifiedAxiomPattern (..)
+    , AxiomPatternError (..)
+    , AxiomPhase (..)
     , koreSentenceToAxiomPattern
     , koreIndexedModuleToAxiomPatterns
     ) where
@@ -10,11 +11,8 @@ import Data.Default
        ( Default (..) )
 import Data.Either
        ( rights )
-import Data.Functor ( ($>) )
-import Data.Ord
-       ( comparing )
-import Data.Semigroup
-       ( (<>) )
+import Data.Functor
+       ( ($>) )
 
 import           Kore.AST.Common
 import           Kore.AST.Kore
@@ -79,16 +77,9 @@ data AxiomPattern level = AxiomPattern
     { axiomPatternLeft  :: !(CommonPurePattern level)
     , axiomPatternRight :: !(CommonPurePattern level)
     , axiomPatternRequires :: !(CommonPredicate level)
-    , axiomPhase :: !AxiomPhase
+    , axiomPatternPhase :: !AxiomPhase
     }
     deriving (Eq, Show)
-
-instance Ord level => Ord (AxiomPattern level) where
-    compare a b =
-        comparing axiomPhase a b
-        <> comparing axiomPatternLeft a b
-        <> comparing axiomPatternRight a b
-        <> comparing axiomPatternRequires a b
 
 {- | Sum type to distinguish rewrite axioms (used for stepping)
 from function axioms (used for functional simplification).
@@ -96,7 +87,7 @@ from function axioms (used for functional simplification).
 data QualifiedAxiomPattern level
     = RewriteAxiomPattern (AxiomPattern level)
     | FunctionAxiomPattern (AxiomPattern level)
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Show)
 
 
 -- | Extracts all 'AxiomPattern' structures matching a given @level@ from
@@ -138,9 +129,9 @@ sentenceToAxiomPattern
         }
     )
   = do
-    axiomPhase <- parseAxiomPhase sentenceAxiomAttributes
+    axiomPatternPhase <- parseAxiomPhase sentenceAxiomAttributes
     case patternKoreToPure level sentenceAxiomPattern of
-        Right pat -> patternToAxiomPattern axiomPhase pat
+        Right pat -> patternToAxiomPattern axiomPatternPhase pat
         Left err  -> Left err
 sentenceToAxiomPattern _ _ =
     koreFail "Only axiom sentences can be translated to AxiomPatterns"
@@ -155,7 +146,7 @@ patternToAxiomPattern
     => AxiomPhase
     -> CommonPurePattern level
     -> Either (Error AxiomPatternError) (QualifiedAxiomPattern level)
-patternToAxiomPattern axiomPhase pat =
+patternToAxiomPattern axiomPatternPhase pat =
     case pat of
         -- normal rewrite axioms
         And_ _ requires (And_ _ _ensures (Rewrites_ _ lhs rhs)) ->
@@ -163,7 +154,7 @@ patternToAxiomPattern axiomPhase pat =
                 { axiomPatternLeft = lhs
                 , axiomPatternRight = rhs
                 , axiomPatternRequires = wrapPredicate requires
-                , axiomPhase
+                , axiomPatternPhase
                 }
         -- function axioms
         Implies_ _ requires (And_ _ (Equals_ _ _ lhs rhs) _ensures) ->
@@ -171,7 +162,7 @@ patternToAxiomPattern axiomPhase pat =
                 { axiomPatternLeft = lhs
                 , axiomPatternRight = rhs
                 , axiomPatternRequires = wrapPredicate requires
-                , axiomPhase
+                , axiomPatternPhase
                 }
-        Forall_ _ _ child -> patternToAxiomPattern axiomPhase child
+        Forall_ _ _ child -> patternToAxiomPattern axiomPatternPhase child
         _ -> koreFail "Unsupported pattern type in axiom"

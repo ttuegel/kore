@@ -53,6 +53,7 @@ axiomPatternsUnitTests =
                     { axiomPatternLeft = extractPurePattern varI1
                     , axiomPatternRight = extractPurePattern varI2
                     , axiomPatternRequires = wrapPredicate topAInt
+                    , axiomPatternPhase = Normal
                     }
                 )
                 ( koreSentenceToAxiomPattern Object
@@ -72,6 +73,7 @@ axiomPatternsUnitTests =
                     { axiomPatternLeft = extractPurePattern varI1
                     , axiomPatternRight = extractPurePattern varI2
                     , axiomPatternRequires = wrapPredicate topAInt
+                    , axiomPatternPhase = Normal
                     }
                 ]
                 ( koreIndexedModuleToAxiomPatterns Object
@@ -215,6 +217,7 @@ axiomPatternsIntegrationTests =
                           , varStateCell
                           ]
                     , axiomPatternRequires = wrapPredicate topTCell
+                    , axiomPatternPhase = Normal
                     }
                 )
                 (koreSentenceToAxiomPattern Object =<< parseAxiom

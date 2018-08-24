@@ -33,8 +33,7 @@ import           Kore.MetaML.AST
 import           Kore.Predicate.Predicate
                  ( CommonPredicate, makeAndPredicate, makeCeilPredicate,
                  makeEqualsPredicate, makeTruePredicate )
-import           Kore.Step.BaseStep
-                 ( AxiomPattern (..) )
+import           Kore.Step.AxiomPatterns
 import           Kore.Step.ExpandedPattern as ExpandedPattern
                  ( CommonExpandedPattern, ExpandedPattern (..) )
 import           Kore.Step.Function.Data
@@ -240,6 +239,7 @@ axiomEvaluator left right =
                 { axiomPatternLeft  = left
                 , axiomPatternRight = right
                 , axiomPatternRequires = makeTruePredicate
+                , axiomPatternPhase = Normal
                 }
         )
 

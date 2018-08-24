@@ -32,8 +32,7 @@ import           Kore.MetaML.AST
                  ( CommonMetaPattern )
 import           Kore.Predicate.Predicate
                  ( makeFalsePredicate, makeTruePredicate )
-import           Kore.Step.BaseStep
-                 ( AxiomPattern (..) )
+import           Kore.Step.AxiomPatterns
 import           Kore.Step.ExpandedPattern as ExpandedPattern
                  ( ExpandedPattern (..), bottom )
 import           Kore.Step.Function.Data as AttemptedFunction
@@ -74,6 +73,7 @@ test_userDefinedFunction =
                     , axiomPatternRight =
                         asPureMetaPattern (metaG (x PatternSort))
                     , axiomPatternRequires = makeTruePredicate
+                    , axiomPatternPhase = Normal
                     }
                 (mockSimplifier [])
                 (asApplication (metaH (x PatternSort)))
@@ -97,6 +97,7 @@ test_userDefinedFunction =
                     , axiomPatternRight =
                         asPureMetaPattern (metaG (x PatternSort))
                     , axiomPatternRequires = makeTruePredicate
+                    , axiomPatternPhase = Normal
                     }
                 (mockSimplifier [])
                 (asApplication (metaF (x PatternSort)))
@@ -113,6 +114,7 @@ test_userDefinedFunction =
                     , axiomPatternRight =
                         asPureMetaPattern (metaG (x PatternSort))
                     , axiomPatternRequires = makeFalsePredicate
+                    , axiomPatternPhase = Normal
                     }
                 (mockSimplifier [])
                 (asApplication (metaF (x PatternSort)))
@@ -131,6 +133,7 @@ test_userDefinedFunction =
                     , axiomPatternRight =
                         asPureMetaPattern (metaG (x PatternSort))
                     , axiomPatternRequires = makeTruePredicate
+                    , axiomPatternPhase = Normal
                     }
                 (mockSimplifier
                     -- Evaluate Top to Bottom.
@@ -157,6 +160,7 @@ test_userDefinedFunction =
                     , axiomPatternRight =
                         asPureMetaPattern (metaG (x PatternSort))
                     , axiomPatternRequires = makeTruePredicate
+                    , axiomPatternPhase = Normal
                     }
                 (mockSimplifier
                     [   ( asPureMetaPattern (metaG (x PatternSort))
@@ -188,6 +192,7 @@ test_userDefinedFunction =
                     , axiomPatternRight =
                         asPureMetaPattern (metaG (x PatternSort))
                     , axiomPatternRequires = makeTruePredicate
+                    , axiomPatternPhase = Normal
                     }
                 (mockSimplifier
                     [   ( asPureMetaPattern (metaG (x PatternSort))
@@ -229,6 +234,7 @@ test_userDefinedFunction =
                     , axiomPatternRight =
                         asPureMetaPattern (metaG (x PatternSort))
                     , axiomPatternRequires = makeTruePredicate
+                    , axiomPatternPhase = Normal
                     }
                 (mockSimplifier [])
                 (asApplication (metaSigma (a PatternSort) (b PatternSort)))
@@ -262,6 +268,7 @@ test_userDefinedFunction =
                     , axiomPatternRight =
                         asPureMetaPattern (metaG (x PatternSort))
                     , axiomPatternRequires = makeTruePredicate
+                    , axiomPatternPhase = Normal
                     }
                 (mockSimplifier
                     [   ( asPureMetaPattern (metaG (b PatternSort))
