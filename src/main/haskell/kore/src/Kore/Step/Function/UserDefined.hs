@@ -12,8 +12,8 @@ module Kore.Step.Function.UserDefined
     , axiomFunctionEvaluator
     ) where
 
-import           Data.Reflection
-                 ( give )
+import Data.Reflection
+       ( give )
 
 import           Kore.AST.Common
                  ( Application (..), Pattern (..), SortedVariable )
