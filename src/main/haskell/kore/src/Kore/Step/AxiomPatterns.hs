@@ -34,34 +34,38 @@ import           Kore.Predicate.Predicate
 
 newtype AxiomPatternError = AxiomPatternError ()
 
-data AxiomAttributes =
-    AxiomAttributes
-        { axiomOrdering :: !Ordering
-        }
+data AxiomPhase
+    = Normal
+    | Heat
+    | Cool
   deriving (Eq, Ord, Show)
 
-instance Default AxiomAttributes where
-    def = AxiomAttributes { axiomOrdering = EQ }
+instance Default AxiomPhase where
+    def = Normal
 
-instance ParseAttributes AxiomAttributes where
+instance ParseAttributes AxiomPhase where
     attributesParser =
-        do
-            axiomOrdering <-
-                Attribute.choose (Attribute.choose getHeat getCool) (pure EQ)
-            return AxiomAttributes {..}
+        Attribute.choose
+            (Attribute.choose getHeat getCool)
+            getNormal
+      where
+        noCool = Attribute.assertNoAttribute "cool"
+        noHeat = Attribute.assertNoAttribute "heat"
+        getHeat = do
+            noCool
+            Attribute.assertKeyOnlyAttribute "heat" $> Heat
+        getCool = do
+            noHeat
+            Attribute.assertKeyOnlyAttribute "cool" $> Cool
+        getNormal = do
+            noHeat
+            noCool
+            pure Normal
 
-getHeat :: Attribute.Parser Ordering
-getHeat =
-    Attribute.assertKeyOnlyAttribute "heat" $> LT
-
-getCool :: Attribute.Parser Ordering
-getCool =
-    Attribute.assertKeyOnlyAttribute "cool" $> GT
-
-parseAxiomAttributes
+parseAxiomPhase
     :: Attributes
-    -> Either (Error AxiomPatternError) AxiomAttributes
-parseAxiomAttributes attrs =
+    -> Either (Error AxiomPatternError) AxiomPhase
+parseAxiomPhase attrs =
     Kore.Error.castError (Attribute.parseAttributes attrs)
 
 {- | Normal rewriting and function axioms
@@ -75,13 +79,13 @@ data AxiomPattern level = AxiomPattern
     { axiomPatternLeft  :: !(CommonPurePattern level)
     , axiomPatternRight :: !(CommonPurePattern level)
     , axiomPatternRequires :: !(CommonPredicate level)
-    , axiomAttributes :: !AxiomAttributes
+    , axiomPhase :: !AxiomPhase
     }
     deriving (Eq, Show)
 
 instance Ord level => Ord (AxiomPattern level) where
     compare a b =
-        comparing axiomAttributes a b
+        comparing axiomPhase a b
         <> comparing axiomPatternLeft a b
         <> comparing axiomPatternRight a b
         <> comparing axiomPatternRequires a b
@@ -134,9 +138,9 @@ sentenceToAxiomPattern
         }
     )
   = do
-    axiomAttributes <- parseAxiomAttributes sentenceAxiomAttributes
+    axiomPhase <- parseAxiomPhase sentenceAxiomAttributes
     case patternKoreToPure level sentenceAxiomPattern of
-        Right pat -> patternToAxiomPattern axiomAttributes pat
+        Right pat -> patternToAxiomPattern axiomPhase pat
         Left err  -> Left err
 sentenceToAxiomPattern _ _ =
     koreFail "Only axiom sentences can be translated to AxiomPatterns"
@@ -148,10 +152,10 @@ not encode a normal rewrite or function axiom.
 -}
 patternToAxiomPattern
     :: MetaOrObject level
-    => AxiomAttributes
+    => AxiomPhase
     -> CommonPurePattern level
     -> Either (Error AxiomPatternError) (QualifiedAxiomPattern level)
-patternToAxiomPattern axiomAttributes pat =
+patternToAxiomPattern axiomPhase pat =
     case pat of
         -- normal rewrite axioms
         And_ _ requires (And_ _ _ensures (Rewrites_ _ lhs rhs)) ->
@@ -159,7 +163,7 @@ patternToAxiomPattern axiomAttributes pat =
                 { axiomPatternLeft = lhs
                 , axiomPatternRight = rhs
                 , axiomPatternRequires = wrapPredicate requires
-                , axiomAttributes
+                , axiomPhase
                 }
         -- function axioms
         Implies_ _ requires (And_ _ (Equals_ _ _ lhs rhs) _ensures) ->
@@ -167,7 +171,7 @@ patternToAxiomPattern axiomAttributes pat =
                 { axiomPatternLeft = lhs
                 , axiomPatternRight = rhs
                 , axiomPatternRequires = wrapPredicate requires
-                , axiomAttributes
+                , axiomPhase
                 }
-        Forall_ _ _ child -> patternToAxiomPattern axiomAttributes child
+        Forall_ _ _ child -> patternToAxiomPattern axiomPhase child
         _ -> koreFail "Unsupported pattern type in axiom"
