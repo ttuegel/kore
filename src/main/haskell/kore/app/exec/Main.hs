@@ -186,7 +186,7 @@ main = do
                             functionRegistry
                             axiomPatterns
                             maxStepCount
-                            initialPattern
+                            (initialPattern, mempty)
             putStrLn $ unparseToString
                 (ExpandedPattern.term finalExpandedPattern)
 

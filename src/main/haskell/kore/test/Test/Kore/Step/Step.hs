@@ -692,4 +692,4 @@ runStepsPickFirst metadataTools maxStepCount configuration axioms =
     either (error . printError) id
         $ evalSimplifier
         $ pickFirstStepper
-            metadataTools Map.empty axioms maxStepCount configuration
+            metadataTools Map.empty axioms maxStepCount (configuration, mempty)
