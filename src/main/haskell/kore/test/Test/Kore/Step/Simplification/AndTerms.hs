@@ -30,8 +30,7 @@ import           Kore.Step.Simplification.AndTerms
                  ( termAnd, termUnification )
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
-import           Kore.Variables.Fresh.IntCounter
-                 ( runIntCounter )
+import           Kore.Variables.Fresh
 
 import           Test.Kore.Comparators ()
 import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
@@ -512,7 +511,7 @@ unify
 unify tools first second =
     case termUnification tools first second of
         Nothing -> Nothing
-        Just result -> Just $ fst $ fst $ runIntCounter result 0
+        Just result -> Just $ fst $ evalCounter result
 
 simplify
     :: MetaOrObject level
@@ -521,5 +520,4 @@ simplify
     -> CommonPurePattern level
     -> CommonExpandedPattern level
 simplify tools first second =
-    fst $ fst $ runIntCounter (termAnd tools first second) 0
-
+    fst $ evalCounter (termAnd tools first second)
