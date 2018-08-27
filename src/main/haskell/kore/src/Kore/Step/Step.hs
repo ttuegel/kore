@@ -17,6 +17,8 @@ import qualified Control.Monad.Trans as Monad.Trans
 import           Data.Either
                  ( rights )
 import qualified Data.Map as Map
+import           Data.Semigroup
+                 ( (<>) )
 
 import           Kore.AST.Common
                  ( Id )
@@ -25,7 +27,7 @@ import           Kore.AST.MetaOrObject
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )
 import           Kore.Step.BaseStep
-                 ( AxiomPattern, StepProof (..), simplifyStepProof,
+                 ( AxiomPattern, StepProof (..), StepProofAtom (..), stepProof,
                  stepWithAxiom )
 import           Kore.Step.ExpandedPattern
                  ( CommonExpandedPattern )
@@ -75,8 +77,8 @@ step tools symbolIdToEvaluator axioms configuration = do
             stepPattern
     return
         ( simplifiedPattern
-        , simplifyStepProof $ StepProofCombined
-            (map StepProofSimplification simplificationProofs ++ stepProofs)
+        , mconcat (stepProof . StepProofSimplification <$> simplificationProofs)
+            <> mconcat stepProofs
         )
 
 baseStepWithPattern
@@ -92,7 +94,7 @@ baseStepWithPattern tools axioms configuration = do
     let (results, proofs) = unzip stepResultsWithProofs
     return
         ( OrOfExpandedPattern.make results
-        , simplifyStepProof $ StepProofCombined proofs
+        , mconcat proofs
         )
 
 stepToList
@@ -131,7 +133,7 @@ pickFirstStepper
     -- ^ Configuration being rewritten.
     -> Simplifier (CommonExpandedPattern level, StepProof level)
 pickFirstStepper _ _ _ (MaxStepCount 0) stepperConfiguration =
-    return (stepperConfiguration, StepProofCombined [])
+    return (stepperConfiguration, mempty)
 pickFirstStepper _ _ _ (MaxStepCount n) _ | n < 0 =
     error ("Negative MaxStepCount: " ++ show n)
 pickFirstStepper
@@ -177,7 +179,7 @@ pickFirstStepperSkipMaxCheck
             axioms
             (OrOfExpandedPattern.make [stepperConfiguration])
     case OrOfExpandedPattern.extractPatterns patterns of
-        [] -> return (stepperConfiguration, StepProofCombined [])
+        [] -> return (stepperConfiguration, mempty)
         (nextConfiguration : _) -> do
             (finalConfiguration, finalProof) <-
                 pickFirstStepper
@@ -188,6 +190,5 @@ pickFirstStepperSkipMaxCheck
                     nextConfiguration
             return
                 ( finalConfiguration
-                , simplifyStepProof
-                    $ StepProofCombined [nextProof, finalProof]
+                , nextProof <> finalProof
                 )

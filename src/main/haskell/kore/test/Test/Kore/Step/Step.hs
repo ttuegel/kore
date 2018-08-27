@@ -79,19 +79,21 @@ test_single =
                         , substitution = []
                         }
                     ]
-                , StepProofCombined
-                    [ StepProofSimplification SimplificationProof
-                    , StepProofVariableRenamings
-                        [ variableRenaming
-                            (x1 PatternSort) (var_0 PatternSort)
+                , mconcat
+                    (map stepProof
+                        [ StepProofSimplification SimplificationProof
+                        , StepProofVariableRenamings
+                            [ variableRenaming
+                                (x1 PatternSort) (var_0 PatternSort)
+                            ]
+                        , StepProofUnification
+                            ( proposition_5_24_3
+                                [ functionalVariable (v1 PatternSort) ]
+                                (var_0 PatternSort)
+                                (v1 PatternSort)
+                            )
                         ]
-                    , StepProofUnification
-                        ( proposition_5_24_3
-                            [ functionalVariable (v1 PatternSort) ]
-                            (var_0 PatternSort)
-                            (v1 PatternSort)
-                        )
-                    ]
+                    )
                 )
                 (runStep
                     mockMetadataTools
@@ -133,30 +135,32 @@ test_single =
                         , substitution = []
                         }
                     ]
-                , StepProofCombined
-                    [ StepProofSimplification SimplificationProof
-                    , StepProofSimplification SimplificationProof
-                    , StepProofVariableRenamings
-                        [ variableRenaming
-                            (x1 PatternSort) (var_0 PatternSort)
+                , mconcat
+                    (map stepProof
+                        [ StepProofSimplification SimplificationProof
+                        , StepProofSimplification SimplificationProof
+                        , StepProofVariableRenamings
+                            [ variableRenaming
+                                (x1 PatternSort) (var_0 PatternSort)
+                            ]
+                        , StepProofUnification
+                            ( proposition_5_24_3
+                                [ functionalVariable (v1 PatternSort) ]
+                                (var_0 PatternSort)
+                                (v1 PatternSort)
+                            )
+                        , StepProofVariableRenamings
+                            [ variableRenaming
+                                (x1 PatternSort) (var_1 PatternSort)
+                            ]
+                        , StepProofUnification
+                            ( proposition_5_24_3
+                                [ functionalVariable (v1 PatternSort) ]
+                                (var_1 PatternSort)
+                                (v1 PatternSort)
+                            )
                         ]
-                    , StepProofUnification
-                        ( proposition_5_24_3
-                            [ functionalVariable (v1 PatternSort) ]
-                            (var_0 PatternSort)
-                            (v1 PatternSort)
-                        )
-                    , StepProofVariableRenamings
-                        [ variableRenaming
-                            (x1 PatternSort) (var_1 PatternSort)
-                        ]
-                    , StepProofUnification
-                        ( proposition_5_24_3
-                            [ functionalVariable (v1 PatternSort) ]
-                            (var_1 PatternSort)
-                            (v1 PatternSort)
-                        )
-                    ]
+                    )
                 )
                 (runStep
                     mockMetadataTools
@@ -191,13 +195,15 @@ test_single =
             -- Expected: empty result list
             (assertEqualWithExplanation ""
                 ( OrOfExpandedPattern.make []
-                , StepProofCombined
-                    [ StepProofVariableRenamings
-                        [ variableRenaming
-                            (x1 PatternSort) (var_0 PatternSort)
+                , mconcat
+                    (map stepProof
+                        [ StepProofVariableRenamings
+                            [ variableRenaming
+                                (x1 PatternSort) (var_0 PatternSort)
+                            ]
+                        , StepProofUnification EmptyUnificationProof
                         ]
-                    , StepProofUnification EmptyUnificationProof
-                    ]
+                    )
                 )
                 (runStep
                     mockMetadataTools
@@ -229,27 +235,29 @@ test_single =
             -- Expected: empty result list
             (assertEqualWithExplanation ""
                 ( OrOfExpandedPattern.make []
-                , StepProofCombined
-                    [StepProofVariableRenamings
-                        [ variableRenaming
-                            (x1 PatternSort) (var_0 PatternSort)
-                        ]
-                    , StepProofUnification
-                        ( AndDistributionAndConstraintLifting
-                            sigmaSymbol
-                            [ proposition_5_24_3
-                                [ FunctionalHead fSymbol
-                                , functionalVariable (var_0 PatternSort)
-                                ]
-                                (a1 PatternSort)
-                                (metaF (var_0 PatternSort))
-                            , proposition_5_24_3
-                                [ functionalVariable (a1 PatternSort)]
-                                (var_0 PatternSort)
-                                (a1 PatternSort)
+                , mconcat
+                    (map stepProof
+                        [ StepProofVariableRenamings
+                            [ variableRenaming
+                                (x1 PatternSort) (var_0 PatternSort)
                             ]
-                        )
-                    ]
+                        , StepProofUnification
+                            ( AndDistributionAndConstraintLifting
+                                sigmaSymbol
+                                [ proposition_5_24_3
+                                    [ FunctionalHead fSymbol
+                                    , functionalVariable (var_0 PatternSort)
+                                    ]
+                                    (a1 PatternSort)
+                                    (metaF (var_0 PatternSort))
+                                , proposition_5_24_3
+                                    [ functionalVariable (a1 PatternSort)]
+                                    (var_0 PatternSort)
+                                    (a1 PatternSort)
+                                ]
+                            )
+                        ]
+                    )
                 )
                 (runStep
                     mockMetadataTools
@@ -294,22 +302,24 @@ test_multiple =
                     , predicate = makeTruePredicate
                     , substitution = []
                     }
-                , StepProofCombined
-                    [ StepProofSimplification SimplificationProof
-                    , StepProofVariableRenamings
-                        [ variableRenaming
-                            (x1 PatternSort) (var_0 PatternSort)
-                        ]
-                    , StepProofUnification
-                        (AndDistributionAndConstraintLifting
-                            fSymbol
-                            [ proposition_5_24_3
-                                [ functionalVariable (v1 PatternSort) ]
-                                (var_0 PatternSort)
-                                (v1 PatternSort)
+                , mconcat
+                    (map stepProof
+                        [ StepProofSimplification SimplificationProof
+                        , StepProofVariableRenamings
+                            [ variableRenaming
+                                (x1 PatternSort) (var_0 PatternSort)
                             ]
-                        )
-                    ]
+                        , StepProofUnification
+                            (AndDistributionAndConstraintLifting
+                                fSymbol
+                                [ proposition_5_24_3
+                                    [ functionalVariable (v1 PatternSort) ]
+                                    (var_0 PatternSort)
+                                    (v1 PatternSort)
+                                ]
+                            )
+                        ]
+                    )
                 )
                 (runStepsPickFirst
                     mockMetadataTools
@@ -341,46 +351,48 @@ test_multiple =
                     , predicate = makeTruePredicate
                     , substitution = []
                     }
-                , StepProofCombined
-                    [ StepProofSimplification SimplificationProof
-                    , StepProofVariableRenamings
-                        [ variableRenaming
-                            (x1 PatternSort) (var_0 PatternSort)
-                        ]
-                    , StepProofUnification
-                        (AndDistributionAndConstraintLifting
-                            fSymbol
-                            [ proposition_5_24_3
-                                [ functionalVariable (v1 PatternSort) ]
-                                (var_0 PatternSort)
-                                (v1 PatternSort)
+                , mconcat
+                    (map stepProof
+                        [ StepProofSimplification SimplificationProof
+                        , StepProofVariableRenamings
+                            [ variableRenaming
+                                (x1 PatternSort) (var_0 PatternSort)
                             ]
-                        )
-                    , StepProofVariableRenamings
-                        [ variableRenaming
-                            (x1 PatternSort) (var_1 PatternSort)
-                        ]
-                    , StepProofUnification EmptyUnificationProof
-                    , StepProofSimplification SimplificationProof
-                    , StepProofVariableRenamings
-                        [ variableRenaming
-                            (x1 PatternSort) (var_2 PatternSort)
-                        ]
-                    , StepProofUnification EmptyUnificationProof
-                    , StepProofVariableRenamings
-                        [ variableRenaming
-                            (x1 PatternSort) (var_3 PatternSort)
-                        ]
-                    , StepProofUnification
-                        (AndDistributionAndConstraintLifting
-                            gSymbol
-                            [ proposition_5_24_3
-                                [ functionalVariable (v1 PatternSort) ]
-                                (var_3 PatternSort)
-                                (v1 PatternSort)
+                        , StepProofUnification
+                            (AndDistributionAndConstraintLifting
+                                fSymbol
+                                [ proposition_5_24_3
+                                    [ functionalVariable (v1 PatternSort) ]
+                                    (var_0 PatternSort)
+                                    (v1 PatternSort)
+                                ]
+                            )
+                        , StepProofVariableRenamings
+                            [ variableRenaming
+                                (x1 PatternSort) (var_1 PatternSort)
                             ]
-                        )
-                    ]
+                        , StepProofUnification EmptyUnificationProof
+                        , StepProofSimplification SimplificationProof
+                        , StepProofVariableRenamings
+                            [ variableRenaming
+                                (x1 PatternSort) (var_2 PatternSort)
+                            ]
+                        , StepProofUnification EmptyUnificationProof
+                        , StepProofVariableRenamings
+                            [ variableRenaming
+                                (x1 PatternSort) (var_3 PatternSort)
+                            ]
+                        , StepProofUnification
+                            (AndDistributionAndConstraintLifting
+                                gSymbol
+                                [ proposition_5_24_3
+                                    [ functionalVariable (v1 PatternSort) ]
+                                    (var_3 PatternSort)
+                                    (v1 PatternSort)
+                                ]
+                            )
+                        ]
+                    )
                 )
                 (runStepsPickFirst
                     mockMetadataTools
@@ -420,27 +432,29 @@ test_multiple =
                     , predicate = makeTruePredicate
                     , substitution = []
                     }
-                , StepProofCombined
-                    [ StepProofSimplification SimplificationProof
-                    , StepProofVariableRenamings
-                        [ variableRenaming
-                            (x1 PatternSort) (var_0 PatternSort)
-                        ]
-                    , StepProofUnification
-                        (AndDistributionAndConstraintLifting
-                            fSymbol
-                            [ proposition_5_24_3
-                                [ functionalVariable (v1 PatternSort) ]
-                                (var_0 PatternSort)
-                                (v1 PatternSort)
+                , mconcat
+                    (map stepProof
+                        [ StepProofSimplification SimplificationProof
+                        , StepProofVariableRenamings
+                            [ variableRenaming
+                                (x1 PatternSort) (var_0 PatternSort)
                             ]
-                        )
-                    , StepProofVariableRenamings
-                        [ variableRenaming
-                            (x1 PatternSort) (var_1 PatternSort)
+                        , StepProofUnification
+                            (AndDistributionAndConstraintLifting
+                                fSymbol
+                                [ proposition_5_24_3
+                                    [ functionalVariable (v1 PatternSort) ]
+                                    (var_0 PatternSort)
+                                    (v1 PatternSort)
+                                ]
+                            )
+                        , StepProofVariableRenamings
+                            [ variableRenaming
+                                (x1 PatternSort) (var_1 PatternSort)
+                            ]
+                        , StepProofUnification EmptyUnificationProof
                         ]
-                    , StepProofUnification EmptyUnificationProof
-                    ]
+                    )
                 )
                 (runStepsPickFirst
                     mockMetadataTools
@@ -480,7 +494,7 @@ test_multiple =
                     , predicate = makeTruePredicate
                     , substitution = []
                     }
-                , StepProofCombined []
+                , mempty
                 )
                 (runStepsPickFirst
                     mockMetadataTools
