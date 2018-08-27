@@ -13,7 +13,6 @@ module Kore.Step.Simplification.And
     , simplifyEvaluated
     ) where
 
-import qualified Control.Monad.Trans as Monad.Trans
 import Data.Reflection
        ( Given, give )
 
@@ -49,10 +48,7 @@ import           Kore.Step.Substitution
                  ( mergePredicatesAndSubstitutions )
 import           Kore.Substitution.Class
                  ( Hashable )
-import           Kore.Variables.Fresh.IntCounter
-                 ( IntCounter )
-import           Kore.Variables.Int
-                 ( IntVariable (..) )
+import           Kore.Variables.Fresh
 
 {-|'simplify' simplifies an 'And' of 'OrOfExpandedPattern'.
 
@@ -78,7 +74,7 @@ simplify
         , Ord (variable level)
         , Ord (variable Meta)
         , Ord (variable Object)
-        , IntVariable variable
+        , FreshVariable variable
         , Hashable variable
         )
     => MetadataTools level StepperAttributes
@@ -107,7 +103,7 @@ simplifyEvaluated
         , Ord (variable level)
         , Ord (variable Meta)
         , Ord (variable Object)
-        , IntVariable variable
+        , FreshVariable variable
         , Hashable variable
         )
     => MetadataTools level StepperAttributes
@@ -127,10 +123,9 @@ simplifyEvaluated tools first second
     return (first, SimplificationProof)
 
   | otherwise = do
-    orWithProof <- Monad.Trans.lift
-        (OrOfExpandedPattern.crossProductGenericF
+    orWithProof <-
+        OrOfExpandedPattern.crossProductGenericF
             (makeEvaluate tools) first second
-        )
     return
         -- TODO: It's not obvious at all when filtering occurs and when it doesn't.
         ( OrOfExpandedPattern.filterOr
@@ -150,13 +145,13 @@ makeEvaluate
         , Ord (variable level)
         , Ord (variable Meta)
         , Ord (variable Object)
-        , IntVariable variable
+        , FreshVariable variable
         , Hashable variable
         )
     => MetadataTools level StepperAttributes
     -> ExpandedPattern level variable
     -> ExpandedPattern level variable
-    -> IntCounter (ExpandedPattern level variable, SimplificationProof level)
+    -> Simplifier (ExpandedPattern level variable, SimplificationProof level)
 makeEvaluate
     tools first second
   | ExpandedPattern.isBottom first || ExpandedPattern.isBottom second =
@@ -175,13 +170,13 @@ makeEvaluateNonBool
         , Ord (variable level)
         , Ord (variable Meta)
         , Ord (variable Object)
-        , IntVariable variable
+        , FreshVariable variable
         , Hashable variable
         )
     => MetadataTools level StepperAttributes
     -> ExpandedPattern level variable
     -> ExpandedPattern level variable
-    -> IntCounter (ExpandedPattern level variable, SimplificationProof level)
+    -> Simplifier (ExpandedPattern level variable, SimplificationProof level)
 makeEvaluateNonBool
     tools
     ExpandedPattern

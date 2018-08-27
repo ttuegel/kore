@@ -27,8 +27,7 @@ import Kore.Error
        ( Error )
 import Kore.Step.OrOfExpandedPattern
        ( OrOfExpandedPattern )
-import Kore.Variables.Fresh.IntCounter
-       ( IntCounter, runIntCounter )
+import Kore.Variables.Fresh
 
 
 {- | A tag for errors during simplification
@@ -50,7 +49,7 @@ data SimplificationProof level = SimplificationProof
 -- TODO (thomas.tuegel): Replace IntCounter with a single state carrying both
 -- the counter and the proof.
 -- TODO (thomas.tuegel): Lift the StateT to the outer level.
-type Simplifier = ExceptT (Error SimplificationError) IntCounter
+type Simplifier = ExceptT (Error SimplificationError) Counting
 
 {- | Evaluate a simplifier computation.
 
@@ -60,7 +59,7 @@ type Simplifier = ExceptT (Error SimplificationError) IntCounter
 evalSimplifier :: Simplifier a -> Either (Error SimplificationError) a
 evalSimplifier simp =
     let
-        (result, _) = runIntCounter (runExceptT simp) 0
+        (result, _) = runCounting (runExceptT simp) (Counter 0)
     in
       result
 

@@ -49,8 +49,7 @@ import           Kore.Substitution.Class
                  ( Hashable )
 import           Kore.Unification.Unifier
                  ( UnificationSubstitution )
-import           Kore.Variables.Int
-                 ( IntVariable (..) )
+import           Kore.Variables.Fresh
 
 data ExpandedApplication level variable = ExpandedApplication
     { term         :: !(Application level (PureMLPattern level variable))
@@ -76,7 +75,7 @@ simplify
         , Ord (variable level)
         , Ord (variable Meta)
         , Ord (variable Object)
-        , IntVariable variable
+        , FreshVariable variable
         , Hashable variable
         )
     => MetadataTools level StepperAttributes
@@ -121,7 +120,7 @@ makeAndEvaluateApplications
         , Ord (variable level)
         , Ord (variable Meta)
         , Ord (variable Object)
-        , IntVariable variable
+        , FreshVariable variable
         , Hashable variable
         )
     => MetadataTools level StepperAttributes
@@ -155,7 +154,7 @@ evaluateApplicationFunction
         , Ord (variable level)
         , Ord (variable Meta)
         , Ord (variable Object)
-        , IntVariable variable
+        , FreshVariable variable
         , Hashable variable
         )
     => MetadataTools level StepperAttributes
@@ -192,7 +191,7 @@ makeExpandedApplication
         , Ord (variable level)
         , Ord (variable Meta)
         , Ord (variable Object)
-        , IntVariable variable
+        , FreshVariable variable
         , Hashable variable
         )
     => MetadataTools level StepperAttributes

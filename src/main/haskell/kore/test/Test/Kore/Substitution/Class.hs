@@ -14,119 +14,130 @@ import           Kore.AST.Kore
 import           Kore.AST.MetaOrObject
 import           Kore.Substitution.Class
 import qualified Kore.Substitution.List as S
-import           Kore.Variables.Fresh.IntCounter
-import           Kore.Variables.Int
+import           Kore.Variables.Fresh
 
 type UnifiedPatternSubstitution =
     S.Substitution (Unified Variable) CommonKorePattern
 
 instance
     PatternSubstitutionClass
-        S.Substitution Variable UnifiedPattern IntCounter
+        S.Substitution Variable UnifiedPattern
   where
 
 testSubstitute
     :: CommonKorePattern
     -> UnifiedPatternSubstitution
-    -> IntCounter CommonKorePattern
+    -> Counting CommonKorePattern
 testSubstitute = substitute
 
 test_class :: [TestTree]
 test_class =
     [ testCase "Testing substituting a variable."
         (assertEqual ""
-            (objectTopPattern, 2)
-            (runIntCounter
+            (objectTopPattern, Counter 2)
+            (runCounting
                 (testSubstitute objectVariableUnifiedPattern substitution1)
-                2
+                (Counter 2)
             )
         )
     , testCase "Testing not substituting a variable."
         (assertEqual ""
-            (metaVariableUnifiedPattern, 2)
-            (runIntCounter
+            (metaVariableUnifiedPattern, Counter 2)
+            (runCounting
                 (testSubstitute metaVariableUnifiedPattern substitution1)
-                2
+                (Counter 2)
             )
         )
     , testCase "Testing not substituting anything."
         (assertEqual ""
-            (objectBottomPattern, 2)
-            (runIntCounter
+            (objectBottomPattern, Counter 2)
+            (runCounting
                 (testSubstitute objectBottomPattern substitution1)
-                2
+                (Counter 2)
             )
         )
       , testCase "Testing exists => empty substitution."
         (assertEqual ""
-            (existsObjectUnifiedPattern1, 2)
-            (runIntCounter
+            (existsObjectUnifiedPattern1, Counter 2)
+            (runCounting
                 (testSubstitute existsObjectUnifiedPattern1 substitution1)
-                2
+                (Counter 2)
             )
         )
       , testCase "Testing forall."
         (assertEqual ""
-            (forallObjectUnifiedPattern2, 2)
-            (runIntCounter
+            (forallObjectUnifiedPattern2, Counter 2)
+            (runCounting
                 (testSubstitute forallObjectUnifiedPattern1 substitution1)
-                2
+                (Counter 2)
             )
         )
       , testCase "Testing binder renaming"
         (assertEqual ""
-            (existsObjectUnifiedPattern1S 2, 3)
-            (runIntCounter
+            (existsObjectUnifiedPattern1S 2, Counter 3)
+            (runCounting
                 (testSubstitute existsObjectUnifiedPattern1 substitution2)
-                2
+                (Counter 2)
             )
         )
       , testCase "Testing binder renaming and substitution"
         (assertEqual ""
-            (forallObjectUnifiedPattern1S3, 6)
-            (runIntCounter
+            (forallObjectUnifiedPattern1S3, Counter 6)
+            (runCounting
                 (testSubstitute forallObjectUnifiedPattern1 substitution3)
-                5
+                (Counter 5)
             )
         )
       , testCase "Testing double binder renaming"
         (assertEqual ""
-            (forallExistsObjectUnifiedPattern1S2, 9)
-            (runIntCounter
+            (forallExistsObjectUnifiedPattern1S2, Counter 9)
+            (runCounting
                 (testSubstitute
                     forallExistsObjectUnifiedPattern1 substitution2)
-                7
+                (Counter 7)
             )
         )
         , testCase "Testing double binder renaming 1"
         (assertEqual ""
-            (forallExistsObjectUnifiedPattern2, 17)
-            (runIntCounter
+            (forallExistsObjectUnifiedPattern2, Counter 17)
+            (runCounting
                 (testSubstitute
                     forallExistsObjectUnifiedPattern2 substitution1)
-                17
+                (Counter 17)
             )
         )
         , testCase "Testing substitution state 1"
         (assertEqual ""
-            (testSubstitutionStatePatternS3, 18)
-            (runIntCounter
+            (testSubstitutionStatePatternS3, Counter 18)
+            (runCounting
                 (testSubstitute
                     testSubstitutionStatePattern substitution3)
-                17
+                (Counter 17)
             )
         )
         ]
 
 metaVariableSubstitute :: Int -> Variable Meta
-metaVariableSubstitute = intVariable metaVariable
+metaVariableSubstitute n =
+    metaVariable
+        { variableName = Id
+            { getId = "#var_" ++ show n
+            , idLocation = AstLocationGeneratedVariable
+            }
+        }
 
 metaVariableUnifiedPatternSubstitute :: Int -> CommonKorePattern
 metaVariableUnifiedPatternSubstitute =
     asKorePattern . VariablePattern . metaVariableSubstitute
 
 objectVariableSubstitute :: Int -> Variable Object
-objectVariableSubstitute = intVariable objectVariable
+objectVariableSubstitute n =
+    objectVariable
+        { variableName = Id
+            { getId = "var_" ++ show n
+            , idLocation = AstLocationGeneratedVariable
+            }
+        }
 
 objectVariableUnifiedPatternSubstitute :: Int -> CommonKorePattern
 objectVariableUnifiedPatternSubstitute =

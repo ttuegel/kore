@@ -43,23 +43,19 @@ import           Kore.Unification.Error
 import           Kore.Unification.UnifierImpl
                  ( UnificationSubstitution )
 import           Kore.Variables.Free
-import           Kore.Variables.Fresh.IntCounter
-                 ( IntCounter )
-import           Kore.Variables.Int
-                 ( IntVariable )
+import           Kore.Variables.Fresh
 
 instance
     ( MetaOrObject level
     , Ord (variable Object)
     , Ord (variable Meta)
     , Hashable variable
-    , IntVariable variable
+    , FreshVariable variable
     )
     => PatternSubstitutionClass
         ListSubstitution.Substitution
         variable
         (Pattern level)
-        IntCounter
   where
 
 {-| 'normalizeSubstitution' transforms a substitution into an equivalent one
@@ -78,14 +74,15 @@ normalizeSubstitution
         , Ord (variable Meta)
         , Ord (variable Object)
         , Hashable variable
-        , IntVariable variable
+        , FreshVariable variable
+        , MonadCounter m
         , Show (variable level)
         )
     => MetadataTools level StepperAttributes
     -> UnificationSubstitution level variable
     -> Either
         (SubstitutionError level variable)
-        (IntCounter (PredicateSubstitution level variable))
+        (m (PredicateSubstitution level variable))
 normalizeSubstitution tools substitution = do
     sorted <- topologicalSortConverted
     let
@@ -158,12 +155,13 @@ normalizeSortedSubstitution
         , Ord (variable Meta)
         , Ord (variable Object)
         , Hashable variable
-        , IntVariable variable
+        , MonadCounter m
+        , FreshVariable variable
         )
     => UnificationSubstitution level variable
     -> UnificationSubstitution level variable
     -> [(Unified variable, PureMLPattern level variable)]
-    -> IntCounter (PredicateSubstitution level variable)
+    -> m (PredicateSubstitution level variable)
 normalizeSortedSubstitution [] result _ =
     return PredicateSubstitution
         { predicate = makeTruePredicate

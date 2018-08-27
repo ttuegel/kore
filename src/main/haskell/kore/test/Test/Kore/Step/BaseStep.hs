@@ -44,7 +44,7 @@ import Kore.Unification.Error
        ( SubstitutionError (..) )
 import Kore.Unification.Unifier
        ( UnificationProof (..) )
-import Kore.Variables.Fresh.IntCounter
+import Kore.Variables.Fresh
 
 import Test.Kore.Comparators ()
 import Test.Tasty.HUnit.Extensions
@@ -1288,5 +1288,5 @@ runStep
         (CommonExpandedPattern level, StepProof level)
 runStep metadataTools configuration axiom =
     case give metadataTools (stepWithAxiom metadataTools configuration axiom) of
-        Left err            -> Left (fst (runIntCounter err 0))
-        Right counterResult -> Right (fst (runIntCounter counterResult 0))
+        Left err            -> Left (evalCounting err)
+        Right counterResult -> Right (evalCounting counterResult)
