@@ -11,7 +11,6 @@ module Kore.Step.Merging.ExpandedPattern
     ( mergeWithPredicateSubstitution
     ) where
 
-import qualified Control.Monad.Except as Except
 import           Data.Reflection
                  ( give )
 
@@ -82,12 +81,10 @@ mergeWithPredicateSubstitution
             , substitution = mergedSubstitution
             }
         , _proof ) <-
-            Except.lift
-                (mergePredicatesAndSubstitutions
-                    tools
-                    [pattPredicate, conditionToMerge]
-                    [pattSubstitution, substitutionToMerge]
-                )
+            mergePredicatesAndSubstitutions
+                tools
+                [pattPredicate, conditionToMerge]
+                [pattSubstitution, substitutionToMerge]
     (evaluatedCondition, _) <-
         give (MetadataTools.sortTools tools)
             $ Predicate.evaluate simplifier mergedCondition

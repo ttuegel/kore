@@ -25,7 +25,6 @@ import           Data.Bifunctor
 import           Control.Monad.Counter
 import           Kore.Error
                  ( Error )
-import qualified Kore.Error
 import           Kore.Step.Simplification.Data
                  ( Simplifier, runSimplifier )
 
@@ -142,7 +141,7 @@ liftSimplifier simplifier = do
         counter0 = stepperCounter
         (result, counter1) = runSimplifier simplifier counter0
     Monad.State.put (stepperState0 { stepperCounter = counter1 })
-    either Monad.Except.throwError return (Kore.Error.castError result)
+    return result
 
 {- | Reduce the step count by one step and return the new count.
 

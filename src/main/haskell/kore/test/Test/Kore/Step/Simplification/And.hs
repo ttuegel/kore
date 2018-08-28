@@ -20,8 +20,6 @@ import           Kore.ASTUtils.SmartConstructors
                  ( getSort, mkAnd, mkApp, mkBottom, mkTop, mkVar )
 import           Kore.ASTUtils.SmartPatterns
                  ( pattern Bottom_ )
-import           Kore.Error
-                 ( printError )
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools (MetadataTools), SortTools )
 import qualified Kore.IndexedModule.MetadataTools
@@ -375,18 +373,14 @@ evaluate
     :: And Object (CommonOrOfExpandedPattern Object)
     -> CommonOrOfExpandedPattern Object
 evaluate patt =
-    either (error . printError) fst
-        $ evalSimplifier
-        $ simplify mockMetadataTools patt
+    fst $ evalSimplifier $ simplify mockMetadataTools patt
 
 evaluatePatterns
     :: CommonExpandedPattern Object
     -> CommonExpandedPattern Object
     -> CommonExpandedPattern Object
 evaluatePatterns first second =
-    either (error . printError) fst
-        $ evalSimplifier
-        $ makeEvaluate mockMetadataTools first second
+    fst $ evalSimplifier $ makeEvaluate mockMetadataTools first second
 
 evaluatePatternsWithAttributes
     :: [(SymbolOrAlias Object, StepperAttributes)]
@@ -394,7 +388,7 @@ evaluatePatternsWithAttributes
     -> CommonExpandedPattern Object
     -> CommonExpandedPattern Object
 evaluatePatternsWithAttributes attributes first second =
-    either (error . printError) fst
+    fst
         $ evalSimplifier
         $ makeEvaluate
             (mockMetadataToolsWithAttributes attributes)

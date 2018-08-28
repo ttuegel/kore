@@ -672,8 +672,7 @@ runStep
     -> [AxiomPattern level]
     -> (CommonOrOfExpandedPattern level, StepProof level)
 runStep metadataTools configuration axioms =
-    either (error . printError) id
-        $ evalSimplifier
+    evalSimplifier
         $ step
             metadataTools
             Map.empty

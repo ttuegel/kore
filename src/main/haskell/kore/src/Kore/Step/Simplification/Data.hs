@@ -8,34 +8,28 @@ Stability   : experimental
 Portability : portable
 -}
 module Kore.Step.Simplification.Data
-    ( SimplificationError
-    , Simplifier
-    , runSimplifier, evalSimplifier
+    (  Simplifier (..)
+    , runSimplifier
+    , evalSimplifier
+    , liftCounting
     , PureMLPatternSimplifier (..)
     , CommonPureMLPatternSimplifier
     , SimplificationProof (..)
     ) where
 
-import Control.Monad.Except
-       ( ExceptT, runExceptT )
+import           Control.Monad.State.Class
+                 ( MonadState )
+import           Control.Monad.State.Strict
+                 ( State, runState )
+import qualified Control.Monad.State.Strict as Monad.State
 
 import Kore.AST.Common
        ( Variable )
 import Kore.AST.PureML
        ( PureMLPattern )
-import Kore.Error
-       ( Error )
 import Kore.Step.OrOfExpandedPattern
        ( OrOfExpandedPattern )
 import Kore.Variables.Fresh
-
-
-{- | A tag for errors during simplification
-
-  See also: 'Error'
-
- -}
-data SimplificationError
 
 {-| 'SimplificationProof' is a placeholder for proofs showing that the
 simplification of a MetaMLPattern was correct.
@@ -45,29 +39,65 @@ data SimplificationProof level = SimplificationProof
 
 {- | The concrete monad in which simplification occurs.
 
+  'increment' accesses a 'Counter' for generating fresh variables.
+
+  'empty' indicates an expected error, e.g. the selected simplification rule
+  does not apply.  '<|>' composes two simplification rules by keeping the first
+  rule which succeeds; when a rule fails, the 'Counter' is automatically reset
+  before trying the next rule.
+
  -}
--- TODO (thomas.tuegel): Lift the StateT to the outer level.
-type Simplifier = ExceptT (Error SimplificationError) Counting
+newtype Simplifier a =
+    Simplifier
+    { getSimplifier :: State Counter a
+    }
+  deriving (Applicative, Functor, Monad)
+
+deriving instance MonadState Counter Simplifier
+
+instance MonadCounter Simplifier where
+    increment = do
+        n <- Monad.State.get
+        Monad.State.modify' succ
+        return n
+
+{- | Lift a computation in the 'Counting' monad into the 'Simplifier' monad.
+
+  The salient difference is that 'Counting' does not encompass failure, so this
+  is a faithful lifting.
+ -}
+liftCounting :: Counting a -> Simplifier a
+liftCounting counting = do
+    counter0 <- Monad.State.get
+    let (a, !counter1) = runCounting counting counter0
+    Monad.State.put counter1
+    return a
 
 {- | Run a simplifier computation.
 
-  The result (or error) is returned along with the final 'Counter'.
+  The result (or error) is returned along with the final 'Counter'. A 'Left'
+  result indicates an error terminating simplification, while a result @Right
+  Nothing@ indicates that the simplifier did not apply (but no error was
+  encountered).
 
  -}
-runSimplifier :: Simplifier a -> Counter -> (Either (Error SimplificationError) a, Counter)
-runSimplifier simplifier = runCounting (runExceptT simplifier)
+runSimplifier
+    :: Simplifier a
+    -> Counter
+    -> (a, Counter)
+runSimplifier simplifier =
+    runState (getSimplifier simplifier)
 
 {- | Evaluate a simplifier computation.
 
-  Only the result (or error) is returned. The 'Counter' is discarded.
+  Only the result (or error) is returned. A result 'Nothing' indicates that the
+  simplifier did not apply, but did not encounter an unexpected error. The
+  'Counter' is discarded.
 
   -}
-evalSimplifier :: Simplifier a -> Either (Error SimplificationError) a
+evalSimplifier :: Simplifier a -> a
 evalSimplifier simplifier =
-    let
-        (result, _) = runSimplifier simplifier (Counter 0)
-    in
-      result
+    fst $ runSimplifier simplifier (Counter 0)
 
 {-| 'PureMLPatternSimplifier' wraps a function that evaluates
 Kore functions on PureMLPatterns.
