@@ -13,6 +13,12 @@ module Kore.Step.Step
     , MaxStepCount(..)
     ) where
 
+import           Control.Applicative
+                 ( Alternative (..) )
+import qualified Control.Monad.State.Class as Monad.State
+import qualified Control.Monad.Trans as Monad.Trans
+import           Control.Monad.Trans.Maybe
+                 ( MaybeT (..), runMaybeT )
 import           Data.Either
                  ( rights )
 import qualified Data.Map as Map
@@ -154,20 +160,55 @@ pickFirstStepperSkipMaxCheck
     tools symbolIdToEvaluator axioms
     (stepperConfiguration, prevProof)
   = do
-    (patterns, thisProof) <-
-        -- TODO: Perhaps use IntCounter.findState to reduce the need for
-        -- intCounter values and to make this more testable.
-        liftSimplifier
-            $ step
-                tools
-                symbolIdToEvaluator
-                axioms
-                (OrOfExpandedPattern.make [stepperConfiguration])
-    case OrOfExpandedPattern.extractPatterns patterns of
-        [] -> return (stepperConfiguration, prevProof)
-        (nextConfiguration : _) ->
-            pickFirstStepper
-                tools
-                symbolIdToEvaluator
-                axioms
-                (nextConfiguration, prevProof <> thisProof)
+    simplified <-
+        runMaybeT (normalStep <|> heatingStep <|> coolingStep)
+    case simplified of
+        Nothing -> return (stepperConfiguration, prevProof)
+        Just (nextConfig, thisProof) ->
+            pickFirstStepper tools symbolIdToEvaluator axioms
+                (nextConfig, prevProof <> thisProof)
+  where
+    stepWithFirst axioms' = do
+        (patterns, thisProof) <-
+            Monad.Trans.lift
+                $ liftSimplifier
+                $ step tools symbolIdToEvaluator axioms'
+                $ OrOfExpandedPattern.make [stepperConfiguration]
+        case OrOfExpandedPattern.extractPatterns patterns of
+            [] -> empty
+            (nextConfig : _) -> return (nextConfig, thisProof)
+
+    normalAxioms = filter isNormalRule axioms
+    heatingAxioms = filter isHeatingRule axioms
+    coolingAxioms = filter isCoolingRule axioms
+
+    normalStep = do
+        applied <- stepWithFirst normalAxioms
+        appliedRule Nothing
+        return applied
+
+    heatingStep = do
+        StepperState { stepperLastApplied } <- Monad.State.get
+        case stepperLastApplied of
+            Just Cool ->
+                -- The last applied rule was a cooling rule, so we must not
+                -- attempt a heating rule right now: it would always succeed
+                -- and evaluation would loop forever.
+                empty
+            _ -> do
+                applied <- stepWithFirst heatingAxioms
+                appliedRule (Just Heat)
+                return applied
+
+    coolingStep = do
+        StepperState { stepperLastApplied } <- Monad.State.get
+        case stepperLastApplied of
+            Just Heat ->
+                -- The last applied rule was a heating rule, so we must not
+                -- attempt a cooling rule right now: it would always succeed
+                -- and evaluation would loop forever.
+                empty
+            _ -> do
+                applied <- stepWithFirst coolingAxioms
+                appliedRule (Just Cool)
+                return applied

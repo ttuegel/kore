@@ -46,6 +46,7 @@ dependencies:
   - reflection
   - text
   - time
+  - transformers
   - unordered-containers
 
 build-tools:

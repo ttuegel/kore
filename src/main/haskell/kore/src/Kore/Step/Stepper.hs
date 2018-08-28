@@ -3,10 +3,13 @@ module Kore.Step.Stepper
     , predMaxStepCount
     , StepperError
     , StepperState (..)
+    , HeatCool (..)
+    , isHeatingRule, isCoolingRule, isNormalRule
     , Stepper
     , runStepper, evalStepper
     , liftSimplifier
     , decrementStepCount
+    , appliedRule
     ) where
 
 import           Control.Monad.Error.Class
@@ -19,14 +22,16 @@ import           Control.Monad.State.Class
 import           Control.Monad.State.Strict
                  ( StateT, runStateT )
 import qualified Control.Monad.State.Strict as Monad.State
-import           Data.Bifunctor
-                 ( bimap )
+import           Control.Monad.Trans.Maybe
+                 ( MaybeT )
 
-import           Control.Monad.Counter
-import           Kore.Error
-                 ( Error )
-import           Kore.Step.Simplification.Data
-                 ( Simplifier, runSimplifier )
+import Control.Monad.Counter
+import Kore.Error
+       ( Error )
+import Kore.Step.AxiomPatterns
+       ( HeatCool (..), isCoolingRule, isHeatingRule, isNormalRule )
+import Kore.Step.Simplification.Data
+       ( Simplifier, runSimplifier )
 
 {- | The maximum number of steps that the 'Stepper' is allowed to take.
 
@@ -63,7 +68,12 @@ data StepperError
 data StepperState =
     StepperState
         { stepperCounter :: !Counter
+          -- ^ 'Counter' for fresh variable generation
         , stepperMaxStepCount :: !MaxStepCount
+          -- ^ 'MaxStepCount' to terminate computation
+        , stepperLastApplied :: !(Maybe HeatCool)
+          -- ^ Mark if the last applied rule was a 'Heat' or 'Cool' rule (or
+          -- neither) to detect if we are stuck.
         }
 
 {- | A computation which carries out Kore execution steps.
@@ -121,25 +131,21 @@ evalStepper stepper maxSteps =
             StepperState
                 { stepperCounter = Counter 0
                 , stepperMaxStepCount = maxSteps
+                , stepperLastApplied = Nothing
                 }
     in
-      bimap id fst (runStepper stepper state0)
+      fst <$> runStepper stepper state0
 
 {- | Lift a 'Simplifier' into the 'Stepper' monad.
 
-  If the @Simplifier@ throws an error, it will be cast into the appropriate
-  error type. The @Simplifier@ will inherit the current 'Counter', which will be
+  The @Simplifier@ will inherit the current 'Counter', which will be
   updated after the @Simplifier@ returns.
-
-  See also: 'Kore.Error.castError'
 
  -}
 liftSimplifier :: Simplifier a -> Stepper a
 liftSimplifier simplifier = do
-    stepperState0@StepperState { stepperCounter } <- Monad.State.get
-    let
-        counter0 = stepperCounter
-        (result, counter1) = runSimplifier simplifier counter0
+    stepperState0@StepperState { stepperCounter = counter0 } <- Monad.State.get
+    let (result, counter1) = runSimplifier simplifier counter0
     Monad.State.put (stepperState0 { stepperCounter = counter1 })
     return result
 
@@ -161,3 +167,7 @@ decrementStepCount = do
                     state { stepperMaxStepCount = count1 }
             Monad.State.modify' decrement0
             return (Just count1)
+
+appliedRule :: Maybe HeatCool -> MaybeT Stepper ()
+appliedRule applied =
+    Monad.State.modify' (\state -> state { stepperLastApplied = applied })
