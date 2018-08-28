@@ -1,3 +1,5 @@
+{-# LANGUAGE DefaultSignatures #-}
+
 module Control.Monad.Counter
     ( Counter (..)
     , Counting, runCounting, evalCounting
@@ -34,11 +36,7 @@ newtype Counting a = Counting (Monad.State.Strict.State Counter a)
 -- | The @MonadState@ instance must not be used to carelessly reset the counter!
 deriving instance MonadState Counter Counting
 
-instance MonadCounter Counting where
-    increment = do
-        n <- Monad.State.get
-        Monad.State.modify' succ
-        return n
+instance MonadCounter Counting
 
 {- | Run a computation using a @Counter@.
 
@@ -71,6 +69,8 @@ evalCounting (Counting counting) =
   reset. @MonadCounter@ also allows access to /only/ the counter in a monad with
   more complex state.
 
+  A default implementation is provided for instances of @MonadState Counter@.
+
  -}
 class Monad m => MonadCounter m where
     {- | Increment the counter and return the prior value.
@@ -80,6 +80,11 @@ class Monad m => MonadCounter m where
       generate duplicate fresh variables.
      -}
     increment :: m Counter
+    default increment :: MonadState Counter m => m Counter
+    increment = do
+        n <- Monad.State.get
+        Monad.State.modify' succ
+        return n
 
 instance MonadCounter m => MonadCounter (Monad.Except.ExceptT e m) where
     increment = Monad.Trans.lift increment
