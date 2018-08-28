@@ -10,7 +10,7 @@ Portability : portable
 module Kore.Step.Simplification.Data
     ( SimplificationError
     , Simplifier
-    , evalSimplifier
+    , runSimplifier, evalSimplifier
     , PureMLPatternSimplifier (..)
     , CommonPureMLPatternSimplifier
     , SimplificationProof (..)
@@ -46,20 +46,26 @@ data SimplificationProof level = SimplificationProof
 {- | The concrete monad in which simplification occurs.
 
  -}
--- TODO (thomas.tuegel): Replace IntCounter with a single state carrying both
--- the counter and the proof.
 -- TODO (thomas.tuegel): Lift the StateT to the outer level.
 type Simplifier = ExceptT (Error SimplificationError) Counting
 
+{- | Run a simplifier computation.
+
+  The result (or error) is returned along with the final 'Counter'.
+
+ -}
+runSimplifier :: Simplifier a -> Counter -> (Either (Error SimplificationError) a, Counter)
+runSimplifier simplifier = runCounting (runExceptT simplifier)
+
 {- | Evaluate a simplifier computation.
 
-  Only the result (or error) is returned. The 'IntCounter' is discarded.
+  Only the result (or error) is returned. The 'Counter' is discarded.
 
   -}
 evalSimplifier :: Simplifier a -> Either (Error SimplificationError) a
-evalSimplifier simp =
+evalSimplifier simplifier =
     let
-        (result, _) = runCounting (runExceptT simp) (Counter 0)
+        (result, _) = runSimplifier simplifier (Counter 0)
     in
       result
 

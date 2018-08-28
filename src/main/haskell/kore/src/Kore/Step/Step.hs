@@ -41,13 +41,10 @@ import           Kore.Step.Simplification.Data
                  ( Simplifier )
 import qualified Kore.Step.Simplification.ExpandedPattern as ExpandedPattern
                  ( simplify )
+import           Kore.Step.Stepper
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 import           Kore.Variables.Fresh
-
-data MaxStepCount
-    = MaxStepCount Integer
-    | AnyStepCount
 
 {-| 'step' executes a single rewriting step using the provided axioms.
 
@@ -127,35 +124,22 @@ pickFirstStepper
     -- ^ Map from symbol IDs to defined functions
     -> [AxiomPattern level]
     -- ^ Rewriting axioms
-    -> MaxStepCount
-    -- ^ The maximum number of steps to be made
     -> (CommonExpandedPattern level, StepProof level)
     -- ^ Configuration being rewritten and its accompanying proof
-    -> Simplifier (CommonExpandedPattern level, StepProof level)
-pickFirstStepper _ _ _ (MaxStepCount 0) configAndProof =
-    return configAndProof
-pickFirstStepper _ _ _ (MaxStepCount n) _ | n < 0 =
-    error ("Negative MaxStepCount: " ++ show n)
+    -> Stepper (CommonExpandedPattern level, StepProof level)
 pickFirstStepper
-    tools symbolIdToEvaluator axioms (MaxStepCount maxStep)
+    tools symbolIdToEvaluator axioms
     (stepperConfiguration, prevProof)
-  =
-    pickFirstStepperSkipMaxCheck
-        tools
-        symbolIdToEvaluator
-        axioms
-        (MaxStepCount (maxStep - 1))
-        (stepperConfiguration, prevProof)
-pickFirstStepper
-    tools symbolIdToEvaluator axioms AnyStepCount
-    (stepperConfiguration, prevProof)
-  =
-    pickFirstStepperSkipMaxCheck
-        tools
-        symbolIdToEvaluator
-        axioms
-        AnyStepCount
-        (stepperConfiguration, prevProof)
+  = do
+    count <- decrementStepCount
+    case count of
+        Nothing -> return (stepperConfiguration, prevProof)
+        Just _ ->
+            pickFirstStepperSkipMaxCheck
+                tools
+                symbolIdToEvaluator
+                axioms
+                (stepperConfiguration, prevProof)
 
 pickFirstStepperSkipMaxCheck
     ::  ( MetaOrObject level)
@@ -164,23 +148,22 @@ pickFirstStepperSkipMaxCheck
     -- ^ Map from symbol IDs to defined functions
     -> [AxiomPattern level]
     -- ^ Rewriting axioms
-    -> MaxStepCount
-    -- ^ The maximum number of steps to be made
     -> (CommonExpandedPattern level, StepProof level)
     -- ^ Configuration being rewritten and its accompanying proof
-    -> Simplifier (CommonExpandedPattern level, StepProof level)
+    -> Stepper (CommonExpandedPattern level, StepProof level)
 pickFirstStepperSkipMaxCheck
-    tools symbolIdToEvaluator axioms maxStepCount
+    tools symbolIdToEvaluator axioms
     (stepperConfiguration, prevProof)
   = do
     (patterns, thisProof) <-
         -- TODO: Perhaps use IntCounter.findState to reduce the need for
         -- intCounter values and to make this more testable.
-        step
-            tools
-            symbolIdToEvaluator
-            axioms
-            (OrOfExpandedPattern.make [stepperConfiguration])
+        liftSimplifier
+            $ step
+                tools
+                symbolIdToEvaluator
+                axioms
+                (OrOfExpandedPattern.make [stepperConfiguration])
     case OrOfExpandedPattern.extractPatterns patterns of
         [] -> return (stepperConfiguration, prevProof)
         (nextConfiguration : _) ->
@@ -188,5 +171,4 @@ pickFirstStepperSkipMaxCheck
                 tools
                 symbolIdToEvaluator
                 axioms
-                maxStepCount
                 (nextConfiguration, prevProof <> thisProof)

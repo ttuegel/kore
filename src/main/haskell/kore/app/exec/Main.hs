@@ -53,11 +53,10 @@ import qualified Kore.Step.ExpandedPattern as ExpandedPattern
 import           Kore.Step.Function.Registry
                  ( extractEvaluators )
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
-import           Kore.Step.Simplification.Data
-                 ( evalSimplifier )
 import qualified Kore.Step.Simplification.ExpandedPattern as ExpandedPattern
 import           Kore.Step.Step
                  ( MaxStepCount (..), pickFirstStepper )
+import           Kore.Step.Stepper
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes (..) )
 import           Kore.Unparser.Unparse
@@ -165,12 +164,11 @@ main = do
                             $ makeKInitConfig purePattern
                         else purePattern
                 expandedPattern = makeExpandedPattern runningPattern
-            finalExpandedPattern <- clockSomething "Executing"
-                    $ either (error . Kore.Error.printError) fst
-                    $ evalSimplifier
-                    $ do
+                stepper =
+                    do
                         simplifiedPatterns <-
-                            ExpandedPattern.simplify
+                            liftSimplifier
+                            $ ExpandedPattern.simplify
                                 metadataTools
                                 functionRegistry
                                 expandedPattern
@@ -185,8 +183,10 @@ main = do
                             metadataTools
                             functionRegistry
                             axiomPatterns
-                            maxStepCount
                             (initialPattern, mempty)
+            finalExpandedPattern <- clockSomething "Executing"
+                    $ either (error . Kore.Error.printError) fst
+                    $ evalStepper stepper maxStepCount
             putStrLn $ unparseToString
                 (ExpandedPattern.term finalExpandedPattern)
 

@@ -39,6 +39,7 @@ import           Kore.Step.PatternAttributes
 import           Kore.Step.Simplification.Data
                  ( SimplificationProof (..), evalSimplifier )
 import           Kore.Step.Step
+import           Kore.Step.Stepper
 import           Kore.Step.StepperAttributes
 import           Kore.Unification.Unifier
                  ( UnificationProof (..) )
@@ -689,7 +690,8 @@ runStepsPickFirst
     -> [AxiomPattern level]
     -> (CommonExpandedPattern level, StepProof level)
 runStepsPickFirst metadataTools maxStepCount configuration axioms =
-    either (error . printError) id
-        $ evalSimplifier
-        $ pickFirstStepper
-            metadataTools Map.empty axioms maxStepCount (configuration, mempty)
+    either (error . printError) id (evalStepper stepper maxStepCount)
+  where
+    stepper =
+        pickFirstStepper metadataTools Map.empty axioms
+            (configuration, mempty)
