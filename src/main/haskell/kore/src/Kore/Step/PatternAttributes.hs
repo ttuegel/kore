@@ -11,6 +11,7 @@ Portability : portable
 module Kore.Step.PatternAttributes
     ( FunctionProof(..)
     , FunctionalProof(..)
+    , isConstructorTop
     , isFunctionPattern
     , isFunctionalPattern
     , mapFunctionalProofVariables
@@ -19,6 +20,8 @@ module Kore.Step.PatternAttributes
 import Control.Lens
 import Data.Functor.Foldable
        ( cata )
+import Data.Either
+       ( isRight )
 
 import           Kore.AST.Common
                  ( Application (..), CharLiteral, DomainValue, Pattern (..),
@@ -109,6 +112,18 @@ isFunctionalPattern tools = cata  reduceM
         proofs <- concat <$> sequence patt
         return (proof : proofs)
 
+isPreconstructedPattern
+    :: err
+    -> Pattern level variable pat
+    -> Either err (FunctionalProof level variable)
+isPreconstructedPattern _ (DomainValuePattern dv) =
+    return (FunctionalDomainValue dv)
+isPreconstructedPattern _ (StringLiteralPattern str) =
+    Right (FunctionalStringLiteral str)
+isPreconstructedPattern _ (CharLiteralPattern str) =
+    Right (FunctionalCharLiteral str)
+isPreconstructedPattern err _ = Left err
+
 checkFunctionalHead
     :: MetadataTools level StepperAttributes
     -> Pattern level variable a
@@ -128,6 +143,19 @@ checkFunctionalHead tools (ApplicationPattern ap) =
   where
     patternHead = applicationSymbolOrAlias ap
 checkFunctionalHead _ _ = Left NonFunctionalPattern
+
+{-|@isConstructorTop@ checks whether the given 'Pattern' is topped in a
+constructor / constructor-like (literal / domain value) construct.
+-}
+isConstructorTop
+    :: MetadataTools level StepperAttributes
+    -> Pattern level variable pat
+    -> Bool
+isConstructorTop tools (ApplicationPattern ap) =
+    isConstructor (MetadataTools.symAttributes tools patternHead)
+  where
+    patternHead = applicationSymbolOrAlias ap
+isConstructorTop _ p = isRight (isPreconstructedPattern undefined p)
 
 {-| checks whether a pattern is function-like or not and, if it is, returns
     a proof certifying that.
