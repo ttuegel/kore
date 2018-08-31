@@ -5,6 +5,8 @@ import Test.Tasty
 import Test.Tasty.HUnit
        ( assertEqual, assertFailure, testCase )
 
+import Control.DeepSeq
+       ( rnf )
 import Control.Exception
        ( ErrorCall (ErrorCall), catch, evaluate )
 
@@ -31,18 +33,18 @@ test_freshVariable :: [TestTree]
 test_freshVariable =
     [ testCase "Testing freshVariable Object 2"
         (assertEqual ""
-            (objectVariable { variableName = testId "var_2" }, Counter 3)
-            (runCounting
+            (objectVariable { variableName = testId "var_2" }, 3)
+            (runCounter
                 (freshVariable objectVariable)
-                (Counter 2)
+                2
             )
         )
     , testCase "Testing freshVariable Meta 2"
         (assertEqual ""
-            (metaVariable { variableName = testId "#var_2" }, Counter 3)
-            (runCounting
+            (metaVariable { variableName = testId "#var_2" }, 3)
+            (runCounter
                 (freshVariable metaVariable)
-                (Counter 2)
+                2
             )
         )
     , testCase "Testing freshVariable Functor Meta 1"
@@ -50,71 +52,72 @@ test_freshVariable =
             ( ( metaVariable { variableName = testId "#var_1" }
               , metaVariable { variableName = testId "#var_2" }
               )
-            , Counter 3
+            , 3
             )
-            (runCounting
+            (runCounter
                 ((,)
                     <$> freshVariable metaVariable
                     <*> freshVariable metaVariable
                 )
-                (Counter 1)
+                1
             )
           )
     , testCase "Testing freshUnifiedVariable Meta 2"
         (assertEqual ""
-            (metaVariable { variableName = testId "#var_2" }, Counter 3)
-            (runCounting
+            (metaVariable { variableName = testId "#var_2" }, 3)
+            (runCounter
                 (freshVariable metaVariable)
-                (Counter 2)
+                2
             )
         )
     , testCase "Testing failing freshVariableSuchThat Meta 1"
-        ((evaluate
-              (runCounting
-                    (freshVariableSuchThat metaVariable (== metaVariable))
-                    (Counter 2)
-              )
-              >> assertFailure "This evaluation should fail"
-         )
-         `catch` \ (ErrorCall s) ->
-            assertEqual ""
-                "Cannot generate variable satisfying predicate"
-                s
+        (let
+            freshen = freshVariableSuchThat metaVariable (== metaVariable)
+            test = do
+                let var = runCounter freshen 2
+                evaluate (rnf var)
+                assertFailure "This evaluation should fail"
+            handler (ErrorCall s) =
+                assertEqual ""
+                    "Cannot generate variable satisfying predicate"
+                    s
+         in
+           catch test handler
         )
     , testCase "Testing freshVariableSuchThat Meta 1"
         (assertEqual ""
-            (metaVariable { variableName = testId "#var_2" }, Counter 3)
-            (runCounting
+            (metaVariable { variableName = testId "#var_2" }, 3)
+            (runCounter
                 (freshVariableSuchThat
                     metaVariable
                     (const True)
                 )
-                (Counter 2)
+                2
             )
         )
     , testCase "Testing successful findState"
         (assertEqual ""
-            (Just 1, Counter 7)
-            (runCounting
+            (Just 1, 7)
+            (runCounter
                 (findState (>0)
                     [action (-1), action 0, action 1, action (-2), action 1]
                 )
-                (Counter 6)
+                6
             )
         )
     , testCase "Testing unsuccessful findState"
         (assertEqual ""
-            (Nothing, Counter 6)
-            (runCounting
+            (Nothing, 6)
+            (runCounter
                 (findState (>1)
                     [action (-1), action 0, action 1, action (-2), action 1]
                 )
-                (Counter 6)
+                6
             )
         )
     ]
   where
-    action :: Int -> Counting Int
+    action :: Int -> Counter Int
     action n = do
         _ <- increment
         return n

@@ -10,9 +10,9 @@ Portability : portable
 -}
 module Kore.Variables.Fresh
     ( FreshVariable (..)
-    , MonadCounter (..)
-    , Counter (..)
-    , Counting, runCounting, evalCounting
+    , freshVariable
+    , freshVariableSuchThat
+    , module Control.Monad.Counter
     ) where
 
 import Control.Monad.Counter
@@ -26,37 +26,49 @@ class FreshVariable var where
     {-|Given an existing variable, generate a fresh one of
     the same kind.
     -}
-    freshVariable :: (MetaOrObject level, MonadCounter m) => var level -> m (var level)
+    freshVariableWith :: MetaOrObject level => var level -> Natural -> var level
 
     {-|Given an existing variable and a predicate, generate a
     fresh variable of the same kind satisfying the predicate.
     By default, die in flames if the predicate is not satisfied.
     -}
-    freshVariableSuchThat
-        :: (MetaOrObject level, MonadCounter m)
+    freshVariableSuchThatWith
+        :: MetaOrObject level
         => var level
         -> (var level -> Bool)
-        -> m (var level)
-    freshVariableSuchThat var p = do
-        var' <- freshVariable var
+        -> Natural
+        -> var level
+    freshVariableSuchThatWith var p n =
+        let var' = freshVariableWith var n in
         if p var'
-            then return var'
+            then var'
             else error "Cannot generate variable satisfying predicate"
 
 
 instance FreshVariable Variable where
-    freshVariable var = do
-        Counter n <- increment
-        pure
-            (var
-                { variableName = Id
-                    { getId = metaObjectPrefix ++ "var_" ++ show n
-                    , idLocation = AstLocationGeneratedVariable
-                    }
+    freshVariableWith var n =
+        var
+            { variableName = Id
+                { getId = metaObjectPrefix ++ "var_" ++ show n
+                , idLocation = AstLocationGeneratedVariable
                 }
-            )
+            }
       where
         metaObjectPrefix =
             case isMetaOrObject var of
                 IsObject -> ""
                 IsMeta   -> "#"
+
+freshVariable
+    :: (FreshVariable var, MetaOrObject level, MonadCounter m)
+    => var level
+    -> m (var level)
+freshVariable var = freshVariableWith var <$> increment
+
+freshVariableSuchThat
+    :: (FreshVariable var, MetaOrObject level, MonadCounter m)
+    => var level
+    -> (var level -> Bool)
+    -> m (var level)
+freshVariableSuchThat var predicate =
+    freshVariableSuchThatWith var predicate <$> increment

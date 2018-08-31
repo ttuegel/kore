@@ -211,8 +211,10 @@ runNormalizeSubstitution
 runNormalizeSubstitution substitution =
     case normalizeSubstitution mockMetadataTools substitution of
         Left err     -> Left err
-        Right action -> Right $ PredicateSubstitution.substitution
-                        $ evalCounting action
+        Right action ->
+            Right
+                $ PredicateSubstitution.substitution
+                $ evalCounter action
 
 mockStepperAttributes :: StepperAttributes
 mockStepperAttributes = StepperAttributes

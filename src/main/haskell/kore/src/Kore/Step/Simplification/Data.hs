@@ -11,7 +11,7 @@ module Kore.Step.Simplification.Data
     (  Simplifier (..)
     , runSimplifier
     , evalSimplifier
-    , liftCounting
+    , liftCounter
     , PureMLPatternSimplifier (..)
     , CommonPureMLPatternSimplifier
     , SimplificationProof (..)
@@ -49,27 +49,23 @@ data SimplificationProof level = SimplificationProof
  -}
 newtype Simplifier a =
     Simplifier
-    { getSimplifier :: State Counter a
+    { getSimplifier :: State Natural a
     }
   deriving (Applicative, Functor, Monad)
 
-deriving instance MonadState Counter Simplifier
+deriving instance MonadState Natural Simplifier
 
-instance MonadCounter Simplifier where
-    increment = do
-        n <- Monad.State.get
-        Monad.State.modify' succ
-        return n
+instance MonadCounter Simplifier
 
-{- | Lift a computation in the 'Counting' monad into the 'Simplifier' monad.
+{- | Lift a computation in the 'Counter' monad into the 'Simplifier' monad.
 
-  The salient difference is that 'Counting' does not encompass failure, so this
+  The salient difference is that 'Counter' does not encompass failure, so this
   is a faithful lifting.
  -}
-liftCounting :: Counting a -> Simplifier a
-liftCounting counting = do
+liftCounter :: Counter a -> Simplifier a
+liftCounter counting = do
     counter0 <- Monad.State.get
-    let (a, !counter1) = runCounting counting counter0
+    let (a, !counter1) = runCounter counting counter0
     Monad.State.put counter1
     return a
 
@@ -83,8 +79,8 @@ liftCounting counting = do
  -}
 runSimplifier
     :: Simplifier a
-    -> Counter
-    -> (a, Counter)
+    -> Natural
+    -> (a, Natural)
 runSimplifier simplifier =
     runState (getSimplifier simplifier)
 
@@ -97,7 +93,7 @@ runSimplifier simplifier =
   -}
 evalSimplifier :: Simplifier a -> a
 evalSimplifier simplifier =
-    fst $ runSimplifier simplifier (Counter 0)
+    fst $ runSimplifier simplifier 0
 
 {-| 'PureMLPatternSimplifier' wraps a function that evaluates
 Kore functions on PureMLPatterns.

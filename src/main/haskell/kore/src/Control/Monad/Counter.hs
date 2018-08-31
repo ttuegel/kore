@@ -1,10 +1,11 @@
 {-# LANGUAGE DefaultSignatures #-}
 
 module Control.Monad.Counter
-    ( Counter (..)
-    , Counting, runCounting, evalCounting
+    ( Counter
+    , runCounter, evalCounter
     , MonadCounter (..)
     , findState
+    , module Numeric.Natural
     ) where
 
 import qualified Control.Monad.Except as Monad.Except
@@ -21,55 +22,49 @@ import qualified Control.Monad.State.Strict as Monad.State.Strict
 import qualified Control.Monad.Trans as Monad.Trans
 import qualified Control.Monad.Writer.Lazy as Monad.Writer.Lazy
 import qualified Control.Monad.Writer.Strict as Monad.Writer.Strict
+import           Numeric.Natural
 
-{- | An enumerable counter.
-
-  The @newtype@ wrapper is to avoid confusion in complex states.
-
+{- | A computation using a monotonic counter.
  -}
-newtype Counter = Counter { getCounter :: Int }
-  deriving (Enum, Eq, Ord, Show)
-
-newtype Counting a = Counting (Monad.State.Strict.State Counter a)
+newtype Counter a = Counter (Monad.State.Strict.State Natural a)
   deriving (Applicative, Functor, Monad)
 
--- | The @MonadState@ instance must not be used to carelessly reset the counter!
-deriving instance MonadState Counter Counting
+-- | The @MonadState@ instance must not be used to replay the counter!
+deriving instance MonadState Natural Counter
 
-instance MonadCounter Counting
+instance MonadCounter Counter
 
-{- | Run a computation using a @Counter@.
+{- | Run a computation using a monotonic counter.
 
-  The counter is initialized to the given value. The final result and @Counter@
+  The counter is initialized to the given value. The final result and counter
   are returned.
 
  -}
-runCounting
-    :: Counting a
+runCounter
+    :: Counter a
     -- ^ computation
-    -> Counter
+    -> Natural
     -- ^ initial counter
-    -> (a, Counter)
-runCounting (Counting counting) = Monad.State.Strict.runState counting
+    -> (a, Natural)
+runCounter (Counter counting) = Monad.State.Strict.runState counting
 
-{- | Evaluate a computation using a @Counter@, returning only the final result.
+{- | Return the final result of a computation using a monotonic counter.
 
-  The counter is initialized to @Counter 0@.
+  The counter is initialized to @0@.
 
  -}
-evalCounting :: Counting a -> a
-evalCounting (Counting counting) =
-    let (a, _) = Monad.State.Strict.runState counting (Counter 0)
-    in a
+evalCounter :: Counter a -> a
+evalCounter (Counter counting) =
+    let (a, _) = Monad.State.Strict.runState counting 0 in a
 
-{- | @MonadCounter@ abstracts a state monad carrying a counter.
+{- | @MonadCounter@ abstracts a state monad carrying a monotonic counter.
 
   The counter is generally used for fresh variable generation. The interface is
   intended to be safer than a 'MonadState' instance, which could accidentally be
-  reset. @MonadCounter@ also allows access to /only/ the counter in a monad with
-  more complex state.
+  reset. @MonadCounter@ also allows /monotonic/ access to the counter (and
+  /only/ the counter) in a monad with more complex state.
 
-  A default implementation is provided for instances of @MonadState Counter@.
+  A default implementation is provided for instances of @MonadState Natural@.
 
  -}
 class Monad m => MonadCounter m where
@@ -79,8 +74,8 @@ class Monad m => MonadCounter m where
       ensures that the counter cannot accidentally be reset, which could
       generate duplicate fresh variables.
      -}
-    increment :: m Counter
-    default increment :: MonadState Counter m => m Counter
+    increment :: m Natural
+    default increment :: MonadState Natural m => m Natural
     increment = do
         n <- Monad.State.get
         Monad.State.modify' succ
@@ -140,8 +135,7 @@ instance
 
 {- | Execute a list of actions until one satisfies the given predicate.
 
-  The `MonadPlus` constraint ensures that execution rewinds after any action
-  that does not satisfy the predicate.
+  The state is reset after any action that does not satisfy the predicate.
 
  -}
 findState

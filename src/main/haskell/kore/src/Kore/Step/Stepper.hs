@@ -67,7 +67,7 @@ data StepperError
  -}
 data StepperState =
     StepperState
-        { stepperCounter :: !Counter
+        { stepperCounter :: !Natural
           -- ^ 'Counter' for fresh variable generation
         , stepperMaxStepCount :: !MaxStepCount
           -- ^ 'MaxStepCount' to terminate computation
@@ -129,7 +129,7 @@ evalStepper stepper maxSteps =
     let
         state0 =
             StepperState
-                { stepperCounter = Counter 0
+                { stepperCounter = 0
                 , stepperMaxStepCount = maxSteps
                 , stepperLastApplied = Nothing
                 }

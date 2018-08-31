@@ -45,7 +45,7 @@ import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
                  ( make, traverseWithPairs )
 import           Kore.Step.Simplification.Data
                  ( CommonPureMLPatternSimplifier, PureMLPatternSimplifier (..),
-                 Simplifier, SimplificationProof (..), liftCounting )
+                 Simplifier, SimplificationProof (..), liftCounter )
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 import           Kore.Step.Substitution
@@ -82,7 +82,7 @@ axiomFunctionEvaluator
             return (AttemptedFunction.NotApplicable, SimplificationProof)
         Right stepPatternWithProof ->
             do
-                (stepPattern, _) <- liftCounting stepPatternWithProof
+                (stepPattern, _) <- liftCounter stepPatternWithProof
                 (   rewrittenPattern@ExpandedPattern
                         { predicate = rewritingCondition }
                     , _

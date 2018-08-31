@@ -27,92 +27,92 @@ instance
 testSubstitute
     :: CommonKorePattern
     -> UnifiedPatternSubstitution
-    -> Counting CommonKorePattern
+    -> Counter CommonKorePattern
 testSubstitute = substitute
 
 test_class :: [TestTree]
 test_class =
     [ testCase "Testing substituting a variable."
         (assertEqual ""
-            (objectTopPattern, Counter 2)
-            (runCounting
+            (objectTopPattern, 2)
+            (runCounter
                 (testSubstitute objectVariableUnifiedPattern substitution1)
-                (Counter 2)
+                2
             )
         )
     , testCase "Testing not substituting a variable."
         (assertEqual ""
-            (metaVariableUnifiedPattern, Counter 2)
-            (runCounting
+            (metaVariableUnifiedPattern, 2)
+            (runCounter
                 (testSubstitute metaVariableUnifiedPattern substitution1)
-                (Counter 2)
+                2
             )
         )
     , testCase "Testing not substituting anything."
         (assertEqual ""
-            (objectBottomPattern, Counter 2)
-            (runCounting
+            (objectBottomPattern, 2)
+            (runCounter
                 (testSubstitute objectBottomPattern substitution1)
-                (Counter 2)
+                2
             )
         )
       , testCase "Testing exists => empty substitution."
         (assertEqual ""
-            (existsObjectUnifiedPattern1, Counter 2)
-            (runCounting
+            (existsObjectUnifiedPattern1, 2)
+            (runCounter
                 (testSubstitute existsObjectUnifiedPattern1 substitution1)
-                (Counter 2)
+                2
             )
         )
       , testCase "Testing forall."
         (assertEqual ""
-            (forallObjectUnifiedPattern2, Counter 2)
-            (runCounting
+            (forallObjectUnifiedPattern2, 2)
+            (runCounter
                 (testSubstitute forallObjectUnifiedPattern1 substitution1)
-                (Counter 2)
+                2
             )
         )
       , testCase "Testing binder renaming"
         (assertEqual ""
-            (existsObjectUnifiedPattern1S 2, Counter 3)
-            (runCounting
+            (existsObjectUnifiedPattern1S 2, 3)
+            (runCounter
                 (testSubstitute existsObjectUnifiedPattern1 substitution2)
-                (Counter 2)
+                2
             )
         )
       , testCase "Testing binder renaming and substitution"
         (assertEqual ""
-            (forallObjectUnifiedPattern1S3, Counter 6)
-            (runCounting
+            (forallObjectUnifiedPattern1S3, 6)
+            (runCounter
                 (testSubstitute forallObjectUnifiedPattern1 substitution3)
-                (Counter 5)
+                5
             )
         )
       , testCase "Testing double binder renaming"
         (assertEqual ""
-            (forallExistsObjectUnifiedPattern1S2, Counter 9)
-            (runCounting
+            (forallExistsObjectUnifiedPattern1S2, 9)
+            (runCounter
                 (testSubstitute
                     forallExistsObjectUnifiedPattern1 substitution2)
-                (Counter 7)
+                7
             )
         )
         , testCase "Testing double binder renaming 1"
         (assertEqual ""
-            (forallExistsObjectUnifiedPattern2, Counter 17)
-            (runCounting
+            (forallExistsObjectUnifiedPattern2, 17)
+            (runCounter
                 (testSubstitute
                     forallExistsObjectUnifiedPattern2 substitution1)
-                (Counter 17)
+                17
             )
         )
         , testCase "Testing substitution state 1"
         (assertEqual ""
-            (testSubstitutionStatePatternS3, Counter 18)
-            (runCounting
+            (testSubstitutionStatePatternS3, 18)
+            (runCounter
                 (testSubstitute
                     testSubstitutionStatePattern substitution3)
-                (Counter 17)
+                17
             )
         )
         ]

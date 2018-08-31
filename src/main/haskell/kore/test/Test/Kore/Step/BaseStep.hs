@@ -1314,5 +1314,5 @@ runStep
         (CommonExpandedPattern level, StepProof level)
 runStep metadataTools configuration axiom =
     case give metadataTools (stepWithAxiom metadataTools configuration axiom) of
-        Left err            -> Left (evalCounting err)
-        Right counterResult -> Right (evalCounting counterResult)
+        Left err            -> Left (evalCounter err)
+        Right counterResult -> Right (evalCounter counterResult)

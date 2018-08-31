@@ -43,7 +43,7 @@ import           Kore.Step.OrOfExpandedPattern
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
                  ( extractPatterns, make, traverseFlattenWithPairs )
 import           Kore.Step.Simplification.Data
-                 ( Simplifier, liftCounting )
+                 ( Simplifier, liftCounter )
 import qualified Kore.Step.Simplification.ExpandedPattern as ExpandedPattern
                  ( simplify )
 import           Kore.Step.Stepper
@@ -68,7 +68,7 @@ step
     -> Simplifier
         (CommonOrOfExpandedPattern level, StepProof level)
 step tools symbolIdToEvaluator axioms configuration = do
-    (stepPattern, stepProofs) <- liftCounting
+    (stepPattern, stepProofs) <- liftCounter
         (OrOfExpandedPattern.traverseFlattenWithPairs
             (baseStepWithPattern tools axioms)
             configuration
@@ -90,7 +90,7 @@ baseStepWithPattern
     -- ^ Rewriting axioms
     -> CommonExpandedPattern level
     -- ^ Configuration being rewritten.
-    -> Counting (CommonOrOfExpandedPattern level, StepProof level)
+    -> Counter (CommonOrOfExpandedPattern level, StepProof level)
 baseStepWithPattern tools axioms configuration = do
     stepResultsWithProofs <- sequence (stepToList tools configuration axioms)
     let (results, proofs) = unzip stepResultsWithProofs
@@ -106,7 +106,7 @@ stepToList
     -- ^ Configuration being rewritten.
     -> [AxiomPattern level]
     -- ^ Rewriting axioms
-    ->  [ Counting
+    ->  [ Counter
             (CommonExpandedPattern level, StepProof level)
         ]
 stepToList tools configuration axioms =
