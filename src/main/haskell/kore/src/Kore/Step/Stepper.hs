@@ -11,6 +11,8 @@ module Kore.Step.Stepper
     , runStepper, evalStepper
     , liftSimplifier
     , appliedRule
+    , chooseAny
+    , manySteps
     ) where
 
 import           Control.Applicative
@@ -20,13 +22,13 @@ import           Control.Monad
 import           Control.Monad.State.Class
                  ( MonadState )
 import           Control.Monad.State.Strict
-                 ( StateT, runStateT )
+                 ( StateT (..), runStateT )
 import qualified Control.Monad.State.Strict as Monad.State
 import qualified Control.Monad.Trans as Monad.Trans
 import           Control.Monad.Trans.Maybe
                  ( MaybeT )
 import           ListT
-                 ( ListT )
+                 ( ListT (..) )
 import qualified ListT
 
 import Control.Monad.Counter
@@ -84,12 +86,12 @@ incrementStepCount = do
 limitSteps
     :: Limit Natural
     -- ^ limit
-    -> (a -> Stepper a)
+    -> Stepper a
     -- ^ stepper
-    -> (a -> Stepper a)
-limitSteps stepLimit step a = do
+    -> Stepper a
+limitSteps stepLimit step = do
     n <- incrementStepCount
-    if withinLimit stepLimit n then step a else pure a
+    if withinLimit stepLimit n then step else empty
 
 {- | The state carried by 'Stepper'.
  -}
@@ -167,3 +169,21 @@ appliedRule applied =
  -}
 parallel :: [Stepper a] -> Stepper a
 parallel = foldr (<|>) empty
+
+{- | Take the results of the first non-empty 'Stepper'.
+
+  If the first argument returns any results, the second argument is ignored.
+
+ -}
+chooseAny :: Stepper a -> Stepper a -> Stepper a
+chooseAny step1 step2 =
+    Stepper $ StateT $ \s -> ListT $
+        ListT.uncons (runStateT (getStepper step1) s) >>=
+            \case
+                Nothing -> ListT.uncons (runStateT (getStepper step2) s)
+                Just r -> pure (Just r)
+
+{- | Run the provided step zero or more times.
+ -}
+manySteps :: (a -> Stepper a) -> (a -> Stepper a)
+manySteps step = \a -> chooseAny (step a >>= manySteps step) (pure a)

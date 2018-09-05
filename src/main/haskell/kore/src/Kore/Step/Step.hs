@@ -121,7 +121,7 @@ Does not handle properly various cases, among which:
 sigma(x, y) => y    vs    a
 -}
 pickFirstStepper
-    ::  ( MetaOrObject level)
+    :: (MetaOrObject level)
     => Limit Natural
     -> MetadataTools level StepperAttributes
     -> Map.Map (Id level) [CommonApplicationFunctionEvaluator level]
@@ -134,78 +134,14 @@ pickFirstStepper
 pickFirstStepper
     stepLimit tools symbolIdToEvaluator axioms
   =
-    limitSteps stepLimit
-        (pickFirstStepperSkipMaxCheck
-            stepLimit
-            tools
-            symbolIdToEvaluator
-            axioms
-        )
-
-pickFirstStepperSkipMaxCheck
-    ::  ( MetaOrObject level)
-    => Limit Natural
-    -> MetadataTools level StepperAttributes
-    -> Map.Map (Id level) [CommonApplicationFunctionEvaluator level]
-    -- ^ Map from symbol IDs to defined functions
-    -> [AxiomPattern level]
-    -- ^ Rewriting axioms
-    -> (CommonExpandedPattern level, StepProof level)
-    -- ^ Configuration being rewritten and its accompanying proof
-    -> Stepper (CommonExpandedPattern level, StepProof level)
-pickFirstStepperSkipMaxCheck
-    stepLimit tools symbolIdToEvaluator axioms
-    (stepperConfiguration, prevProof)
-  = do
-    simplified <-
-        runMaybeT (normalStep <|> heatingStep <|> coolingStep)
-    case simplified of
-        Nothing -> return (stepperConfiguration, prevProof)
-        Just (nextConfig, thisProof) ->
-            pickFirstStepper stepLimit tools symbolIdToEvaluator axioms
-                (nextConfig, prevProof <> thisProof)
+    manySteps stepWithFirst
   where
-    stepWithFirst axioms' = do
-        (patterns, thisProof) <-
-            Monad.Trans.lift
-                $ liftSimplifier
-                $ step tools symbolIdToEvaluator axioms'
-                $ OrOfExpandedPattern.make [stepperConfiguration]
-        case OrOfExpandedPattern.extractPatterns patterns of
-            [] -> empty
-            (nextConfig : _) -> return (nextConfig, thisProof)
-
-    normalAxioms = filter isNormalRule axioms
-    heatingAxioms = filter isHeatingRule axioms
-    coolingAxioms = filter isCoolingRule axioms
-
-    normalStep = do
-        applied <- stepWithFirst normalAxioms
-        appliedRule Nothing
-        return applied
-
-    heatingStep = do
-        StepperState { stepperLastApplied } <- Monad.State.get
-        case stepperLastApplied of
-            Just Cool ->
-                -- The last applied rule was a cooling rule, so we must not
-                -- attempt a heating rule right now: it would always succeed
-                -- and evaluation would loop forever.
-                empty
-            _ -> do
-                applied <- stepWithFirst heatingAxioms
-                appliedRule (Just Heat)
-                return applied
-
-    coolingStep = do
-        StepperState { stepperLastApplied } <- Monad.State.get
-        case stepperLastApplied of
-            Just Heat ->
-                -- The last applied rule was a heating rule, so we must not
-                -- attempt a cooling rule right now: it would always succeed
-                -- and evaluation would loop forever.
-                empty
-            _ -> do
-                applied <- stepWithFirst coolingAxioms
-                appliedRule (Just Cool)
-                return applied
+    stepWithFirst (config0, proof0) =
+        limitSteps stepLimit $ do
+            (configs, proof1) <-
+                liftSimplifier
+                    $ step tools symbolIdToEvaluator axioms
+                    $ OrOfExpandedPattern.make [config0]
+            case OrOfExpandedPattern.extractPatterns configs of
+                [] -> empty
+                (config1 : _) -> return (config1, proof0 <> proof1)
