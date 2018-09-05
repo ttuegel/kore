@@ -670,14 +670,18 @@ runStep
     -> CommonExpandedPattern level
     -- ^left-hand-side of unification
     -> [AxiomPattern level]
-    -> (CommonOrOfExpandedPattern level, StepProof level)
+    -> (CommonExpandedPattern level, StepProof level)
 runStep metadataTools configuration axioms =
-    evalSimplifier
-        $ step
+    case evalStepper stepper of
+        [] -> error "The stepper did not return any results!"
+        (x : _) -> x
+  where
+    stepper =
+        step
             metadataTools
             Map.empty
             axioms
-            (OrOfExpandedPattern.make [configuration])
+            configuration
 
 runStepsPickFirst
     :: MetaOrObject level

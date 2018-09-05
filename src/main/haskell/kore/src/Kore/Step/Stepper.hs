@@ -11,6 +11,7 @@ module Kore.Step.Stepper
     , runStepper, evalStepper
     , liftSimplifier
     , appliedRule
+    , parallel
     , chooseAny
     , manySteps
     ) where

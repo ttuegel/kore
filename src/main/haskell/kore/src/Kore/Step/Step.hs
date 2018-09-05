@@ -33,8 +33,8 @@ import           Kore.AST.MetaOrObject
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )
 import           Kore.Step.BaseStep
-                 ( AxiomPattern, StepProof (..), StepProofAtom (..), stepProof,
-                 stepWithAxiom )
+                 ( AxiomPattern, StepProof (..), StepProofAtom (..),
+                 simplificationProof, stepProof, stepWithAxiom )
 import           Kore.Step.ExpandedPattern
                  ( CommonExpandedPattern )
 import           Kore.Step.Function.Data
@@ -64,23 +64,20 @@ step
     -- ^ Map from symbol IDs to defined functions
     -> [AxiomPattern level]
     -- ^ Rewriting axioms
-    -> CommonOrOfExpandedPattern level
+    -> CommonExpandedPattern level
     -- ^ Configuration being rewritten.
-    -> Simplifier
-        (CommonOrOfExpandedPattern level, StepProof level)
+    -> Stepper
+        (CommonExpandedPattern level, StepProof level)
 step tools symbolIdToEvaluator axioms configuration = do
     (stepPattern, stepProofs) <-
-        OrOfExpandedPattern.traverseFlattenWithPairs
-            (baseStepWithPattern tools axioms)
-            configuration
-    (simplifiedPattern, simplificationProofs) <-
-        OrOfExpandedPattern.traverseFlattenWithPairs
-            (ExpandedPattern.simplify tools symbolIdToEvaluator)
-            stepPattern
+        baseStepWithPattern tools axioms configuration
+    (simplifiedPatterns, simplificationProofs) <-
+        liftSimplifier
+            $ ExpandedPattern.simplify tools symbolIdToEvaluator stepPattern
+    simplifiedPattern <- parallel (pure <$> OrOfExpandedPattern.extractPatterns simplifiedPatterns)
     return
         ( simplifiedPattern
-        , mconcat (stepProof . StepProofSimplification <$> simplificationProofs)
-            <> mconcat stepProofs
+        , simplificationProof simplificationProofs <> stepProofs
         )
 
 baseStepWithPattern
@@ -90,14 +87,10 @@ baseStepWithPattern
     -- ^ Rewriting axioms
     -> CommonExpandedPattern level
     -- ^ Configuration being rewritten.
-    -> Simplifier (CommonOrOfExpandedPattern level, StepProof level)
-baseStepWithPattern tools axioms configuration = do
-    stepResultsWithProofs <- sequence (stepToList tools configuration axioms)
-    let (results, proofs) = unzip stepResultsWithProofs
-    return
-        ( OrOfExpandedPattern.make results
-        , mconcat proofs
-        )
+    -> Stepper (CommonExpandedPattern level, StepProof level)
+baseStepWithPattern tools axioms configuration =
+    (parallel . map liftSimplifier)
+    (stepToList tools configuration axioms)
 
 stepToList
     ::  ( MetaOrObject level)
@@ -138,10 +131,5 @@ pickFirstStepper
   where
     stepWithFirst (config0, proof0) =
         limitSteps stepLimit $ do
-            (configs, proof1) <-
-                liftSimplifier
-                    $ step tools symbolIdToEvaluator axioms
-                    $ OrOfExpandedPattern.make [config0]
-            case OrOfExpandedPattern.extractPatterns configs of
-                [] -> empty
-                (config1 : _) -> return (config1, proof0 <> proof1)
+            (config1, proof1) <- step tools symbolIdToEvaluator axioms config0
+            return (config1, proof0 <> proof1)
