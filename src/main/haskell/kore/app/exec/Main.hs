@@ -186,7 +186,6 @@ main = do
                             (initialPattern, mempty)
             ((finalExpandedPattern, _), finalState) <-
                 clockSomething "Executing"
-                    $ either (error . Kore.Error.printError) id
                     $ runStepper stepper initialStepperState
             hPutStrLn stderr
                 ("Executed " ++ show (stepperStepCount finalState) ++ " steps")

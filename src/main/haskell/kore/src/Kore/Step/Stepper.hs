@@ -3,7 +3,6 @@ module Kore.Step.Stepper
     , withinLimit
     , incrementStepCount
     , limitSteps
-    , StepperError
     , StepperState (..)
     , initialStepperState
     , HeatCool (..)
@@ -14,22 +13,15 @@ module Kore.Step.Stepper
     , appliedRule
     ) where
 
-import           Control.Monad.Error.Class
-                 ( MonadError )
-import           Control.Monad.Except
-                 ( Except, runExcept )
-import qualified Control.Monad.Except as Monad.Except
 import           Control.Monad.State.Class
                  ( MonadState )
 import           Control.Monad.State.Strict
-                 ( StateT, runStateT )
+                 ( State, runState )
 import qualified Control.Monad.State.Strict as Monad.State
 import           Control.Monad.Trans.Maybe
                  ( MaybeT )
 
 import Control.Monad.Counter
-import Kore.Error
-       ( Error )
 import Kore.Step.AxiomPatterns
        ( HeatCool (..), isCoolingRule, isHeatingRule, isNormalRule )
 import Kore.Step.Simplification.Data
@@ -91,13 +83,6 @@ limitSteps stepLimit step a = do
     n <- incrementStepCount
     if withinLimit stepLimit n then step a else pure a
 
-{- | A tag for the type of error thrown in 'Stepper'.
-
-  See also: 'Kore.Error.koreFail'
-
- -}
-data StepperError
-
 {- | The state carried by 'Stepper'.
  -}
 data StepperState =
@@ -116,7 +101,7 @@ data StepperState =
 newtype Stepper a =
     Stepper
       { getStepper
-          :: StateT StepperState (Except (Error StepperError)) a
+          :: State StepperState a
       }
   deriving (Applicative, Functor, Monad)
 
@@ -130,14 +115,6 @@ instance MonadCounter Stepper where
                 state { stepperCounter = succ stepperCounter }
         Monad.State.modify' increment0
         return stepperCounter
-
-instance MonadError (Error StepperError) Stepper where
-    throwError e = Stepper (Monad.Except.throwError e)
-    catchError a h =
-        Stepper (Monad.Except.catchError a' h')
-      where
-        a' = getStepper a
-        h' e = getStepper (h e)
 
 initialStepperState :: StepperState
 initialStepperState =
@@ -155,9 +132,9 @@ initialStepperState =
 runStepper
     :: Stepper a
     -> StepperState
-    -> Either (Error StepperError) (a, StepperState)
+    -> (a, StepperState)
 runStepper stepper state0 =
-    runExcept (runStateT (getStepper stepper) state0)
+    runState (getStepper stepper) state0
 
 {- | Evaluate a 'Stepper' computation using the given 'MaxStepCount'.
 
@@ -167,9 +144,9 @@ runStepper stepper state0 =
   See also: 'runStepper'
 
  -}
-evalStepper :: Stepper a -> Either (Error StepperError) a
+evalStepper :: Stepper a -> a
 evalStepper stepper =
-    fst <$> runStepper stepper initialStepperState
+    fst (runStepper stepper initialStepperState)
 
 {- | Lift a 'Simplifier' into the 'Stepper' monad.
 

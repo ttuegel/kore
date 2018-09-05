@@ -689,7 +689,7 @@ runStepsPickFirst
     -> [AxiomPattern level]
     -> (CommonExpandedPattern level, StepProof level)
 runStepsPickFirst metadataTools stepLimit configuration axioms =
-    either (error . printError) id (evalStepper stepper)
+    evalStepper stepper
   where
     stepper =
         pickFirstStepper stepLimit metadataTools Map.empty axioms
