@@ -184,9 +184,9 @@ main = do
                             functionRegistry
                             axiomPatterns
                             (initialPattern, mempty)
-            ((finalExpandedPattern, _), finalState) <-
+            (((finalExpandedPattern, _), finalState), _) <-
                 clockSomething "Executing"
-                    $ runStepper stepper initialStepperState
+                    $ runStepper stepper initialStepperState 0
             hPutStrLn stderr
                 ("Executed " ++ show (stepperStepCount finalState) ++ " steps")
             putStrLn $ unparseToString

@@ -16,8 +16,9 @@ module Kore.Step.Stepper
 import           Control.Monad.State.Class
                  ( MonadState )
 import           Control.Monad.State.Strict
-                 ( State, runState )
+                 ( StateT, runStateT )
 import qualified Control.Monad.State.Strict as Monad.State
+import qualified Control.Monad.Trans as Monad.Trans
 import           Control.Monad.Trans.Maybe
                  ( MaybeT )
 
@@ -87,9 +88,7 @@ limitSteps stepLimit step a = do
  -}
 data StepperState =
     StepperState
-        { stepperCounter :: !Natural
-          -- ^ 'Counter' for fresh variable generation
-        , stepperStepCount :: !Natural
+        { stepperStepCount :: !Natural
           -- ^ Number of steps taken
         , stepperLastApplied :: !(Maybe HeatCool)
           -- ^ Mark if the last applied rule was a 'Heat' or 'Cool' rule (or
@@ -101,7 +100,7 @@ data StepperState =
 newtype Stepper a =
     Stepper
       { getStepper
-          :: State StepperState a
+          :: StateT StepperState Simplifier a
       }
   deriving (Applicative, Functor, Monad)
 
@@ -109,18 +108,12 @@ instance MonadState StepperState Stepper where
     state f = Stepper (Monad.State.state f)
 
 instance MonadCounter Stepper where
-    increment = do
-        StepperState { stepperCounter } <- Monad.State.get
-        let increment0 state =
-                state { stepperCounter = succ stepperCounter }
-        Monad.State.modify' increment0
-        return stepperCounter
+    increment = liftSimplifier increment
 
 initialStepperState :: StepperState
 initialStepperState =
     StepperState
-        { stepperCounter = 0
-        , stepperStepCount = 0
+        { stepperStepCount = 0
         , stepperLastApplied = Nothing
         }
 
@@ -132,9 +125,10 @@ initialStepperState =
 runStepper
     :: Stepper a
     -> StepperState
-    -> (a, StepperState)
+    -> Natural
+    -> ((a, StepperState), Natural)
 runStepper stepper state0 =
-    runState (getStepper stepper) state0
+    runSimplifier (runStateT (getStepper stepper) state0)
 
 {- | Evaluate a 'Stepper' computation using the given 'MaxStepCount'.
 
@@ -146,7 +140,7 @@ runStepper stepper state0 =
  -}
 evalStepper :: Stepper a -> a
 evalStepper stepper =
-    fst (runStepper stepper initialStepperState)
+    (fst . fst) (runStepper stepper initialStepperState 0)
 
 {- | Lift a 'Simplifier' into the 'Stepper' monad.
 
@@ -155,11 +149,7 @@ evalStepper stepper =
 
  -}
 liftSimplifier :: Simplifier a -> Stepper a
-liftSimplifier simplifier = do
-    stepperState0@StepperState { stepperCounter = counter0 } <- Monad.State.get
-    let (result, counter1) = runSimplifier simplifier counter0
-    Monad.State.put (stepperState0 { stepperCounter = counter1 })
-    return result
+liftSimplifier simplifier = Stepper (Monad.Trans.lift simplifier)
 
 appliedRule :: Maybe HeatCool -> MaybeT Stepper ()
 appliedRule applied =
