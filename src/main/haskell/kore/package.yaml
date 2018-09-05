@@ -37,6 +37,7 @@ dependencies:
   - hashable
   - haskeline
   - lens
+  - list-t
   - megaparsec >= 6.4.0
   - mtl
   - optparse-applicative

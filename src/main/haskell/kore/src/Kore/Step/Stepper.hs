@@ -13,6 +13,10 @@ module Kore.Step.Stepper
     , appliedRule
     ) where
 
+import           Control.Applicative
+                 ( Alternative (..) )
+import           Control.Monad
+                 ( MonadPlus (..) )
 import           Control.Monad.State.Class
                  ( MonadState )
 import           Control.Monad.State.Strict
@@ -21,6 +25,9 @@ import qualified Control.Monad.State.Strict as Monad.State
 import qualified Control.Monad.Trans as Monad.Trans
 import           Control.Monad.Trans.Maybe
                  ( MaybeT )
+import           ListT
+                 ( ListT )
+import qualified ListT
 
 import Control.Monad.Counter
 import Kore.Step.AxiomPatterns
@@ -100,9 +107,9 @@ data StepperState =
 newtype Stepper a =
     Stepper
       { getStepper
-          :: StateT StepperState Simplifier a
+          :: StateT StepperState (ListT Simplifier) a
       }
-  deriving (Applicative, Functor, Monad)
+  deriving (Alternative, Applicative, Functor, Monad, MonadPlus)
 
 instance MonadState StepperState Stepper where
     state f = Stepper (Monad.State.state f)
@@ -126,9 +133,9 @@ runStepper
     :: Stepper a
     -> StepperState
     -> Natural
-    -> ((a, StepperState), Natural)
+    -> ([(a, StepperState)], Natural)
 runStepper stepper state0 =
-    runSimplifier (runStateT (getStepper stepper) state0)
+    runSimplifier (ListT.toList $ runStateT (getStepper stepper) state0)
 
 {- | Evaluate a 'Stepper' computation using the given 'MaxStepCount'.
 
@@ -138,9 +145,9 @@ runStepper stepper state0 =
   See also: 'runStepper'
 
  -}
-evalStepper :: Stepper a -> a
+evalStepper :: Stepper a -> [a]
 evalStepper stepper =
-    (fst . fst) (runStepper stepper initialStepperState 0)
+    fst <$> fst (runStepper stepper initialStepperState 0)
 
 {- | Lift a 'Simplifier' into the 'Stepper' monad.
 
@@ -149,8 +156,14 @@ evalStepper stepper =
 
  -}
 liftSimplifier :: Simplifier a -> Stepper a
-liftSimplifier simplifier = Stepper (Monad.Trans.lift simplifier)
+liftSimplifier simplifier =
+    Stepper (Monad.Trans.lift (Monad.Trans.lift simplifier))
 
 appliedRule :: Maybe HeatCool -> MaybeT Stepper ()
 appliedRule applied =
     Monad.State.modify' (\state -> state { stepperLastApplied = applied })
+
+{- | Consider several 'Stepper's in parallel.
+ -}
+parallel :: [Stepper a] -> Stepper a
+parallel = foldr (<|>) empty

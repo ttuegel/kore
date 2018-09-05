@@ -184,13 +184,17 @@ main = do
                             functionRegistry
                             axiomPatterns
                             (initialPattern, mempty)
-            (((finalExpandedPattern, _), finalState), _) <-
+            (results, _) <-
                 clockSomething "Executing"
                     $ runStepper stepper initialStepperState 0
-            hPutStrLn stderr
-                ("Executed " ++ show (stepperStepCount finalState) ++ " steps")
-            putStrLn $ unparseToString
-                (ExpandedPattern.term finalExpandedPattern)
+            case results of
+                [] -> error "The stepper did not return any results!"
+                ((finalExpandedPattern, _), finalState) : _ -> do
+                    hPutStrLn stderr
+                        ("Executed " ++ show (stepperStepCount finalState)
+                            ++ " steps")
+                    putStrLn $ unparseToString
+                        (ExpandedPattern.term finalExpandedPattern)
 
 mainModule
     :: ModuleName
