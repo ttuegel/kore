@@ -14,6 +14,8 @@ import           Data.Semigroup
 import           Options.Applicative
                  ( InfoMod, Parser, argument, auto, fullDesc, header, help,
                  long, metavar, option, progDesc, str, strOption, value )
+import           System.IO
+                 ( hPutStrLn, stderr )
 
 import           Kore.AST.Common
 import           Kore.AST.Kore
@@ -54,7 +56,6 @@ import           Kore.Step.Function.Registry
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
 import qualified Kore.Step.Simplification.ExpandedPattern as ExpandedPattern
 import           Kore.Step.Step
-                 ( MaxStepCount (..), pickFirstStepper )
 import           Kore.Step.Stepper
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes (..) )
@@ -81,7 +82,7 @@ data KoreExecOptions = KoreExecOptions
     , isKProgram          :: !Bool
     -- ^ Whether the pattern file represents a program to be put in the
     -- initial configuration before execution
-    , maxStepCount        :: !MaxStepCount
+    , stepLimit           :: !(Limit Natural)
     }
 
 -- | Command Line Argument Parser
@@ -104,7 +105,7 @@ commandLineParser =
     <*> enableDisableFlag "is-program"
         True False False
         "Whether the pattern represents a program."
-    <*> (MaxStepCount <$> depth <|> pure AnyStepCount)
+    <*> (Limit <$> depth <|> pure Unlimited)
   where
     depth =
         option auto
@@ -135,7 +136,7 @@ main = do
         , patternFileName
         , mainModuleName
         , isKProgram
-        , maxStepCount
+        , stepLimit
         }
       -> do
         parsedDefinition <- mainDefinitionParse definitionFileName
@@ -178,13 +179,17 @@ main = do
                                     [] -> ExpandedPattern.bottom
                                     (config : _) -> config
                         pickFirstStepper
+                            stepLimit
                             metadataTools
                             functionRegistry
                             axiomPatterns
                             (initialPattern, mempty)
-            finalExpandedPattern <- clockSomething "Executing"
-                    $ either (error . Kore.Error.printError) fst
-                    $ evalStepper stepper maxStepCount
+            ((finalExpandedPattern, _), finalState) <-
+                clockSomething "Executing"
+                    $ either (error . Kore.Error.printError) id
+                    $ runStepper stepper initialStepperState
+            hPutStrLn stderr
+                ("Executed " ++ show (stepperStepCount finalState) ++ " steps")
             putStrLn $ unparseToString
                 (ExpandedPattern.term finalExpandedPattern)
 

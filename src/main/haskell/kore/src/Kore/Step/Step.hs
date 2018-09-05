@@ -10,7 +10,8 @@ Portability : portable
 module Kore.Step.Step
     ( step
     , pickFirstStepper
-    , MaxStepCount(..)
+    , Limit (..)
+    , Natural
     ) where
 
 import           Control.Applicative
@@ -124,7 +125,8 @@ sigma(x, y) => y    vs    a
 -}
 pickFirstStepper
     ::  ( MetaOrObject level)
-    => MetadataTools level StepperAttributes
+    => Limit Natural
+    -> MetadataTools level StepperAttributes
     -> Map.Map (Id level) [CommonApplicationFunctionEvaluator level]
     -- ^ Map from symbol IDs to defined functions
     -> [AxiomPattern level]
@@ -133,22 +135,20 @@ pickFirstStepper
     -- ^ Configuration being rewritten and its accompanying proof
     -> Stepper (CommonExpandedPattern level, StepProof level)
 pickFirstStepper
-    tools symbolIdToEvaluator axioms
-    (stepperConfiguration, prevProof)
-  = do
-    count <- decrementStepCount
-    case count of
-        Nothing -> return (stepperConfiguration, prevProof)
-        Just _ ->
-            pickFirstStepperSkipMaxCheck
-                tools
-                symbolIdToEvaluator
-                axioms
-                (stepperConfiguration, prevProof)
+    stepLimit tools symbolIdToEvaluator axioms
+  =
+    limitSteps stepLimit
+        (pickFirstStepperSkipMaxCheck
+            stepLimit
+            tools
+            symbolIdToEvaluator
+            axioms
+        )
 
 pickFirstStepperSkipMaxCheck
     ::  ( MetaOrObject level)
-    => MetadataTools level StepperAttributes
+    => Limit Natural
+    -> MetadataTools level StepperAttributes
     -> Map.Map (Id level) [CommonApplicationFunctionEvaluator level]
     -- ^ Map from symbol IDs to defined functions
     -> [AxiomPattern level]
@@ -157,7 +157,7 @@ pickFirstStepperSkipMaxCheck
     -- ^ Configuration being rewritten and its accompanying proof
     -> Stepper (CommonExpandedPattern level, StepProof level)
 pickFirstStepperSkipMaxCheck
-    tools symbolIdToEvaluator axioms
+    stepLimit tools symbolIdToEvaluator axioms
     (stepperConfiguration, prevProof)
   = do
     simplified <-
@@ -165,7 +165,7 @@ pickFirstStepperSkipMaxCheck
     case simplified of
         Nothing -> return (stepperConfiguration, prevProof)
         Just (nextConfig, thisProof) ->
-            pickFirstStepper tools symbolIdToEvaluator axioms
+            pickFirstStepper stepLimit tools symbolIdToEvaluator axioms
                 (nextConfig, prevProof <> thisProof)
   where
     stepWithFirst axioms' = do

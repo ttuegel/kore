@@ -324,7 +324,7 @@ test_multiple =
                 )
                 (runStepsPickFirst
                     mockMetadataTools
-                    AnyStepCount
+                    Unlimited
                     ExpandedPattern
                         { term = asPureMetaPattern (metaF (v1 PatternSort))
                         , predicate = makeTruePredicate
@@ -397,7 +397,7 @@ test_multiple =
                 )
                 (runStepsPickFirst
                     mockMetadataTools
-                    AnyStepCount
+                    Unlimited
                     ExpandedPattern
                         { term = asPureMetaPattern (metaF (v1 PatternSort))
                         , predicate = makeTruePredicate
@@ -459,7 +459,7 @@ test_multiple =
                 )
                 (runStepsPickFirst
                     mockMetadataTools
-                    (MaxStepCount 1)
+                    (Limit 1)
                     ExpandedPattern
                         { term = asPureMetaPattern (metaF (v1 PatternSort))
                         , predicate = makeTruePredicate
@@ -499,7 +499,7 @@ test_multiple =
                 )
                 (runStepsPickFirst
                     mockMetadataTools
-                    (MaxStepCount 0)
+                    (Limit 0)
                     ExpandedPattern
                         { term = asPureMetaPattern (metaF (v1 PatternSort))
                         , predicate = makeTruePredicate
@@ -683,14 +683,14 @@ runStepsPickFirst
     :: MetaOrObject level
     => MetadataTools level StepperAttributes
     -- ^functions yielding metadata for pattern heads
-    -> MaxStepCount
+    -> Limit Natural
     -> CommonExpandedPattern level
     -- ^left-hand-side of unification
     -> [AxiomPattern level]
     -> (CommonExpandedPattern level, StepProof level)
-runStepsPickFirst metadataTools maxStepCount configuration axioms =
-    either (error . printError) id (evalStepper stepper maxStepCount)
+runStepsPickFirst metadataTools stepLimit configuration axioms =
+    either (error . printError) id (evalStepper stepper)
   where
     stepper =
-        pickFirstStepper metadataTools Map.empty axioms
+        pickFirstStepper stepLimit metadataTools Map.empty axioms
             (configuration, mempty)
