@@ -69,11 +69,10 @@ step
     -> Simplifier
         (CommonOrOfExpandedPattern level, StepProof level)
 step tools symbolIdToEvaluator axioms configuration = do
-    (stepPattern, stepProofs) <- liftCounter
-        (OrOfExpandedPattern.traverseFlattenWithPairs
+    (stepPattern, stepProofs) <-
+        OrOfExpandedPattern.traverseFlattenWithPairs
             (baseStepWithPattern tools axioms)
             configuration
-        )
     (simplifiedPattern, simplificationProofs) <-
         OrOfExpandedPattern.traverseFlattenWithPairs
             (ExpandedPattern.simplify tools symbolIdToEvaluator)
@@ -91,7 +90,7 @@ baseStepWithPattern
     -- ^ Rewriting axioms
     -> CommonExpandedPattern level
     -- ^ Configuration being rewritten.
-    -> Counter (CommonOrOfExpandedPattern level, StepProof level)
+    -> Simplifier (CommonOrOfExpandedPattern level, StepProof level)
 baseStepWithPattern tools axioms configuration = do
     stepResultsWithProofs <- sequence (stepToList tools configuration axioms)
     let (results, proofs) = unzip stepResultsWithProofs
@@ -107,13 +106,11 @@ stepToList
     -- ^ Configuration being rewritten.
     -> [AxiomPattern level]
     -- ^ Rewriting axioms
-    ->  [ Counter
-            (CommonExpandedPattern level, StepProof level)
-        ]
+    -> [ Simplifier (CommonExpandedPattern level, StepProof level) ]
 stepToList tools configuration axioms =
     -- TODO: Stop ignoring Left results. Also, how would a result
     -- to which I can't apply an axiom look like?
-    rights $ map (stepWithAxiom tools configuration) axioms
+    map liftCounter $ rights $ map (stepWithAxiom tools configuration) axioms
 
 {-| 'pickFirstStepper' rewrites a configuration using the provided axioms
 until it cannot be rewritten anymore or until the step limit has been reached.
