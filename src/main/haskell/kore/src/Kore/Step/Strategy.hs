@@ -3,15 +3,20 @@ module Kore.Step.Strategy
     , apply
     , simplify
     , done
+    , and
     , runStrategy
     ) where
 
+import qualified Data.Foldable as Foldable
 import           Data.Map
                  ( Map )
 import           Data.Semigroup
+                 ( Semigroup (..) )
 import           Data.Tree
                  ( Tree )
 import qualified Data.Tree as Tree
+import           Prelude hiding
+                 ( and )
 
 import           Control.Monad.Counter
 import           Kore.AST.Common
@@ -69,6 +74,12 @@ data
     -- | Successfully terminate execution.
     Done :: Strategy app
 
+    -- | Attempt both strategies in parallel.
+    And
+        :: Strategy app
+        -> Strategy app
+        -> Strategy app
+
 -- | Apply a rewrite axiom.
 apply
     :: app
@@ -88,6 +99,10 @@ simplify = Simplify
 -- | Successfully terminate execution.
 done :: Strategy app
 done = Done
+
+-- | Attempt both strategies in parallel.
+and :: Strategy app -> Strategy app -> Strategy app
+and = And
 
 {- | The environment for executing a @Strategy app@.
 
@@ -136,7 +151,8 @@ runStrategy strategy0 tools functions config0 =
             case strategy of
                 Done -> runStrategyDone node
                 Simplify next -> runStrategySimplify node next
-                Apply axiom next -> runStrategyApply axiom node next
+                Apply axiom next -> runStrategyApply node axiom next
+                And strategy1 strategy2 -> runStrategyAnd node strategy1 strategy2
 
     runStrategyDone node =
         pure (node, [])
@@ -151,7 +167,7 @@ runStrategy strategy0 tools functions config0 =
                 children = child <$> MultiOr.extractPatterns configs
             pure (node, children)
 
-    runStrategyApply axiom node@(config1, proof1) strategy =
+    runStrategyApply node@(config1, proof1) axiom strategy =
         case stepWithAxiom tools config1 axiom of
             Left _ ->
                 -- This branch is stuck because the axiom did not apply.
@@ -163,3 +179,11 @@ runStrategy strategy0 tools functions config0 =
                     children =
                         [ StrategyEnv { strategy, proof, config } ]
                 pure (node, children)
+
+    runStrategyAnd node@(config, proof) strategy1 strategy2 =
+        do
+            let
+                strategies = [ strategy1, strategy2 ]
+                child strategy = StrategyEnv { strategy, proof, config }
+                children = Foldable.toList (child <$> strategies)
+            pure (node, children)
