@@ -40,7 +40,7 @@ data
     Strategy
         prim  -- primitive rewrite rules
   where
-    -- | Primly a rewrite axiom.
+    -- | Apply a rewrite axiom.
     Apply
         :: !prim
         -- ^ rule
