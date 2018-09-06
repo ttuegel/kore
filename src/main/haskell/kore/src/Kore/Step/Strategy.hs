@@ -5,7 +5,9 @@ module Kore.Step.Strategy
     , done
     , stuck
     , seq
+    , sequence
     , par
+    , parallel
     , many
     , runStrategy
     ) where
@@ -19,7 +21,7 @@ import           Data.Tree
                  ( Tree )
 import qualified Data.Tree as Tree
 import           Prelude hiding
-                 ( seq )
+                 ( seq, sequence )
 
 import           Control.Monad.Counter
 
@@ -80,9 +82,17 @@ stuck = Stuck
 seq :: Strategy app -> Strategy app -> Strategy app
 seq = Seq
 
+-- | Apply many strategies in sequence.
+sequence :: [Strategy app] -> Strategy app
+sequence = foldr seq done
+
 -- | Apply two strategies in parallel.
 par :: Strategy app -> Strategy app -> Strategy app
 par = Par
+
+-- | Apply many strategies in parallel.
+parallel :: [Strategy app] -> Strategy app
+parallel = foldr par stuck
 
 -- | Apply the strategy zero or more times.
 many :: Strategy app -> Strategy app
