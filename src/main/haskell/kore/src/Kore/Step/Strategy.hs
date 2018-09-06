@@ -6,6 +6,7 @@ module Kore.Step.Strategy
     , stuck
     , seq
     , par
+    , many
     , runStrategy
     ) where
 
@@ -71,6 +72,8 @@ data
 
     Stuck :: Strategy app
 
+    Many :: Strategy app -> Strategy app
+
 -- | Apply a rewrite axiom.
 apply
     :: app
@@ -97,6 +100,10 @@ seq = Seq
 -- | Apply two strategies in parallel.
 par :: Strategy app -> Strategy app -> Strategy app
 par = Par
+
+-- | Apply the strategy zero or more times.
+many :: Strategy app -> Strategy app
+many = Many
 
 {- | The environment for executing a @Strategy app@.
 
@@ -145,28 +152,33 @@ runStrategy strategy0 tools functions config0 =
           [] -> pure (node, [])
           strategy : stack2 ->
               let env2 = env1 { stack = stack2 }
-              in case strategy of
-                  Seq strategy1 strategy2 ->
-                      (,) node <$> childrenSeq env2 strategy1 strategy2
-                  Par strategy1 strategy2 ->
-                      (,) node <$> childrenPar env2 strategy1 strategy2
-                  Apply axiom ->
-                      (,) node <$> childrenApply env2 axiom
-                  Simplify ->
-                      (,) node <$> childrenSimplify env2
-                  Done ->
-                      pure (node, [])
-                  Stuck ->
-                      pure (node, [])
+              in (,) node <$> childrenOf env2 strategy
+
+    childrenOf env2 strategy =
+        case strategy of
+            Seq strategy1 strategy2 ->
+                childrenSeq env2 strategy1 strategy2
+            Par strategy1 strategy2 ->
+                childrenPar env2 strategy1 strategy2
+            Apply axiom ->
+                childrenApply env2 axiom
+            Simplify ->
+                childrenSimplify env2
+            Many strategy1 ->
+                childrenMany env2 strategy1
+            Done ->
+                pure []
+            Stuck ->
+                pure []
 
     childrenSeq env@StrategyEnv { stack } strategy1 strategy2 =
-        pure [ env { stack = strategy1 : strategy2 : stack } ]
+        childrenOf env { stack = strategy2 : stack } strategy1
 
-    childrenPar env@StrategyEnv { stack } strategy1 strategy2 =
-        pure
-            [ env { stack = strategy1 : stack }
-            , env { stack = strategy2 : stack }
-            ]
+    childrenPar env strategy1 strategy2 =
+        do
+            children1 <- childrenOf env strategy1
+            children2 <- childrenOf env strategy2
+            pure (children1 ++ children2)
 
     childrenSimplify env@StrategyEnv { config = config1, proof = proof1 } =
         do
@@ -189,3 +201,11 @@ runStrategy strategy0 tools functions config0 =
                 let proof = proof1 <> proof2
                     children = [ env { proof, config } ]
                 pure children
+
+    childrenMany env1@StrategyEnv { stack } strategy =
+        do
+            let env2 = env1 { stack = many strategy : stack }
+            children <- childrenOf env2 strategy
+            case children of
+                [] -> pure [ env1 ]
+                _ : _ -> pure children
