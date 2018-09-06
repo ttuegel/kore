@@ -10,6 +10,10 @@ module Kore.Step.Strategy
     , runStrategy
     ) where
 
+import           Control.Monad.State.Strict
+                 ( StateT, evalStateT )
+import qualified Control.Monad.State.Strict as Monad.State
+import qualified Control.Monad.Trans as Monad.Trans
 import           Data.Map
                  ( Map )
 import           Data.Semigroup
@@ -120,6 +124,13 @@ data StrategyEnv app proof a =
           -- ^ proof of current configuration
         }
 
+pushStrategy :: Monad m => Strategy app -> StateT (StrategyEnv app proof a) m ()
+pushStrategy strategy =
+    Monad.State.modify' pushStrategy0
+  where
+    pushStrategy0 state@StrategyEnv { stack } =
+        state { stack = strategy : stack }
+
 {- | Use a strategy to execute the given pattern.
 
   Returns a tree of execution paths.
@@ -152,60 +163,71 @@ runStrategy strategy0 tools functions config0 =
           [] -> pure (node, [])
           strategy : stack2 ->
               let env2 = env1 { stack = stack2 }
-              in (,) node <$> childrenOf env2 strategy
+              in (,) node <$> evalStateT (childrenOf strategy) env2
 
-    childrenOf env2 strategy =
+    childrenOf strategy =
         case strategy of
             Seq strategy1 strategy2 ->
-                childrenSeq env2 strategy1 strategy2
+                childrenSeq strategy1 strategy2
             Par strategy1 strategy2 ->
-                childrenPar env2 strategy1 strategy2
+                childrenPar strategy1 strategy2
             Apply axiom ->
-                childrenApply env2 axiom
+                childrenApply axiom
             Simplify ->
-                childrenSimplify env2
+                childrenSimplify
             Many strategy1 ->
-                childrenMany env2 strategy1
+                childrenMany strategy1
             Done ->
                 pure []
             Stuck ->
                 pure []
 
-    childrenSeq env@StrategyEnv { stack } strategy1 strategy2 =
-        childrenOf env { stack = strategy2 : stack } strategy1
-
-    childrenPar env strategy1 strategy2 =
+    childrenSeq strategy1 strategy2 =
         do
-            children1 <- childrenOf env strategy1
-            children2 <- childrenOf env strategy2
+            pushStrategy strategy2
+            childrenOf strategy1
+
+    childrenPar strategy1 strategy2 =
+        do
+            children1 <- childrenOf strategy1
+            children2 <- childrenOf strategy2
             pure (children1 ++ children2)
 
-    childrenSimplify env@StrategyEnv { config = config1, proof = proof1 } =
+    childrenSimplify =
         do
+            env@StrategyEnv { config = config1, proof = proof1 }
+              <-
+                Monad.State.get
             (configs, proof2) <-
-                ExpandedPattern.simplify tools functions config1
+                Monad.Trans.lift
+                    $ ExpandedPattern.simplify tools functions config1
             let
                 proof = proof1 <> simplificationProof proof2
                 child config = env { proof, config }
                 children = child <$> MultiOr.extractPatterns configs
             pure children
 
-    childrenApply env@StrategyEnv { config = config1, proof = proof1 } axiom =
-        case stepWithAxiom tools config1 axiom of
-            Left _ ->
-                -- This branch is stuck because the axiom did not apply.
-                pure []
-            Right applied -> do
-                -- Continue execution along this branch.
-                (config, proof2) <- applied
-                let proof = proof1 <> proof2
-                    children = [ env { proof, config } ]
-                pure children
-
-    childrenMany env1@StrategyEnv { stack } strategy =
+    childrenApply axiom =
         do
-            let env2 = env1 { stack = many strategy : stack }
-            children <- childrenOf env2 strategy
+            env@StrategyEnv { config = config1, proof = proof1 }
+              <-
+                Monad.State.get
+            case stepWithAxiom tools config1 axiom of
+                Left _ ->
+                    -- This branch is stuck because the axiom did not apply.
+                    pure []
+                Right applied -> do
+                    -- Continue execution along this branch.
+                    (config, proof2) <- Monad.Trans.lift applied
+                    let proof = proof1 <> proof2
+                        children = [ env { proof, config } ]
+                    pure children
+
+    childrenMany strategy =
+        do
+            env1 <- Monad.State.get
+            pushStrategy (many strategy)
+            children <- childrenOf strategy
             case children of
                 [] -> pure [ env1 ]
                 _ : _ -> pure children
