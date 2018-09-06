@@ -3,11 +3,12 @@ module Kore.Step.Strategy
     , apply
     , simplify
     , done
-    , and
+    , stuck
+    , seq
+    , par
     , runStrategy
     ) where
 
-import qualified Data.Foldable as Foldable
 import           Data.Map
                  ( Map )
 import           Data.Semigroup
@@ -16,7 +17,7 @@ import           Data.Tree
                  ( Tree )
 import qualified Data.Tree as Tree
 import           Prelude hiding
-                 ( and )
+                 ( seq )
 
 import           Control.Monad.Counter
 import           Kore.AST.Common
@@ -45,10 +46,6 @@ import           Kore.Step.StepperAttributes
 
   Notes:
 
-  - Sequencing is implicit: some constructors take a @Strategy@ argument which
-    is the next strategy to apply, while other constructors (such as 'Done')
-    represent termination.
-
   - The recursive arguments of constructors are /intentionally/ lazy to allow
     strategies to loop.
 
@@ -62,47 +59,44 @@ data
         :: !app
         -- ^ rule
         -> Strategy app
-        -- ^ next strategy
-        -> Strategy app
 
     -- | Use builtin simplification, including function application.
-    Simplify
-        :: Strategy app
-        -- ^ next strategy
-        -> Strategy app
+    Simplify :: Strategy app
 
-    -- | Successfully terminate execution.
+    Seq :: Strategy app -> Strategy app -> Strategy app
+
+    Par :: Strategy app -> Strategy app -> Strategy app
+
     Done :: Strategy app
 
-    -- | Attempt both strategies in parallel.
-    And
-        :: Strategy app
-        -> Strategy app
-        -> Strategy app
+    Stuck :: Strategy app
 
 -- | Apply a rewrite axiom.
 apply
     :: app
     -- ^ rule
     -> Strategy app
-    -- ^ next strategy
-    -> Strategy app
 apply = Apply
 
 -- | Use builtin simplification, including function application.
-simplify
-    :: Strategy app
-    -- ^ next strategy
-    -> Strategy app
+simplify :: Strategy app
 simplify = Simplify
 
 -- | Successfully terminate execution.
 done :: Strategy app
 done = Done
 
--- | Attempt both strategies in parallel.
-and :: Strategy app -> Strategy app -> Strategy app
-and = And
+-- | Unsuccessfully terminate execution.
+stuck :: Strategy app
+stuck = Stuck
+
+-- | Apply two strategies in sequence.
+seq :: Strategy app -> Strategy app -> Strategy app
+seq = Seq
+
+-- | Apply two strategies in parallel.
+par :: Strategy app -> Strategy app -> Strategy app
+par = Par
 
 {- | The environment for executing a @Strategy app@.
 
@@ -111,7 +105,7 @@ and = And
  -}
 data StrategyEnv app proof a =
     StrategyEnv
-        { strategy :: !(Strategy app)
+        { stack :: ![Strategy app]
           -- ^ next strategy to attempty
         , config :: !a
           -- ^ current configuration
@@ -140,50 +134,58 @@ runStrategy strategy0 tools functions config0 =
   where
     env0 =
         StrategyEnv
-            { strategy = strategy0
+            { stack = [ strategy0 ]
             , proof = mempty
             , config = config0
             }
 
-    runStrategy0 StrategyEnv { strategy, proof, config } =
-        do
-            let node = (config, proof)
-            case strategy of
-                Done -> runStrategyDone node
-                Simplify next -> runStrategySimplify node next
-                Apply axiom next -> runStrategyApply node axiom next
-                And strategy1 strategy2 -> runStrategyAnd node strategy1 strategy2
+    runStrategy0 env1@StrategyEnv { stack = stack1, proof, config } =
+        let node = (config, proof)
+        in case stack1 of
+          [] -> pure (node, [])
+          strategy : stack2 ->
+              let env2 = env1 { stack = stack2 }
+              in case strategy of
+                  Seq strategy1 strategy2 ->
+                      (,) node <$> childrenSeq env2 strategy1 strategy2
+                  Par strategy1 strategy2 ->
+                      (,) node <$> childrenPar env2 strategy1 strategy2
+                  Apply axiom ->
+                      (,) node <$> childrenApply env2 axiom
+                  Simplify ->
+                      (,) node <$> childrenSimplify env2
+                  Done ->
+                      pure (node, [])
+                  Stuck ->
+                      pure (node, [])
 
-    runStrategyDone node =
-        pure (node, [])
+    childrenSeq env@StrategyEnv { stack } strategy1 strategy2 =
+        pure [ env { stack = strategy1 : strategy2 : stack } ]
 
-    runStrategySimplify node@(config1, proof1) strategy =
+    childrenPar env@StrategyEnv { stack } strategy1 strategy2 =
+        pure
+            [ env { stack = strategy1 : stack }
+            , env { stack = strategy2 : stack }
+            ]
+
+    childrenSimplify env@StrategyEnv { config = config1, proof = proof1 } =
         do
             (configs, proof2) <-
                 ExpandedPattern.simplify tools functions config1
             let
                 proof = proof1 <> simplificationProof proof2
-                child config = StrategyEnv { strategy, proof, config }
+                child config = env { proof, config }
                 children = child <$> MultiOr.extractPatterns configs
-            pure (node, children)
+            pure children
 
-    runStrategyApply node@(config1, proof1) axiom strategy =
+    childrenApply env@StrategyEnv { config = config1, proof = proof1 } axiom =
         case stepWithAxiom tools config1 axiom of
             Left _ ->
                 -- This branch is stuck because the axiom did not apply.
-                pure (node, [])
+                pure []
             Right applied -> do
                 -- Continue execution along this branch.
                 (config, proof2) <- applied
                 let proof = proof1 <> proof2
-                    children =
-                        [ StrategyEnv { strategy, proof, config } ]
-                pure (node, children)
-
-    runStrategyAnd node@(config, proof) strategy1 strategy2 =
-        do
-            let
-                strategies = [ strategy1, strategy2 ]
-                child strategy = StrategyEnv { strategy, proof, config }
-                children = Foldable.toList (child <$> strategies)
-            pure (node, children)
+                    children = [ env { proof, config } ]
+                pure children
