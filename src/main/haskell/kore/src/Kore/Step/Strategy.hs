@@ -14,10 +14,7 @@ import           Control.Monad.State.Strict
                  ( StateT, evalStateT )
 import qualified Control.Monad.State.Strict as Monad.State
 import qualified Control.Monad.Trans as Monad.Trans
-import           Data.Map
-                 ( Map )
-import           Data.Semigroup
-                 ( Semigroup (..) )
+import qualified Data.Foldable as Foldable
 import           Data.Tree
                  ( Tree )
 import qualified Data.Tree as Tree
@@ -25,24 +22,6 @@ import           Prelude hiding
                  ( seq )
 
 import           Control.Monad.Counter
-import           Kore.AST.Common
-                 ( Id )
-import           Kore.AST.MetaOrObject
-                 ( MetaOrObject )
-import           Kore.IndexedModule.MetadataTools
-                 ( MetadataTools )
-import           Kore.Step.AxiomPatterns
-                 ( AxiomPattern )
-import           Kore.Step.BaseStep
-                 ( StepProof, simplificationProof, stepWithAxiom )
-import           Kore.Step.ExpandedPattern
-                 ( CommonExpandedPattern )
-import           Kore.Step.Function.Data
-                 ( CommonApplicationFunctionEvaluator )
-import qualified Kore.Step.OrOfExpandedPattern as MultiOr
-import qualified Kore.Step.Simplification.ExpandedPattern as ExpandedPattern
-import           Kore.Step.StepperAttributes
-                 ( StepperAttributes )
 
 {- | An execution strategy.
 
@@ -57,26 +36,26 @@ import           Kore.Step.StepperAttributes
  -}
 data
     Strategy
-        app  -- rewrite rules
+        prim  -- primitive rewrite rules
   where
-    -- | Apply a rewrite axiom.
+    -- | Primly a rewrite axiom.
     Apply
-        :: !app
+        :: !prim
         -- ^ rule
-        -> Strategy app
+        -> Strategy prim
 
-    -- | Use builtin simplification, including function application.
-    Simplify :: Strategy app
+    -- | Use builtin simplification, including function primlication.
+    Simplify :: Strategy prim
 
-    Seq :: Strategy app -> Strategy app -> Strategy app
+    Seq :: Strategy prim -> Strategy prim -> Strategy prim
 
-    Par :: Strategy app -> Strategy app -> Strategy app
+    Par :: Strategy prim -> Strategy prim -> Strategy prim
 
-    Done :: Strategy app
+    Done :: Strategy prim
 
-    Stuck :: Strategy app
+    Stuck :: Strategy prim
 
-    Many :: Strategy app -> Strategy app
+    Many :: Strategy prim -> Strategy prim
 
 -- | Apply a rewrite axiom.
 apply
@@ -114,9 +93,9 @@ many = Many
   'runStrategy' unfolds a tree to produce patterns @a@ and a proofs @proof@.
 
  -}
-data StrategyEnv app proof a =
+data Step prim proof a =
     StrategyEnv
-        { stack :: ![Strategy app]
+        { stack :: ![Strategy prim]
           -- ^ next strategy to attempty
         , config :: !a
           -- ^ current configuration
@@ -124,7 +103,7 @@ data StrategyEnv app proof a =
           -- ^ proof of current configuration
         }
 
-pushStrategy :: Monad m => Strategy app -> StateT (StrategyEnv app proof a) m ()
+pushStrategy :: Monad m => Strategy prim -> StateT (Step prim proof a) m ()
 pushStrategy strategy =
     Monad.State.modify' pushStrategy0
   where
@@ -137,17 +116,21 @@ pushStrategy strategy =
 
  -}
 runStrategy
-    :: MetaOrObject level
-    => Strategy (AxiomPattern level)
+    :: (Foldable f, Monoid proof)
+    => (tools -> functions -> config -> Counter (f config, proof))
+    -- ^ Simplifier
+    -> (tools -> config -> prim -> Either e (Counter (config, proof)))
+    -- ^ Axiom application
+    -> Strategy prim
     -- ^ Strategy to apply
-    -> MetadataTools level StepperAttributes
+    -> tools
     -- ^ Metadata for the execution scope
-    -> Map (Id level) [CommonApplicationFunctionEvaluator level]
+    -> functions
     -- ^ Function evaluators indexed by identifier
-    -> CommonExpandedPattern level
+    -> config
     -- ^ Initial configuration
-    -> Counter (Tree (CommonExpandedPattern level, StepProof level))
-runStrategy strategy0 tools functions config0 =
+    -> Counter (Tree (Step prim proof config))
+runStrategy doSimplify doApply strategy0 tools functions config0 =
     Tree.unfoldTreeM_BF runStrategy0 env0
   where
     env0 =
@@ -157,13 +140,12 @@ runStrategy strategy0 tools functions config0 =
             , config = config0
             }
 
-    runStrategy0 env1@StrategyEnv { stack = stack1, proof, config } =
-        let node = (config, proof)
-        in case stack1 of
-          [] -> pure (node, [])
-          strategy : stack2 ->
-              let env2 = env1 { stack = stack2 }
-              in (,) node <$> evalStateT (childrenOf strategy) env2
+    runStrategy0 env1@StrategyEnv { stack = stack1 } =
+        case stack1 of
+            [] -> pure (env1, [])
+            strategy : stack2 ->
+                let env2 = env1 { stack = stack2 }
+                in (,) env1 <$> evalStateT (childrenOf strategy) env2
 
     childrenOf strategy =
         case strategy of
@@ -199,12 +181,11 @@ runStrategy strategy0 tools functions config0 =
               <-
                 Monad.State.get
             (configs, proof2) <-
-                Monad.Trans.lift
-                    $ ExpandedPattern.simplify tools functions config1
+                Monad.Trans.lift $ doSimplify tools functions config1
             let
-                proof = proof1 <> simplificationProof proof2
+                proof = mappend proof1 proof2
                 child config = env { proof, config }
-                children = child <$> MultiOr.extractPatterns configs
+                children = child <$> Foldable.toList configs
             pure children
 
     childrenApply axiom =
@@ -212,14 +193,14 @@ runStrategy strategy0 tools functions config0 =
             env@StrategyEnv { config = config1, proof = proof1 }
               <-
                 Monad.State.get
-            case stepWithAxiom tools config1 axiom of
+            case doApply tools config1 axiom of
                 Left _ ->
                     -- This branch is stuck because the axiom did not apply.
                     pure []
                 Right applied -> do
                     -- Continue execution along this branch.
                     (config, proof2) <- Monad.Trans.lift applied
-                    let proof = proof1 <> proof2
+                    let proof = mappend proof1 proof2
                         children = [ env { proof, config } ]
                     pure children
 
