@@ -177,9 +177,8 @@ runStrategy doSimplify doApply strategy0 tools functions config0 =
 
     childrenSimplify =
         do
-            env@StrategyEnv { config = config1, proof = proof1 }
-              <-
-                Monad.State.get
+            env <- Monad.State.get
+            let StrategyEnv { config = config1, proof = proof1 } = env
             (configs, proof2) <-
                 Monad.Trans.lift $ doSimplify tools functions config1
             let
@@ -190,9 +189,8 @@ runStrategy doSimplify doApply strategy0 tools functions config0 =
 
     childrenApply axiom =
         do
-            env@StrategyEnv { config = config1, proof = proof1 }
-              <-
-                Monad.State.get
+            env <- Monad.State.get
+            let StrategyEnv { config = config1, proof = proof1 } = env
             case doApply tools config1 axiom of
                 Left _ ->
                     -- This branch is stuck because the axiom did not apply.
