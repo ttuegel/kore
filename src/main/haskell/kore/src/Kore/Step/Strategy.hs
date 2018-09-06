@@ -15,9 +15,9 @@ module Kore.Step.Strategy
     , runStrategy
     ) where
 
-import           Control.Monad.State.Strict
-                 ( StateT, evalStateT )
-import qualified Control.Monad.State.Strict as Monad.State
+import           Control.Monad.Reader
+                 ( ReaderT, runReaderT )
+import qualified Control.Monad.Reader as Monad.Reader
 import qualified Control.Monad.Trans as Monad.Trans
 import qualified Data.Foldable as Foldable
 import           Data.Tree
@@ -121,12 +121,15 @@ data Step prim proof a =
           -- ^ proof of current configuration
         }
 
-pushStrategy :: Monad m => Strategy prim -> StateT (Step prim proof a) m ()
-pushStrategy strategy =
-    Monad.State.modify' pushStrategy0
+withStrategy
+    :: Monad m
+    => Strategy prim
+    -> ReaderT (Step prim proof config) m a
+    -> ReaderT (Step prim proof config) m a
+withStrategy strategy = Monad.Reader.local withStrategy0
   where
-    pushStrategy0 state@Step { stack } =
-        state { stack = strategy : stack }
+    withStrategy0 env@Step { stack } =
+        env { stack = strategy : stack }
 
 {- | Use a strategy to execute the given pattern.
 
@@ -157,7 +160,7 @@ runStrategy doApply strategy0 config0 =
             [] -> pure (env1, [])
             strategy : stack2 ->
                 let env2 = env1 { stack = stack2 }
-                in (,) env1 <$> evalStateT (childrenOf strategy) env2
+                in (,) env1 <$> runReaderT (childrenOf strategy) env2
 
     childrenOf strategy =
         case strategy of
@@ -176,7 +179,7 @@ runStrategy doApply strategy0 config0 =
 
     -- | Do nothing and proceed with the next step.
     childrenDone =
-        (: []) <$> Monad.State.get
+        (: []) <$> Monad.Reader.ask
 
     -- | Do nothing and do not continue.
     childrenStuck =
@@ -185,9 +188,7 @@ runStrategy doApply strategy0 config0 =
     -- | Push the second strategy onto the stack and continue with the first
     -- strategy.
     childrenSeq strategy1 strategy2 =
-        do
-            pushStrategy strategy2
-            childrenOf strategy1
+        withStrategy strategy2 (childrenOf strategy1)
 
     -- | Combine the children of both strategies.
     childrenPar strategy1 strategy2 =
@@ -198,7 +199,7 @@ runStrategy doApply strategy0 config0 =
 
     childrenApply axiom_ =
         do
-            env <- Monad.State.get
+            env <- Monad.Reader.ask
             let Step { config = config1, proof = proof1 } = env
             case doApply config1 axiom_ of
                 Left _ ->
@@ -216,9 +217,8 @@ runStrategy doApply strategy0 config0 =
     -- If the strategy fails, roll the stack back and continue.
     childrenMany strategy =
         do
-            env1 <- Monad.State.get
-            pushStrategy (many strategy)
-            children <- childrenOf strategy
+            env <- Monad.Reader.ask
+            children <- withStrategy (many strategy) (childrenOf strategy)
             case children of
-                [] -> pure [ env1 ]
+                [] -> pure [ env ]
                 _ : _ -> pure children
