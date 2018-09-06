@@ -26,7 +26,7 @@ import qualified Data.Tree as Tree
 import           Prelude hiding
                  ( seq, sequence )
 
-import           Control.Monad.Counter
+import Control.Monad.Counter
 
 {- | An execution strategy.
 
@@ -177,11 +177,9 @@ runStrategy doApply strategy0 config0 =
             Stuck ->
                 childrenStuck
 
-    -- | Do nothing and proceed with the next step.
     childrenDone =
-        (: []) <$> Monad.Reader.ask
+        pure []
 
-    -- | Do nothing and do not continue.
     childrenStuck =
         pure []
 
