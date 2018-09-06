@@ -112,6 +112,7 @@ isFunctionalPattern tools = cata  reduceM
         proofs <- concat <$> sequence patt
         return (proof : proofs)
 
+-- Tells whether the pattern is a built-in constructor-like pattern
 isPreconstructedPattern
     :: err
     -> Pattern level variable pat
@@ -145,7 +146,8 @@ checkFunctionalHead tools (ApplicationPattern ap) =
 checkFunctionalHead _ _ = Left NonFunctionalPattern
 
 {-|@isConstructorTop@ checks whether the given 'Pattern' is topped in a
-constructor / constructor-like (literal / domain value) construct.
+constructor / syntactic sugar for a constructor (literal / domain value)
+construct.
 -}
 isConstructorTop
     :: MetadataTools level StepperAttributes
