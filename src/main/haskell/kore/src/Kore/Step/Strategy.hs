@@ -160,15 +160,26 @@ runStrategy doSimplify doApply strategy0 tools functions config0 =
             Many strategy1 ->
                 childrenMany strategy1
             Done ->
-                pure []
+                childrenDone
             Stuck ->
-                pure []
+                childrenStuck
 
+    -- | Do nothing and proceed with the next step.
+    childrenDone =
+        (: []) <$> Monad.State.get
+
+    -- | Do nothing and do not continue.
+    childrenStuck =
+        pure []
+
+    -- | Push the second strategy onto the stack and continue with the first
+    -- strategy.
     childrenSeq strategy1 strategy2 =
         do
             pushStrategy strategy2
             childrenOf strategy1
 
+    -- | Combine the children of both strategies.
     childrenPar strategy1 strategy2 =
         do
             children1 <- childrenOf strategy1
@@ -202,6 +213,8 @@ runStrategy doSimplify doApply strategy0 tools functions config0 =
                         children = [ env { proof, config } ]
                     pure children
 
+    -- | Push @many strategy@ back onto the stack and attempt the strategy.
+    -- If the strategy fails, roll the stack back and continue.
     childrenMany strategy =
         do
             env1 <- Monad.State.get
