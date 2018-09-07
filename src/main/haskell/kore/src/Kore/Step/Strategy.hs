@@ -201,11 +201,11 @@ runStrategy doApply strategy0 config0 =
     childrenApply axiom_ =
         do
             env <- Monad.Reader.ask
-            let Step { config = config1, proof = proof1 } = env
+            let Step { stack = stack1, config = config1, proof = proof1 } = env
             case doApply config1 axiom_ of
                 Left _ ->
                     -- This branch is stuck because the axiom did not apply.
-                    pure []
+                    pure [ env { stack = Stuck : stack1 } ]
                 Right applied -> do
                     -- Continue execution along this branch.
                     (configs, proof2) <- Monad.Trans.lift applied
