@@ -13,8 +13,7 @@ module Kore.Step.Strategy
     , builtin
     , Step (..)
     , runStrategy
-    , pickFirstDone
-    , pickFirstStuck
+    , pickFirst
     ) where
 
 import           Control.Monad.Reader
@@ -227,8 +226,8 @@ runStrategy doApply strategy0 config0 =
 
 {- | Traverse the tree and select the first 'Done' result.
  -}
-pickFirstDone :: Tree (Step prim proof config) -> Maybe (config, proof)
-pickFirstDone = getFirst . Tree.foldTree pickFirst0
+pickFirst :: Tree (Step prim proof config) -> Maybe (config, proof)
+pickFirst = getFirst . Tree.foldTree pickFirst0
   where
     pickFirst0 Step { stack, config, proof } children =
         mconcat (this : children)
@@ -236,17 +235,4 @@ pickFirstDone = getFirst . Tree.foldTree pickFirst0
         this =
             case stack of
                 Done : _ -> pure (config, proof)
-                _ -> mempty
-
-{- | Traverse the tree and select the first 'Stuck' result.
- -}
-pickFirstStuck :: Tree (Step prim proof config) -> Maybe (config, proof)
-pickFirstStuck = getFirst . Tree.foldTree pickFirst0
-  where
-    pickFirst0 Step { stack, config, proof } children =
-        mconcat (this : children)
-      where
-        this =
-            case stack of
-                Stuck : _ -> pure (config, proof)
                 _ -> mempty
