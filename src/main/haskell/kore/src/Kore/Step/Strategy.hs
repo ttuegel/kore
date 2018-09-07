@@ -125,14 +125,14 @@ data Step prim proof a =
           -- ^ proof of current configuration
         }
 
-withStrategy
+withNextStrategy
     :: Monad m
     => Strategy prim
     -> ReaderT (Step prim proof config) m a
     -> ReaderT (Step prim proof config) m a
-withStrategy strategy = Monad.Reader.local withStrategy0
+withNextStrategy strategy = Monad.Reader.local withNextStrategy0
   where
-    withStrategy0 env@Step { stack } =
+    withNextStrategy0 env@Step { stack } =
         env { stack = strategy : stack }
 
 {- | Use a strategy to execute the given pattern.
@@ -190,7 +190,7 @@ runStrategy doApply strategy0 config0 =
     -- | Push the second strategy onto the stack and continue with the first
     -- strategy.
     childrenSeq strategy1 strategy2 =
-        withStrategy strategy2 (childrenOf strategy1)
+        withNextStrategy strategy2 (childrenOf strategy1)
 
     -- | Combine the children of both strategies.
     childrenPar strategy1 strategy2 =
@@ -220,7 +220,7 @@ runStrategy doApply strategy0 config0 =
     childrenMany strategy =
         do
             env <- Monad.Reader.ask
-            children <- withStrategy (many strategy) (childrenOf strategy)
+            children <- withNextStrategy (many strategy) (childrenOf strategy)
             case children of
                 [] -> pure [ env ]
                 _ : _ -> pure children
