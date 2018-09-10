@@ -6,6 +6,7 @@ module Test.Kore.IndexedModule.MockMetadataTools
     , defaultAttributes
     , functionAttributes
     , functionalAttributes
+    , sortInjectionAttributes
     ) where
 
 import Data.Default
@@ -103,5 +104,15 @@ defaultAttributes = StepperAttributes
     , isFunction = False
     , isInjective = False
     , isSortInjection = False
+    , hook = def
+    }
+
+sortInjectionAttributes :: StepperAttributes
+sortInjectionAttributes = StepperAttributes
+    { isConstructor = False
+    , isFunction = False
+    , isFunctional = True
+    , isInjective = True
+    , isSortInjection = True
     , hook = def
     }

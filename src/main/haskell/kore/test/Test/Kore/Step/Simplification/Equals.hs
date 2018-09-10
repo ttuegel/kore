@@ -192,6 +192,72 @@ test_equalsSimplification = give mockSortTools
                     }
             )
         )
+    , testCase "domain-value == domain-value for patterns under injection"
+        (assertEqualWithExplanation ""
+            (OrOfExpandedPattern.make [ ExpandedPattern.top ])
+            (evaluate
+                mockMetadataTools
+                ExpandedPattern
+                    { term =
+                        Mock.kseq
+                            (Mock.inj
+                                (mkDomainValue
+                                    testSort
+                                    (mkStringLiteral (StringLiteral "a"))
+                                )
+                            )
+                            Mock.dotk
+                    , predicate = makeTruePredicate
+                    , substitution = []
+                    }
+                ExpandedPattern
+                    { term =
+                        Mock.kseq
+                            (Mock.inj
+                                (mkDomainValue
+                                    testSort
+                                    (mkStringLiteral (StringLiteral "a"))
+                                )
+                            )
+                            Mock.dotk
+                    , predicate = makeTruePredicate
+                    , substitution = []
+                    }
+            )
+        )
+    , testCase "domain-value != domain-value for patterns under injection"
+        (assertEqualWithExplanation ""
+            (OrOfExpandedPattern.make [])
+            (evaluate
+                mockMetadataTools
+                ExpandedPattern
+                    { term =
+                        Mock.kseq
+                            (Mock.inj
+                                (mkDomainValue
+                                    testSort
+                                    (mkStringLiteral (StringLiteral "a"))
+                                )
+                            )
+                            Mock.dotk
+                    , predicate = makeTruePredicate
+                    , substitution = []
+                    }
+                ExpandedPattern
+                    { term =
+                        Mock.kseq
+                            (Mock.inj
+                                (mkDomainValue
+                                    testSort
+                                    (mkStringLiteral (StringLiteral "b"))
+                                )
+                            )
+                            Mock.dotk
+                    , predicate = makeTruePredicate
+                    , substitution = []
+                    }
+            )
+        )
     , testCase "domain-value != domain-value because of sorts for patterns"
         (assertEqualWithExplanation ""
             (OrOfExpandedPattern.make [])

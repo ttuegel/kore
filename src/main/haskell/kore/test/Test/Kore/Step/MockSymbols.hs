@@ -38,8 +38,6 @@ import           Kore.IndexedModule.MetadataTools
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
-                 ( constructorAttributes, constructorFunctionalAttributes,
-                 defaultAttributes, functionAttributes, functionalAttributes )
 
 
 import Test.Kore
@@ -95,6 +93,12 @@ functionalConstr11Id :: Id Object
 functionalConstr11Id = testId "functionalConstr11"
 functionalConstr20Id :: Id Object
 functionalConstr20Id = testId "functionalConstr20"
+injId :: Id Object
+injId = testId "inj"
+kseqId :: Id Object
+kseqId = testId "kseq"
+dotkId :: Id Object
+dotkId = testId "dotk"
 
 aSymbol :: SymbolOrAlias Object
 aSymbol = SymbolOrAlias
@@ -220,6 +224,21 @@ functionalConstr20Symbol :: SymbolOrAlias Object
 functionalConstr20Symbol = SymbolOrAlias
     { symbolOrAliasConstructor = functionalConstr20Id
     , symbolOrAliasParams      = []
+    }
+injSymbol :: SymbolOrAlias Object
+injSymbol = SymbolOrAlias
+    { symbolOrAliasConstructor = injId
+      , symbolOrAliasParams = [ testSort, testSortK ]
+    }
+kseqSymbol :: SymbolOrAlias Object
+kseqSymbol = SymbolOrAlias
+    { symbolOrAliasConstructor = kseqId
+    , symbolOrAliasParams = []
+    }
+dotkSymbol :: SymbolOrAlias Object
+dotkSymbol = SymbolOrAlias
+    { symbolOrAliasConstructor = dotkId
+    , symbolOrAliasParams = []
     }
 
 x :: Variable Object
@@ -356,6 +375,22 @@ functionalConstr20
     -> PureMLPattern Object variable
     -> PureMLPattern Object variable
 functionalConstr20 arg1 arg2 = mkApp functionalConstr20Symbol [arg1, arg2]
+
+inj
+    :: Given (SortTools Object)
+    => PureMLPattern Object variable
+    -> PureMLPattern Object variable
+inj arg = mkApp injSymbol [arg]
+
+kseq
+    :: Given (SortTools Object)
+    => PureMLPattern Object variable
+    -> PureMLPattern Object variable
+    -> PureMLPattern Object variable
+kseq arg1 arg2 = mkApp kseqSymbol [arg1, arg2]
+
+dotk :: Given (SortTools Object) => PureMLPattern Object variable
+dotk = mkApp dotkSymbol []
 
 sortToolsMapping :: [(SymbolOrAlias Object, ApplicationSorts Object)]
 sortToolsMapping =
@@ -509,6 +544,24 @@ sortToolsMapping =
             , applicationSortsResult = testSort
             }
         )
+    ,   ( injSymbol
+        , ApplicationSorts
+            { applicationSortsOperands = [testSort]
+            , applicationSortsResult = testSortK
+            }
+        )
+    ,   ( kseqSymbol
+        , ApplicationSorts
+            { applicationSortsOperands = [testSortK, testSortK]
+            , applicationSortsResult = testSortK
+            }
+        )
+    ,   ( dotkSymbol
+        , ApplicationSorts
+            { applicationSortsOperands = []
+            , applicationSortsResult = testSortK
+            }
+        )
     ]
 
 attributesMapping :: [(SymbolOrAlias Object, StepperAttributes)]
@@ -588,11 +641,27 @@ attributesMapping =
     ,   ( functionalConstr20Symbol
         , Mock.constructorFunctionalAttributes
         )
+    ,   ( injSymbol
+        , Mock.sortInjectionAttributes
+        )
+    ,   ( kseqSymbol
+        , Mock.constructorFunctionalAttributes
+        )
+    ,   ( dotkSymbol
+        , Mock.constructorFunctionalAttributes
+        )
     ]
 
 testSort :: Sort Object
 testSort =
     SortActualSort SortActual
         { sortActualName  = testId "testSort"
+        , sortActualSorts = []
+        }
+
+testSortK :: Sort Object
+testSortK =
+    SortActualSort SortActual
+        { sortActualName = testId "testSortK"
         , sortActualSorts = []
         }
