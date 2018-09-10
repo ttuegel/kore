@@ -43,6 +43,8 @@ import Data.Reflection
        ( Given )
 import Data.Set
        ( Set )
+import Data.Text.Prettyprint.Doc
+       ( Pretty (..) )
 
 import Kore.AST.Common
        ( SortedVariable, Variable )
@@ -71,6 +73,9 @@ can be manipulated only by functions in this module.
 -}
 newtype GenericPredicate pat = GenericPredicate pat
     deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+instance Pretty pat => Pretty (GenericPredicate pat) where
+    pretty (GenericPredicate pat) = pretty pat
 
 {-| 'Predicate' is a user-visible representation for predicates.
 -}
