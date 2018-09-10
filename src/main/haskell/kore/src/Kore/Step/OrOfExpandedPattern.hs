@@ -122,7 +122,9 @@ extract (MultiOr x) = x
 isFalse :: OrOfExpandedPattern level variable -> Bool
 isFalse patt =
     case filterOr patt of
-        MultiOr [] -> True
+        MultiOr [] ->
+            -- Any ⊥ patterns are removed by 'filterOr'.
+            True
         _ -> False
 
 {-| 'isTrue' checks if the 'Or' is composed of a single top pattern.
