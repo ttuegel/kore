@@ -65,7 +65,7 @@ data ExpandedPattern level variable = ExpandedPattern
     -- ^ pattern that only evaluates to Top or Bottom.
     , substitution :: !(UnificationSubstitution level variable)
     -- ^ special kind of predicate of the type
-    -- variable1 = term1 /\ variable2 = term2 /\ ...
+    -- variable1 = term1 ∧ variable2 = term2 ∧ ...
     }
     deriving (Eq, Show)
 
@@ -77,7 +77,7 @@ data PredicateSubstitution level variable = PredicateSubstitution
     -- ^ pattern that only evaluates to Top or Bottom.
     , substitution :: !(UnificationSubstitution level variable)
     -- ^ special kind of predicate of the type
-    -- variable1 = term1 /\ variable2 = term2 /\ ...
+    -- variable1 = term1 ∧ variable2 = term2 ∧ ...
     }
     deriving (Eq, Show)
 
