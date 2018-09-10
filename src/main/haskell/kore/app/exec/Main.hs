@@ -191,8 +191,19 @@ main = do
                             axiomPatterns
                             maxStepCount
                             initialPattern
-            putStrLn $ unparseToString
-                (ExpandedPattern.term finalExpandedPattern)
+            let ExpandedPattern
+                    { term = finalTerm
+                    , predicate = finalPredicate
+                    , substitution = finalSubstitution
+                    }
+                  =
+                    finalExpandedPattern
+            putStrLn "// term"
+            putStrLn $ unparseToString finalTerm
+            putStrLn "// predicate"
+            putStrLn $ unparseToString finalPredicate
+            putStrLn "// substitution"
+            putStrLn $ unparseToString finalSubstitution
 
 mainModule
     :: ModuleName
