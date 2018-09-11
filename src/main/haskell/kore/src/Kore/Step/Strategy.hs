@@ -4,8 +4,6 @@ module Kore.Step.Strategy
     , apply
     , done
     , stuck
-    , seq
-    , sequence
     , par
     , parallel
     , many
@@ -46,9 +44,7 @@ data Strategy prim where
     -- The recursive arguments of these constructors are /intentionally/ lazy to
     -- allow strategies to loop.
 
-    Apply :: !prim -> Strategy prim
-
-    Seq :: Strategy prim -> Strategy prim -> Strategy prim
+    Apply :: !prim -> Strategy prim -> Strategy prim
 
     Par :: Strategy prim -> Strategy prim -> Strategy prim
 
@@ -63,6 +59,8 @@ apply
     :: app
     -- ^ rule
     -> Strategy app
+    -- ^ next strategy
+    -> Strategy app
 apply = Apply
 
 -- | Successfully terminate execution.
@@ -72,20 +70,6 @@ done = Done
 -- | Unsuccessfully terminate execution.
 stuck :: Strategy app
 stuck = Stuck
-
--- | Apply two strategies in sequence.
-seq :: Strategy app -> Strategy app -> Strategy app
-seq = Seq
-
-{- | Apply many strategies in sequence.
-
-  @
-  sequence [] = done
-  @
-
- -}
-sequence :: [Strategy app] -> Strategy app
-sequence = foldr seq done
 
 -- | Apply two strategies in parallel.
 par :: Strategy app -> Strategy app -> Strategy app
@@ -106,10 +90,10 @@ or :: Strategy app -> Strategy app -> Strategy app
 or = Or
 
 -- | Apply the strategy zero or more times.
-many :: Strategy app -> Strategy app -> Strategy app
+many :: (Strategy app -> Strategy app) -> Strategy app -> Strategy app
 many strategy finally = many0
   where
-    many0 = or (seq strategy many0) finally
+    many0 = or (strategy many0) finally
 
 {- | A strategy primitive: a rewrite axiom or builtin simplification step.
  -}
@@ -222,19 +206,18 @@ strategyTransition
 strategyTransition applyPrim =
     \strategy state ->
         case strategy of
-            Apply prim -> do
+            Apply prim strategy' -> do
+                let state' = pushA strategy' state
                 -- Apply a primitive strategy.
                 configs <- applyPrim prim (get state)
                 case configs of
                     [] ->
                         -- If the primitive failed, throw an exception.
-                        return [ throw state ]
+                        return [ throw state' ]
                     _ ->
                         -- If the primitive succeeded, reset the exception
                         -- handler and continue with the children.
-                        return (put (resetB state) <$> configs)
-            Seq strategy1 strategy2 ->
-                return [ (pushA strategy1 . pushA strategy2) state ]
+                        return (put (resetB state') <$> configs)
             Par strategy1 strategy2 ->
                 return [ pushA strategy1 state, pushA strategy2 state ]
             Done -> return []
