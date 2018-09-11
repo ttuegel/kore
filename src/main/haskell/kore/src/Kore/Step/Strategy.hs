@@ -48,10 +48,7 @@ data
         prim  -- primitive rewrite rules
   where
     -- | Apply a rewrite axiom.
-    Apply
-        :: !prim
-        -- ^ rule
-        -> Strategy prim
+    Apply :: !prim -> Strategy prim
 
     Seq :: Strategy prim -> Strategy prim -> Strategy prim
 
