@@ -56,7 +56,7 @@ data Strategy prim where
 
     Stuck :: Strategy prim
 
-    Many :: Strategy prim -> Strategy prim
+    Many :: Strategy prim -> Strategy prim -> Strategy prim
 
 -- | Apply a rewrite axiom.
 apply
@@ -102,7 +102,7 @@ parallel :: [Strategy app] -> Strategy app
 parallel = foldr par stuck
 
 -- | Apply the strategy zero or more times.
-many :: Strategy app -> Strategy app
+many :: Strategy app -> Strategy app -> Strategy app
 many = Many
 
 {- | A strategy primitive: a rewrite axiom or builtin simplification step.
@@ -233,8 +233,8 @@ strategyTransition applyPrim =
                 return [ pushA strategy1 state, pushA strategy2 state ]
             Done -> return []
             Stuck -> return []
-            Many strategy1 ->
-                return [ (pushA strategy1 . pushB strategy . copyAB) state ]
+            Many strategy1 finally ->
+                return [ (pushA strategy1 . pushA strategy . pushB finally . copyAB) state ]
   where
     resetB = pushB stuck . clearB
 
