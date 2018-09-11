@@ -126,52 +126,19 @@ builtin = Builtin
 
 {- | A simple state machine for running 'Strategy'.
 
-  The machine has a primary and secondary stack. The secondary stack is intended
-  for exception handling. 'runMachine' runs the instructions of the primary
-  instruction stack in sequence. 'throw' swaps the stacks.
+  The machine has a primary and secondary instruction pointer and an
+  accumulator. The secondary instruction is intended for exception handling.
 
  -}
 data Machine instr accum =
     Machine
-        { stackA :: ![instr]
-          -- ^ primary instruction stack
-        , stackB :: ![instr]
-          -- ^ secondary instruction stack (for exceptions)
+        { instrA :: !instr
+          -- ^ primary instruction pointer
+        , instrB :: !instr
+          -- ^ secondary instruction pointer (for exceptions)
         , accum :: !accum
           -- ^ current accumulator
         }
-
--- | Push an instruction to the top of the primary stack.
-pushA :: instr -> Machine instr accum -> Machine instr accum
-pushA instr state@Machine { stackA } = state { stackA = instr : stackA }
-
--- | Pop an instruction from the top of the primary stack.
-popA :: Machine instr accum -> Maybe (Machine instr accum, instr)
-popA state@Machine { stackA } =
-    case stackA of
-        [] -> Nothing
-        instr : stackA' -> Just (state { stackA = stackA' }, instr)
-
--- | Push an instruction to the top of the secondary stack.
-pushB :: instr -> Machine instr accum -> Machine instr accum
-pushB instr state@Machine { stackB } = state { stackB = instr : stackB }
-
--- | Clear the secondary stack.
-clearB :: Machine instr accum -> Machine instr accum
-clearB state = state { stackB = [] }
-
--- | Copy the primary stack over the secondary stack.
-copyAB :: Machine instr accum -> Machine instr accum
-copyAB state@Machine { stackA } = state { stackB = stackA }
-
-{- | Signal an exception.
-
-  The primary and secondary stacks will be swapped.
-
- -}
-throw :: Machine instr accum -> Machine instr accum
-throw state@Machine { stackA, stackB } =
-    state { stackA = stackB, stackB = stackA }
 
 -- | Return the accumulator.
 get :: Machine instr accum -> accum
@@ -188,7 +155,7 @@ put state accum = state { accum }
  -}
 runMachine
     :: Monad m
-    => (instr -> Machine instr accum -> m [Machine instr accum])
+    => (Machine instr accum -> m [Machine instr accum])
     -- ^ Transition rule
     -> Machine instr accum
     -- ^ Initial state
@@ -196,15 +163,7 @@ runMachine
 runMachine transition =
     Tree.unfoldTreeM_BF runMachine0
   where
-    runMachine0 state =
-        case popA state of
-            Nothing ->
-                -- No more instructions, therefore no children.
-                return (state, [])
-            Just (state', instr) ->
-                -- Transition to the next states based on the instruction at
-                -- the top of the stack.
-                (,) state <$> transition instr state'
+    runMachine0 state = (,) state <$> transition state
 
 {- | Transition rule for running a 'Strategy' 'Machine'.
 
@@ -217,32 +176,40 @@ strategyTransition
     :: Monad m
     => (prim -> config -> m [config])
     -- ^ Primitive strategy rule
-    -> Strategy prim
     -> Machine (Strategy prim) config
     -> m [Machine (Strategy prim) config]
 strategyTransition applyPrim =
-    \strategy state ->
-        case strategy of
-            Apply prim strategy' -> do
-                let state' = pushA strategy' state
+    \state@Machine { instrA, instrB } ->
+        case instrA of
+            Apply prim instrA' -> do
+                let state' = state { instrA = instrA' }
                 -- Apply a primitive strategy.
                 configs <- applyPrim prim (get state)
                 case configs of
                     [] ->
                         -- If the primitive failed, throw an exception.
+                        -- Reset the exception handler so we do not loop.
                         return [ throw state' ]
                     _ ->
                         -- If the primitive succeeded, reset the exception
                         -- handler and continue with the children.
-                        return (put (resetB state') <$> configs)
-            And strategy1 strategy2 ->
-                return [ pushA strategy1 state, pushA strategy2 state ]
+                        return (put state' { instrB = stuck } <$> configs)
+            And instr1 instr2 ->
+                return
+                    [ state { instrA = instr1 }
+                    , state { instrA = instr2 }
+                    ]
             Done -> return []
             Stuck -> return []
-            Or strategy1 strategy2 ->
-                return [ (pushA strategy1 . pushA strategy . pushB strategy2 . copyAB) state ]
+            Or instr1 instr2 ->
+                return
+                    [ state
+                        { instrA = instr1
+                        , instrB = or instr2 instrB
+                        }
+                    ]
   where
-    resetB = pushB stuck . clearB
+    throw state@Machine { instrB } = state { instrA = instrB, instrB = stuck }
 
 {- | Execute a 'Strategy'.
 
@@ -264,23 +231,23 @@ runStrategy
     -- ^ Strategy
     -> config
     -- ^ Initial configuration
-    -> m (Tree ([Strategy prim], config))
+    -> m (Tree (Strategy prim, config))
 runStrategy applyPrim strategy config =
     (<$>) annotateConfig <$> runMachine (strategyTransition applyPrim) state
   where
     state = Machine
-        { stackA = [ strategy ]
-        , stackB = [ stuck ]
+        { instrA = strategy
+        , instrB = stuck
         , accum = config
         }
-    annotateConfig Machine { stackA, accum } = (stackA, accum)
+    annotateConfig Machine { instrA, accum } = (instrA, accum)
 
 {- | Pick the first 'Done' result from all the branches of a 'Tree'.
 
   See also: 'runStrategy'
 
  -}
-pickFirst :: Tree ([Strategy prim], config) -> Maybe config
+pickFirst :: Tree (Strategy prim, config) -> Maybe config
 pickFirst =
     (<$>) getFirst . getOption . Tree.foldTree pickFirstAt
 
@@ -289,7 +256,7 @@ pickFirst =
   See also: 'runStrategy'
 
  -}
-pickLongest :: Tree ([Strategy prim], config) -> config
+pickLongest :: Tree (Strategy prim, config) -> config
 pickLongest =
     getLongest . Tree.foldTree pickLongestAt
 
@@ -301,7 +268,7 @@ pickLongest =
   See also: 'pickFirst', 'pickLongest'
 
  -}
-pickFirstOrLongest :: Tree ([Strategy prim], config) -> config
+pickFirstOrLongest :: Tree (Strategy prim, config) -> config
 pickFirstOrLongest =
     getFirstOrLongest . Tree.foldTree pickFirstOrLongestAt
   where
@@ -316,14 +283,14 @@ pickFirstOrLongest =
 
  -}
 pickFirstAt
-    :: ([Strategy prim], config)
+    :: (Strategy prim, config)
     -> [Option (First config)]
     -> Option (First config)
-pickFirstAt (stack, config) children =
+pickFirstAt (instr, config) children =
     let
         this =
-            case stack of
-                Done : _ -> pure (First config)
+            case instr of
+                Done -> pure (First config)
                 _ -> mempty
     in
         mconcat (this : children)
@@ -354,7 +321,7 @@ longer (Longest a) = Longest (first succ <$> a)
   'pickLongest' folds @pickLongestAt@ over an entire tree.
 
  -}
-pickLongestAt :: (a1, a2) -> [Longest a2] -> Longest a2
+pickLongestAt :: (instr, config) -> [Longest config] -> Longest config
 pickLongestAt (_, config) children =
     sconcat (longest config :| (longer <$> children))
 
@@ -364,7 +331,7 @@ pickLongestAt (_, config) children =
 
  -}
 pickFirstOrLongestAt
-    :: ([Strategy prim], config)
+    :: (Strategy prim, config)
     -> [(Option (First config), Longest config)]
     -> (Option (First config), Longest config)
 pickFirstOrLongestAt node (unzip -> (firstChildren, longestChildren)) =
