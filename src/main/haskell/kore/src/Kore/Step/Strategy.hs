@@ -11,7 +11,6 @@ module Kore.Step.Strategy
     , Prim
     , axiom
     , builtin
-    , Step (..)
     , runStrategy
     , pickFirst
     ) where
@@ -19,6 +18,9 @@ module Kore.Step.Strategy
 import           Control.Monad.Reader
                  ( ReaderT, runReaderT )
 import qualified Control.Monad.Reader as Monad.Reader
+import           Control.Monad.State.Strict
+                 ( StateT )
+import qualified Control.Monad.State.Strict as Monad.State
 import qualified Control.Monad.Trans as Monad.Trans
 import qualified Data.Foldable as Foldable
 import           Data.Monoid
@@ -109,130 +111,180 @@ axiom = Axiom
 builtin :: Prim axiom
 builtin = Builtin
 
-{- | The environment for executing a @Strategy app@.
-
-  'runStrategy' unfolds a tree to produce patterns @a@ and a proofs @proof@.
+{- | A simple state machine for running 'Strategy'.
 
  -}
-data Step prim proof a =
-    Step
-        { stack :: ![Strategy prim]
-          -- ^ next strategy to attempty
-        , config :: !a
-          -- ^ current configuration
-        , proof :: !proof
-          -- ^ proof of current configuration
+data Machine instr accum =
+    Machine
+        { stackA :: ![instr]
+          -- ^ primary instruction stack
+        , stackB :: ![instr]
+          -- ^ secondary instruction stack (for exceptions)
+        , accum :: !accum
+          -- ^ current accumulator
         }
 
-withNextStrategy
+-- | Push an instruction to the top of the primary stack.
+pushA :: instr -> Machine instr accum -> Machine instr accum
+pushA instr state@Machine { stackA } = state { stackA = instr : stackA }
+
+-- | Pop an instruction from the top of the primary stack.
+popA :: Machine instr accum -> Maybe (Machine instr accum, instr)
+popA state@Machine { stackA } =
+    case stackA of
+        [] -> Nothing
+        instr : stackA' -> Just (state { stackA = stackA' }, instr)
+
+-- | Clear the primary stack.
+clearA :: Machine instr accum -> Machine instr accum
+clearA state = state { stackA = [] }
+
+-- | Push an instruction to the top of the secondary stack.
+pushB :: instr -> Machine instr accum -> Machine instr accum
+pushB instr state@Machine { stackB } = state { stackB = instr : stackB }
+
+-- | Pop an instruction from the top of the secondary stack.
+popB :: Machine instr accum -> Maybe (Machine instr accum, instr)
+popB state@Machine { stackB } =
+    case stackB of
+        [] -> Nothing
+        instr : stackB' -> Just (state { stackB = stackB' }, instr)
+
+-- | Clear the secondary stack.
+clearB :: Machine instr accum -> Machine instr accum
+clearB state = state { stackB = [] }
+
+-- | Copy the primary stack over the secondary stack.
+copyAB :: Machine instr accum -> Machine instr accum
+copyAB state@Machine { stackA } = state { stackB = stackA }
+
+{- | Signal an exception.
+
+  The primary and secondary stacks will be swapped.
+
+ -}
+throw :: Machine instr accum -> Machine instr accum
+throw state@Machine { stackA, stackB } =
+    state { stackA = stackB, stackB = stackA }
+
+-- | Return the accumulator.
+get :: Machine instr accum -> accum
+get Machine { accum } = accum
+
+-- | Modify the accumulator.
+modify :: (accum -> accum) -> Machine instr accum -> Machine instr accum
+modify op state@Machine { accum } = state { accum = op accum }
+
+-- | Set the accumulator.
+put :: Machine instr accum -> accum -> Machine instr accum
+put state accum = state { accum }
+
+{- | Run a simple state machine.
+
+  The transition rule may allow branching. Returns a tree of all machine states.
+
+ -}
+runMachine
     :: Monad m
-    => Strategy prim
-    -> ReaderT (Step prim proof config) m a
-    -> ReaderT (Step prim proof config) m a
-withNextStrategy strategy = Monad.Reader.local withNextStrategy0
+    => (instr -> Machine instr accum -> m [Machine instr accum])
+    -- ^ Transition rule
+    -> Machine instr accum
+    -- ^ Initial state
+    -> m (Tree (Machine instr accum))
+runMachine transition =
+    Tree.unfoldTreeM_BF runMachine0
   where
-    withNextStrategy0 env@Step { stack } =
-        env { stack = strategy : stack }
+    runMachine0 state =
+        case popA state of
+            Nothing ->
+                -- No more instructions, therefore no children.
+                return (state, [])
+            Just (state', instr) ->
+                -- Transition to the next states based on the instruction at
+                -- the top of the stack.
+                (,) state <$> transition instr state'
 
-{- | Use a strategy to execute the given pattern.
+{- | Transition rule for running a 'Strategy' 'Machine'.
 
-  Returns a tree of execution paths.
+  The primitive strategy rule is used to execute the 'Apply' strategy. The
+  primitive rule is considered successful if it returns any children and
+  considered failed if it returns no children.
+
+ -}
+strategyTransition
+    :: Monad m
+    => (prim -> config -> m [config])
+    -- ^ Primitive strategy rule
+    -> Strategy prim
+    -> Machine (Strategy prim) config
+    -> m [Machine (Strategy prim) config]
+strategyTransition applyPrim =
+    \strategy state@Machine { accum = config } ->
+        case strategy of
+            Apply prim -> do
+                -- Apply a primitive strategy.
+                configs <- applyPrim prim config
+                case configs of
+                    [] ->
+                        -- If the primitive failed, throw an exception.
+                        return [ throw state ]
+                    _ ->
+                        -- If the primitive succeeded, reset the exception
+                        -- handler and continue with the children.
+                        return (put (resetB state) <$> configs)
+            Seq strategy1 strategy2 ->
+                return [ (pushA strategy1 . pushA strategy2) state ]
+            Par strategy1 strategy2 ->
+                return [ pushA strategy1 state, pushA strategy2 state ]
+            Done -> return []
+            Stuck -> return []
+            Many strategy1 ->
+                return [ (pushA strategy1 . pushB strategy . copyAB) state ]
+  where
+    resetB = pushB stuck . clearB
+
+{- | Execute a 'Strategy'.
+
+  The primitive strategy rule is used to execute the 'Apply' strategy. The
+  primitive rule is considered successful if it returns any children and
+  considered failed if it returns no children.
+
+  The resulting tree of configurations is annotated with the strategy stack at
+  each node.
+
+  See also: 'pickFirst'
 
  -}
 runStrategy
-    :: (Foldable f, Monoid proof)
-    => (config -> prim -> Either e (Counter (f config, proof)))
-    -- ^ Primitive rewrite rule application
+    :: Monad m
+    => (prim -> config -> m [config])
+    -- ^ Primitive strategy rule
     -> Strategy prim
-    -- ^ Strategy to apply
+    -- ^ Strategy
     -> config
     -- ^ Initial configuration
-    -> Counter (Tree (Step prim proof config))
-runStrategy doApply strategy0 config0 =
-    Tree.unfoldTreeM_BF runStrategy0 env0
+    -> m (Tree ([Strategy prim], config))
+runStrategy applyPrim strategy config =
+    (<$>) annotateConfig <$> runMachine (strategyTransition applyPrim) state
   where
-    env0 =
-        Step
-            { stack = [ strategy0 ]
-            , proof = mempty
-            , config = config0
-            }
+    state = Machine
+        { stackA = [ strategy ]
+        , stackB = [ stuck ]
+        , accum = config
+        }
+    annotateConfig Machine { stackA, accum } = (stackA, accum)
 
-    runStrategy0 env1@Step { stack = stack1 } =
-        case stack1 of
-            [] -> pure (env1, [])
-            strategy : stack2 ->
-                let env2 = env1 { stack = stack2 }
-                in (,) env1 <$> runReaderT (childrenOf strategy) env2
-
-    childrenOf strategy =
-        case strategy of
-            Seq strategy1 strategy2 ->
-                childrenSeq strategy1 strategy2
-            Par strategy1 strategy2 ->
-                childrenPar strategy1 strategy2
-            Apply axiom_ ->
-                childrenApply axiom_
-            Many strategy1 ->
-                childrenMany strategy1
-            Done ->
-                childrenDone
-            Stuck ->
-                childrenStuck
-
-    childrenDone =
-        pure []
-
-    childrenStuck =
-        pure []
-
-    -- | Push the second strategy onto the stack and continue with the first
-    -- strategy.
-    childrenSeq strategy1 strategy2 =
-        withNextStrategy strategy2 (childrenOf strategy1)
-
-    -- | Combine the children of both strategies.
-    childrenPar strategy1 strategy2 =
-        do
-            children1 <- childrenOf strategy1
-            children2 <- childrenOf strategy2
-            pure (children1 ++ children2)
-
-    childrenApply axiom_ =
-        do
-            env <- Monad.Reader.ask
-            let Step { stack = stack1, config = config1, proof = proof1 } = env
-            case doApply config1 axiom_ of
-                Left _ ->
-                    -- This branch is stuck because the axiom did not apply.
-                    pure [ env { stack = Stuck : stack1 } ]
-                Right applied -> do
-                    -- Continue execution along this branch.
-                    (configs, proof2) <- Monad.Trans.lift applied
-                    let proof = mappend proof1 proof2
-                        child config = env { proof, config }
-                        children = child <$> Foldable.toList configs
-                    pure children
-
-    -- | Push @many strategy@ back onto the stack and attempt the strategy.
-    -- If the strategy fails, roll the stack back and continue.
-    childrenMany strategy =
-        do
-            env <- Monad.Reader.ask
-            children <- withNextStrategy (many strategy) (childrenOf strategy)
-            case children of
-                [] -> pure [ env ]
-                _ : _ -> pure children
-
-{- | Traverse the tree and select the first 'Done' result.
+{- | Examine a 'Tree' from 'runStrategy' and return the first 'Done' leaf.
  -}
-pickFirst :: Tree (Step prim proof config) -> Maybe (config, proof)
-pickFirst = getFirst . Tree.foldTree pickFirst0
+pickFirst :: Tree ([Strategy prim], config) -> Maybe config
+pickFirst =
+    getFirst . Tree.foldTree pickFirst0
   where
-    pickFirst0 Step { stack, config, proof } children =
-        mconcat (this : children)
-      where
-        this =
-            case stack of
-                Done : _ -> pure (config, proof)
-                _ -> mempty
+    pickFirst0 (stack, config) children =
+        let
+            this =
+                case stack of
+                    Done : _ -> pure config
+                    _ -> mempty
+        in
+            mconcat (this : children)
