@@ -13,18 +13,17 @@ module Kore.Step.Strategy
     , builtin
     , runStrategy
     , pickFirst
+    , pickLongest
+    , pickFirstOrLongest
     ) where
 
-import           Control.Monad.Reader
-                 ( ReaderT, runReaderT )
-import qualified Control.Monad.Reader as Monad.Reader
-import           Control.Monad.State.Strict
-                 ( StateT )
-import qualified Control.Monad.State.Strict as Monad.State
-import qualified Control.Monad.Trans as Monad.Trans
-import qualified Data.Foldable as Foldable
-import           Data.Monoid
-                 ( First (..) )
+import           Data.Bifunctor
+                 ( first )
+import           Data.List.NonEmpty
+                 ( NonEmpty (..) )
+import           Data.Maybe
+                 ( fromMaybe )
+import           Data.Semigroup
 import           Data.Tree
                  ( Tree )
 import qualified Data.Tree as Tree
@@ -135,20 +134,9 @@ popA state@Machine { stackA } =
         [] -> Nothing
         instr : stackA' -> Just (state { stackA = stackA' }, instr)
 
--- | Clear the primary stack.
-clearA :: Machine instr accum -> Machine instr accum
-clearA state = state { stackA = [] }
-
 -- | Push an instruction to the top of the secondary stack.
 pushB :: instr -> Machine instr accum -> Machine instr accum
 pushB instr state@Machine { stackB } = state { stackB = instr : stackB }
-
--- | Pop an instruction from the top of the secondary stack.
-popB :: Machine instr accum -> Maybe (Machine instr accum, instr)
-popB state@Machine { stackB } =
-    case stackB of
-        [] -> Nothing
-        instr : stackB' -> Just (state { stackB = stackB' }, instr)
 
 -- | Clear the secondary stack.
 clearB :: Machine instr accum -> Machine instr accum
@@ -170,10 +158,6 @@ throw state@Machine { stackA, stackB } =
 -- | Return the accumulator.
 get :: Machine instr accum -> accum
 get Machine { accum } = accum
-
--- | Modify the accumulator.
-modify :: (accum -> accum) -> Machine instr accum -> Machine instr accum
-modify op state@Machine { accum } = state { accum = op accum }
 
 -- | Set the accumulator.
 put :: Machine instr accum -> accum -> Machine instr accum
@@ -219,11 +203,11 @@ strategyTransition
     -> Machine (Strategy prim) config
     -> m [Machine (Strategy prim) config]
 strategyTransition applyPrim =
-    \strategy state@Machine { accum = config } ->
+    \strategy state ->
         case strategy of
             Apply prim -> do
                 -- Apply a primitive strategy.
-                configs <- applyPrim prim config
+                configs <- applyPrim prim (get state)
                 case configs of
                     [] ->
                         -- If the primitive failed, throw an exception.
@@ -274,17 +258,95 @@ runStrategy applyPrim strategy config =
         }
     annotateConfig Machine { stackA, accum } = (stackA, accum)
 
-{- | Examine a 'Tree' from 'runStrategy' and return the first 'Done' leaf.
+{- | Pick the first 'Done' result from all the branches of a 'Tree'.
+
+  See also: 'runStrategy'
+
  -}
 pickFirst :: Tree ([Strategy prim], config) -> Maybe config
 pickFirst =
-    getFirst . Tree.foldTree pickFirst0
+    (<$>) getFirst . getOption . Tree.foldTree pickFirstAt
+
+{- | Pick the longest-running branch from a 'Tree'.
+
+  See also: 'runStrategy'
+
+ -}
+pickLongest :: Tree ([Strategy prim], config) -> config
+pickLongest =
+    getLongest . Tree.foldTree pickLongestAt
+
+{- | Pick the first 'Done' result from a 'Tree', or the longest-running branch.
+
+  The longest-running branch is returned if no branch reaches 'Done'. The tree
+  is traversed only once.
+
+ -}
+pickFirstOrLongest :: Tree ([Strategy prim], config) -> config
+pickFirstOrLongest =
+    getFirstOrLongest . Tree.foldTree pickFirstOrLongestAt
   where
-    pickFirst0 (stack, config) children =
-        let
-            this =
-                case stack of
-                    Done : _ -> pure config
-                    _ -> mempty
-        in
-            mconcat (this : children)
+    getFirstOrLongest (f, l) =
+        fromMaybe
+            (getLongest l)
+            (getFirst <$> getOption f)
+
+{- | Pick the first result at one node of a tree.
+
+  'pickFirst' folds @pickFirstAt@ over an entire tree.
+
+ -}
+pickFirstAt
+    :: ([Strategy prim], config)
+    -> [Option (First config)]
+    -> Option (First config)
+pickFirstAt (stack, config) children =
+    let
+        this =
+            case stack of
+                Done : _ -> pure (First config)
+                _ -> mempty
+    in
+        mconcat (this : children)
+
+{- | A 'Semigroup' which returns its longest-running argument.
+
+  See also: 'longest', 'longer'
+
+ -}
+newtype Longest a = Longest (Max (Arg Natural a))
+    deriving (Semigroup)
+
+getLongest :: Longest a -> a
+getLongest (Longest (Max (Arg _ a))) = a
+
+{- | Insert a value into 'Longest' at length 0.
+ -}
+longest :: a -> Longest a
+longest a = Longest (Max (Arg 0 a))
+
+{- | Increase the length of the argument.
+ -}
+longer :: Longest a -> Longest a
+longer (Longest a) = Longest (first succ <$> a)
+
+{- | Pick the longest-running branch at one node of a tree.
+
+  'pickLongest' folds @pickLongestAt@ over an entire tree.
+
+ -}
+pickLongestAt :: (a1, a2) -> [Longest a2] -> Longest a2
+pickLongestAt (_, config) children =
+    sconcat (longest config :| (longer <$> children))
+
+{- | Pick the first and longest results at one node of a tree.
+
+  'pickFirstOrLongest' unfolds @pickFirstOrLongestAt@ over an entire tree.
+
+ -}
+pickFirstOrLongestAt
+    :: ([Strategy prim], config)
+    -> [(Option (First config), Longest config)]
+    -> (Option (First config), Longest config)
+pickFirstOrLongestAt node (unzip -> (firstChildren, longestChildren)) =
+    (pickFirstAt node firstChildren, pickLongestAt node longestChildren)
