@@ -4,9 +4,12 @@ module Kore.Step.Strategy
     , apply
     , done
     , stuck
-    , par
-    , parallel
+    , and
+    , all
+    , or
+    , any
     , many
+    , some
       -- * Primitive strategies
     , Prim
     , axiom
@@ -29,7 +32,7 @@ import           Data.Tree
                  ( Tree )
 import qualified Data.Tree as Tree
 import           Prelude hiding
-                 ( or, seq, sequence )
+                 ( all, and, any, or )
 
 import Control.Monad.Counter
 
@@ -46,7 +49,7 @@ data Strategy prim where
 
     Apply :: !prim -> Strategy prim -> Strategy prim
 
-    Par :: Strategy prim -> Strategy prim -> Strategy prim
+    And :: Strategy prim -> Strategy prim -> Strategy prim
 
     Done :: Strategy prim
 
@@ -72,28 +75,42 @@ stuck :: Strategy app
 stuck = Stuck
 
 -- | Apply two strategies in parallel.
-par :: Strategy app -> Strategy app -> Strategy app
-par = Par
+and :: Strategy app -> Strategy app -> Strategy app
+and = And
 
-{- | Apply many strategies in parallel.
+{- | Apply all of the strategies in parallel.
 
   @
-  parallel [] === stuck
+  all [] === stuck
   @
 
  -}
-parallel :: [Strategy app] -> Strategy app
-parallel = foldr par stuck
+all :: [Strategy app] -> Strategy app
+all = foldr and stuck
 
 -- | Apply the second strategy if the first fails.
 or :: Strategy app -> Strategy app -> Strategy app
 or = Or
+
+{- | Apply the given strategies until one succeeds.
+
+  @
+  any [] === stuck
+  @
+
+ -}
+any :: [Strategy app] -> Strategy app
+any = foldr or stuck
 
 -- | Apply the strategy zero or more times.
 many :: (Strategy app -> Strategy app) -> Strategy app -> Strategy app
 many strategy finally = many0
   where
     many0 = or (strategy many0) finally
+
+-- | Apply the strategy one or more times.
+some :: (Strategy app -> Strategy app) -> Strategy app -> Strategy app
+some strategy finally = strategy (many strategy finally)
 
 {- | A strategy primitive: a rewrite axiom or builtin simplification step.
  -}
@@ -218,7 +235,7 @@ strategyTransition applyPrim =
                         -- If the primitive succeeded, reset the exception
                         -- handler and continue with the children.
                         return (put (resetB state') <$> configs)
-            Par strategy1 strategy2 ->
+            And strategy1 strategy2 ->
                 return [ pushA strategy1 state, pushA strategy2 state ]
             Done -> return []
             Stuck -> return []
