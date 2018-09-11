@@ -1,5 +1,6 @@
 module Kore.Step.Strategy
-    ( Strategy
+    ( -- * Strategies
+      Strategy
     , apply
     , done
     , stuck
@@ -8,9 +9,11 @@ module Kore.Step.Strategy
     , par
     , parallel
     , many
+      -- * Primitive strategies
     , Prim
     , axiom
     , builtin
+      -- * Running strategies
     , runStrategy
     , pickFirst
     , pickLongest
@@ -34,20 +37,15 @@ import Control.Monad.Counter
 
 {- | An execution strategy.
 
-  @Strategy app@ represents a strategy for execution by applying rewrite axioms
-  of type @app@.
-
-  Notes:
-
-  - The recursive arguments of constructors are /intentionally/ lazy to allow
-    strategies to loop.
+  @Strategy prim@ represents a strategy for execution by applying rewrite axioms
+  of type @prim@.
 
  -}
-data
-    Strategy
-        prim  -- primitive rewrite rules
-  where
-    -- | Apply a rewrite axiom.
+data Strategy prim where
+
+    -- The recursive arguments of these constructors are /intentionally/ lazy to
+    -- allow strategies to loop.
+
     Apply :: !prim -> Strategy prim
 
     Seq :: Strategy prim -> Strategy prim -> Strategy prim
@@ -79,7 +77,13 @@ stuck = Stuck
 seq :: Strategy app -> Strategy app -> Strategy app
 seq = Seq
 
--- | Apply many strategies in sequence.
+{- | Apply many strategies in sequence.
+
+  @
+  sequence [] = done
+  @
+
+ -}
 sequence :: [Strategy app] -> Strategy app
 sequence = foldr seq done
 
@@ -87,7 +91,13 @@ sequence = foldr seq done
 par :: Strategy app -> Strategy app -> Strategy app
 par = Par
 
--- | Apply many strategies in parallel.
+{- | Apply many strategies in parallel.
+
+  @
+  parallel [] === stuck
+  @
+
+ -}
 parallel :: [Strategy app] -> Strategy app
 parallel = foldr par stuck
 
@@ -108,6 +118,10 @@ builtin :: Prim axiom
 builtin = Builtin
 
 {- | A simple state machine for running 'Strategy'.
+
+  The machine has a primary and secondary stack. The secondary stack is intended
+  for exception handling. 'runMachine' runs the instructions of the primary
+  instruction stack in sequence. 'throw' swaps the stacks.
 
  -}
 data Machine instr accum =
@@ -277,6 +291,8 @@ pickLongest =
 
   The longest-running branch is returned if no branch reaches 'Done'. The tree
   is traversed only once.
+
+  See also: 'pickFirst', 'pickLongest'
 
  -}
 pickFirstOrLongest :: Tree ([Strategy prim], config) -> config
