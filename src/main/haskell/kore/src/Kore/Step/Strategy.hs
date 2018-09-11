@@ -31,7 +31,7 @@ import           Data.Tree
                  ( Tree )
 import qualified Data.Tree as Tree
 import           Prelude hiding
-                 ( seq, sequence )
+                 ( or, seq, sequence )
 
 import Control.Monad.Counter
 
@@ -56,7 +56,7 @@ data Strategy prim where
 
     Stuck :: Strategy prim
 
-    Many :: Strategy prim -> Strategy prim -> Strategy prim
+    Or :: Strategy prim -> Strategy prim -> Strategy prim
 
 -- | Apply a rewrite axiom.
 apply
@@ -101,9 +101,15 @@ par = Par
 parallel :: [Strategy app] -> Strategy app
 parallel = foldr par stuck
 
+-- | Apply the second strategy if the first fails.
+or :: Strategy app -> Strategy app -> Strategy app
+or = Or
+
 -- | Apply the strategy zero or more times.
 many :: Strategy app -> Strategy app -> Strategy app
-many = Many
+many strategy finally = many0
+  where
+    many0 = or (seq strategy many0) finally
 
 {- | A strategy primitive: a rewrite axiom or builtin simplification step.
  -}
@@ -233,8 +239,8 @@ strategyTransition applyPrim =
                 return [ pushA strategy1 state, pushA strategy2 state ]
             Done -> return []
             Stuck -> return []
-            Many strategy1 finally ->
-                return [ (pushA strategy1 . pushA strategy . pushB finally . copyAB) state ]
+            Or strategy1 strategy2 ->
+                return [ (pushA strategy1 . pushA strategy . pushB strategy2 . copyAB) state ]
   where
     resetB = pushB stuck . clearB
 
