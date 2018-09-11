@@ -133,20 +133,47 @@ builtin = Builtin
 data Machine instr accum =
     Machine
         { instrA :: !instr
-          -- ^ primary instruction pointer
+        -- ^ primary instruction pointer
         , instrB :: !instr
-          -- ^ secondary instruction pointer (for exceptions)
+        -- ^ secondary instruction pointer (for exceptions)
         , accum :: !accum
-          -- ^ current accumulator
+        -- ^ current accumulator
+        , stepCount :: !Natural
+        -- ^ current step count
         }
 
--- | Return the accumulator.
-get :: Machine instr accum -> accum
-get Machine { accum } = accum
+-- | Take a step, i.e. increment the step counter.
+step :: Machine instr accum -> Machine instr accum
+step state@Machine { stepCount } = state { stepCount = succ stepCount }
 
--- | Set the accumulator.
-put :: Machine instr accum -> accum -> Machine instr accum
-put state accum = state { accum }
+{- | An optionally-limited quantity.
+ -}
+data Limit a
+    = Unlimited
+    -- ^ No limit
+    | Limit !a
+    -- ^ Limit @a@ by the given (inclusive) upper bound
+    deriving (Eq)
+
+instance Ord a => Ord (Limit a) where
+    compare =
+        \case
+            Unlimited ->
+                \case
+                    Unlimited -> EQ
+                    Limit _ -> GT
+            Limit a ->
+                \case
+                    Unlimited -> LT
+                    Limit b -> compare a b
+
+{- | Is the given value within the (inclusive) upper bound?
+ -}
+withinLimit :: Ord a => Limit a -> a -> Bool
+withinLimit =
+    \case
+        Unlimited -> \_ -> True
+        Limit u -> \a -> a <= u
 
 {- | Run a simple state machine.
 
@@ -157,13 +184,24 @@ runMachine
     :: Monad m
     => (Machine instr accum -> m [Machine instr accum])
     -- ^ Transition rule
+    -> Limit Natural
+    -- ^ Step limit
     -> Machine instr accum
     -- ^ Initial state
     -> m (Tree (Machine instr accum))
-runMachine transition =
+runMachine transition stepLimit =
     Tree.unfoldTreeM_BF runMachine0
   where
-    runMachine0 state = (,) state <$> transition state
+    runMachine0 state@Machine { stepCount } =
+        let
+            next
+                | withinLimit stepLimit stepCount =
+                  transition state
+                | otherwise =
+                  -- Take no more steps if the limit is exceeded.
+                  pure []
+        in
+            (,) state <$> next
 
 {- | Transition rule for running a 'Strategy' 'Machine'.
 
@@ -179,43 +217,50 @@ strategyTransition
     -> Machine (Strategy prim) config
     -> m [Machine (Strategy prim) config]
 strategyTransition applyPrim =
-    \state@Machine { instrA, instrB } ->
+    \state@Machine { instrA, instrB, accum = config } ->
         case instrA of
+            Done -> return []
+            Stuck -> return []
+            And instr1 instr2 ->
+                -- Distribute the instructions to child branches.
+                return
+                    [ state { instrA = instr1 }
+                    , state { instrA = instr2 }
+                    ]
+            Or instr1 instr2 ->
+                -- Distribute the instructions to the primary and secondary
+                -- instruction pointers.
+                return
+                    [ state
+                        { instrA = instr1
+                        -- If instr1 fails, try instr2 and finally instrB.
+                        , instrB = or instr2 instrB
+                        }
+                    ]
             Apply prim instrA' -> do
-                let state' = state { instrA = instrA' }
+                let state' = step state { instrA = instrA' }
                 -- Apply a primitive strategy.
-                configs <- applyPrim prim (get state)
+                configs <- applyPrim prim config
                 case configs of
                     [] ->
                         -- If the primitive failed, throw an exception.
                         -- Reset the exception handler so we do not loop.
                         return [ throw state' ]
-                    _ ->
+                    _ -> do
                         -- If the primitive succeeded, reset the exception
                         -- handler and continue with the children.
-                        return (put state' { instrB = stuck } <$> configs)
-            And instr1 instr2 ->
-                return
-                    [ state { instrA = instr1 }
-                    , state { instrA = instr2 }
-                    ]
-            Done -> return []
-            Stuck -> return []
-            Or instr1 instr2 ->
-                return
-                    [ state
-                        { instrA = instr1
-                        , instrB = or instr2 instrB
-                        }
-                    ]
+                        let next accum = state' { accum, instrB = stuck }
+                        return (next <$> configs)
   where
     throw state@Machine { instrB } = state { instrA = instrB, instrB = stuck }
 
 {- | Execute a 'Strategy'.
 
-  The primitive strategy rule is used to execute the 'Apply' strategy. The
+  The primitive strategy rule is used to execute the 'apply' strategy. The
   primitive rule is considered successful if it returns any children and
-  considered failed if it returns no children.
+  considered failed if it returns no children. The given step limit is applied
+  to the primitive strategy rule only; i.e. only 'apply' is considered a step,
+  the other strategy combinators are "free".
 
   The resulting tree of configurations is annotated with the strategy stack at
   each node.
@@ -229,16 +274,20 @@ runStrategy
     -- ^ Primitive strategy rule
     -> Strategy prim
     -- ^ Strategy
+    -> Limit Natural
+    -- ^ Step limit
     -> config
     -- ^ Initial configuration
     -> m (Tree (Strategy prim, config))
-runStrategy applyPrim strategy config =
-    (<$>) annotateConfig <$> runMachine (strategyTransition applyPrim) state
+runStrategy applyPrim strategy stepLimit config =
+    (<$>) annotateConfig <$> runMachine transition stepLimit state
   where
+    transition = strategyTransition applyPrim
     state = Machine
         { instrA = strategy
         , instrB = stuck
         , accum = config
+        , stepCount = 0
         }
     annotateConfig Machine { instrA, accum } = (instrA, accum)
 
