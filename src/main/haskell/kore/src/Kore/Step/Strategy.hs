@@ -189,10 +189,10 @@ runMachine
     -> Machine instr accum
     -- ^ Initial state
     -> m (Tree (Machine instr accum))
-runMachine transition =
+runMachine transit =
     Tree.unfoldTreeM_BF runMachine0
   where
-    runMachine0 state = (,) state <$> transition state
+    runMachine0 state = (,) state <$> transit state
 
 {- | Transition rule for running a 'Strategy' 'Machine'.
 
@@ -201,7 +201,7 @@ runMachine transition =
   considered failed if it returns no children.
 
  -}
-strategyTransition
+transition
     :: Monad m
     => (prim -> config -> m [config])
     -- ^ Primitive strategy rule
@@ -209,46 +209,48 @@ strategyTransition
     -- ^ Step limit
     -> Machine (Strategy prim) config
     -> m [Machine (Strategy prim) config]
-strategyTransition applyPrim stepLimit =
-    \state@Machine { instrA, instrB, accum = config } ->
+transition applyPrim stepLimit =
+    \state@Machine { instrA } ->
         case instrA of
-            Stuck -> return []
-            And instr1 instr2 ->
-                -- Distribute the instructions to child branches.
-                return
-                    [ state { instrA = instr1 }
-                    , state { instrA = instr2 }
-                    ]
-            Or instr1 instr2 ->
-                -- Distribute the instructions to the primary and secondary
-                -- instruction pointers.
-                return
-                    [ state
-                        { instrA = instr1
-                        -- If instr1 fails, try instr2 and finally instrB.
-                        , instrB = or instr2 instrB
-                        }
-                    ]
-            Apply prim instrA' ->
-                case step stepLimit state { instrA = instrA' } of
-                    Nothing -> return [ state { instrA = stuck } ]
-                    Just state' -> do
-                        -- Apply a primitive strategy.
-                        configs <- applyPrim prim config
-                        case configs of
-                            [] ->
-                                -- If the primitive failed, throw an exception.
-                                -- Reset the exception handler so we do not
-                                -- loop.
-                                return [ throw state' ]
-                            _ -> do
-                                -- If the primitive succeeded, reset the
-                                -- exception handler and continue with the
-                                -- children.
-                                let next accum = state' { accum, instrB = stuck }
-                                return (next <$> configs)
+            Stuck -> transitionStuck
+            And instr1 instr2 -> transitionAnd state instr1 instr2
+            Or instr1 instr2 -> transitionOr state instr1 instr2
+            Apply prim instrA' -> transitionApply state prim instrA'
   where
     throw state@Machine { instrB } = state { instrA = instrB, instrB = stuck }
+    transitionStuck = return []
+    transitionAnd state instr1 instr2 =
+        -- Distribute the instructions to child branches.
+        return
+            [ state { instrA = instr1 }
+            , state { instrA = instr2 }
+            ]
+    transitionOr state@Machine{ instrB } instr1 instr2 =
+        -- Distribute the instructions to the primary and secondary
+        -- instruction pointers.
+        return
+            [ state
+                { instrA = instr1
+                -- If instr1 fails, try instr2 and finally instrB.
+                , instrB = or instr2 instrB
+                }
+            ]
+    transitionApply state@Machine { accum = config } prim instrA' =
+        case step stepLimit state { instrA = instrA' } of
+            Nothing -> return [ state { instrA = stuck } ]
+            Just state' -> do
+                -- Apply a primitive strategy.
+                configs <- applyPrim prim config
+                case configs of
+                    [] ->
+                        -- If the primitive failed, throw an exception. Reset
+                        -- the exception handler so we do not loop.
+                        return [ throw state' ]
+                    _ -> do
+                        -- If the primitive succeeded, reset the exception
+                        -- handler and continue with the children.
+                        let next accum = state' { accum, instrB = stuck }
+                        return (next <$> configs)
 
 {- | Execute a 'Strategy'.
 
@@ -276,9 +278,9 @@ runStrategy
     -- ^ Initial configuration
     -> m (Tree (Strategy prim, config))
 runStrategy applyPrim strategy stepLimit config =
-    (<$>) annotateConfig <$> runMachine (transition stepLimit) state
+    (<$>) annotateConfig <$> runMachine rule state
   where
-    transition = strategyTransition applyPrim
+    rule = transition applyPrim stepLimit
     state = Machine
         { instrA = strategy
         , instrB = stuck
