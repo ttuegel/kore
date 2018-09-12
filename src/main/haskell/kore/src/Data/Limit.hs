@@ -31,6 +31,13 @@ instance Ord a => Ord (Limit a) where
                     Unlimited -> LT
                     Limit b -> compare a b
 
+instance Ord a => Semigroup (Limit a) where
+    (<>) = min
+
+instance Ord a => Monoid (Limit a) where
+    mempty = Unlimited
+    mappend = (<>)
+
 {- | Is the given value within the (inclusive) upper bound?
  -}
 withinLimit :: Ord a => Limit a -> a -> Bool
