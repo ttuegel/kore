@@ -11,14 +11,18 @@ module Kore.Step.Strategy
     , many
     , some
       -- * Primitive strategies
-    , Prim
+    , Prim (..)
     , axiom
     , builtin
       -- * Running strategies
+    , Limit (..)
+    , withinLimit
     , runStrategy
     , pickFirst
     , pickLongest
     , pickFirstOrLongest
+    , pickDone
+    , pickDoneAndStuck
     ) where
 
 import           Data.Bifunctor
@@ -142,9 +146,15 @@ data Machine instr accum =
         -- ^ current step count
         }
 
--- | Take a step, i.e. increment the step counter.
-step :: Machine instr accum -> Machine instr accum
-step state@Machine { stepCount } = state { stepCount = succ stepCount }
+-- | Take a step (increment the step counter) if not over the limit.
+step :: Limit Natural -> Machine instr accum -> Maybe (Machine instr accum)
+step stepLimit state@Machine { stepCount } =
+    let
+        stepCount' = succ stepCount
+    in
+        if withinLimit stepLimit stepCount'
+            then Just state { stepCount = stepCount' }
+            else Nothing
 
 {- | An optionally-limited quantity.
  -}
@@ -184,24 +194,13 @@ runMachine
     :: Monad m
     => (Machine instr accum -> m [Machine instr accum])
     -- ^ Transition rule
-    -> Limit Natural
-    -- ^ Step limit
     -> Machine instr accum
     -- ^ Initial state
     -> m (Tree (Machine instr accum))
-runMachine transition stepLimit =
+runMachine transition =
     Tree.unfoldTreeM_BF runMachine0
   where
-    runMachine0 state@Machine { stepCount } =
-        let
-            next
-                | withinLimit stepLimit stepCount =
-                  transition state
-                | otherwise =
-                  -- Take no more steps if the limit is exceeded.
-                  pure []
-        in
-            (,) state <$> next
+    runMachine0 state = (,) state <$> transition state
 
 {- | Transition rule for running a 'Strategy' 'Machine'.
 
@@ -214,9 +213,11 @@ strategyTransition
     :: Monad m
     => (prim -> config -> m [config])
     -- ^ Primitive strategy rule
+    -> Limit Natural
+    -- ^ Step limit
     -> Machine (Strategy prim) config
     -> m [Machine (Strategy prim) config]
-strategyTransition applyPrim =
+strategyTransition applyPrim stepLimit =
     \state@Machine { instrA, instrB, accum = config } ->
         case instrA of
             Done -> return []
@@ -237,20 +238,24 @@ strategyTransition applyPrim =
                         , instrB = or instr2 instrB
                         }
                     ]
-            Apply prim instrA' -> do
-                let state' = step state { instrA = instrA' }
-                -- Apply a primitive strategy.
-                configs <- applyPrim prim config
-                case configs of
-                    [] ->
-                        -- If the primitive failed, throw an exception.
-                        -- Reset the exception handler so we do not loop.
-                        return [ throw state' ]
-                    _ -> do
-                        -- If the primitive succeeded, reset the exception
-                        -- handler and continue with the children.
-                        let next accum = state' { accum, instrB = stuck }
-                        return (next <$> configs)
+            Apply prim instrA' ->
+                case step stepLimit state { instrA = instrA' } of
+                    Nothing -> return [ state { instrA = stuck } ]
+                    Just state' -> do
+                        -- Apply a primitive strategy.
+                        configs <- applyPrim prim config
+                        case configs of
+                            [] ->
+                                -- If the primitive failed, throw an exception.
+                                -- Reset the exception handler so we do not
+                                -- loop.
+                                return [ throw state' ]
+                            _ -> do
+                                -- If the primitive succeeded, reset the
+                                -- exception handler and continue with the
+                                -- children.
+                                let next accum = state' { accum, instrB = stuck }
+                                return (next <$> configs)
   where
     throw state@Machine { instrB } = state { instrA = instrB, instrB = stuck }
 
@@ -280,7 +285,7 @@ runStrategy
     -- ^ Initial configuration
     -> m (Tree (Strategy prim, config))
 runStrategy applyPrim strategy stepLimit config =
-    (<$>) annotateConfig <$> runMachine transition stepLimit state
+    (<$>) annotateConfig <$> runMachine (transition stepLimit) state
   where
     transition = strategyTransition applyPrim
     state = Machine
@@ -325,6 +330,41 @@ pickFirstOrLongest =
         fromMaybe
             (getLongest l)
             (getFirst <$> getOption f)
+
+-- | Return all 'done' configurations.
+pickDone :: Tree (Strategy prim, config) -> [config]
+pickDone =
+    fromMaybe [] . getOption . Tree.foldTree pickDoneAt
+
+pickDoneAt :: (Strategy prim, config) -> [Option [config]] -> Option [config]
+pickDoneAt (instr, config) children =
+    let
+        this =
+            case instr of
+                Done -> pure [config]
+                _ -> mempty
+    in
+        mconcat (this : children)
+
+-- | Return all 'done' and all 'stuck' configurations.
+pickDoneAndStuck :: Tree (Strategy prim, config) -> ([config], [config])
+pickDoneAndStuck = Tree.foldTree pickDoneAndStuckAt
+
+pickDoneAndStuckAt
+    :: (Strategy prim, config)
+    -- ^ Node
+    -> [([config], [config])]
+    -- ^ Children
+    -> ([config], [config])
+pickDoneAndStuckAt (instr, config) children =
+    let
+        this =
+            case instr of
+                Done -> ([config], [])
+                Stuck -> ([], [config])
+                _ -> ([], [])
+    in
+        mconcat (this : children)
 
 {- | Pick the first result at one node of a tree.
 
