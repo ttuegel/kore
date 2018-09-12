@@ -1,3 +1,10 @@
+{-|
+Module      : Kore.Step.Strategy
+Description : Strategies for pattern rewriting
+Copyright   : (c) Runtime Verification, 2018
+License     : NCSA
+Maintainer  : thomas.tuegel@runtimeverification.com
+-}
 module Kore.Step.Strategy
     ( -- * Strategies
       Strategy
@@ -328,6 +335,8 @@ pickLongestAt :: (instr, config) -> [Longest config] -> Longest config
 pickLongestAt (_, config) children =
     sconcat (longest config :| (longer <$> children))
 
+{- | Return all 'stuck' configurations, i.e. all leaves of the 'Tree'.
+ -}
 pickStuck :: Tree (Strategy prim, config) -> [config]
 pickStuck = Tree.foldTree pickStuckAt
 
