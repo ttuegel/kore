@@ -165,9 +165,9 @@ main = do
                             $ makeKInitConfig purePattern
                         else purePattern
                 expandedPattern = makeExpandedPattern runningPattern
-            finalExpandedPatterns <-
+            (finalExpandedPattern, _) <-
                 clockSomething "Executing"
-                    $ fst $ unzip $ evalSimplifier
+                    $ evalSimplifier
                     $ do
                         simplifiedPatterns <-
                             ExpandedPattern.simplify
@@ -190,7 +190,7 @@ main = do
                             stepLimit
                             (initialPattern, mempty)
             putStrLn $ unparseToString
-                (ExpandedPattern.term (head finalExpandedPatterns))
+                (ExpandedPattern.term finalExpandedPattern)
 
 mainModule
     :: ModuleName

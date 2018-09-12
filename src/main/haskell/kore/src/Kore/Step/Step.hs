@@ -51,7 +51,7 @@ stepStrategy
 stepStrategy axioms =
     Strategy.all (applyAxiom <$> axioms)
   where
-    applyAxiom a = axiomStep a Strategy.done
+    applyAxiom a = axiomStep a Strategy.stuck
 
 axiomStep :: axiom -> Strategy (Prim axiom) -> Strategy (Prim axiom)
 axiomStep a =
@@ -68,7 +68,7 @@ stepStepper
     -- ^ Configuration being rewritten and its accompanying proof
     -> Simplifier [(CommonExpandedPattern level, StepProof level)]
 stepStepper tools simplifier axioms =
-    (<$>) Strategy.pickDone . runStrategy rule strategy Unlimited
+    (<$>) Strategy.pickStuck . runStrategy rule strategy Unlimited
   where
     rule = simpleRule tools simplifier
     strategy = stepStrategy axioms
@@ -109,7 +109,7 @@ simpleStrategy
     => [AxiomPattern level]
     -> Strategy (Prim (AxiomPattern level))
 simpleStrategy axioms =
-    Strategy.many applyAxioms Strategy.done
+    Strategy.many applyAxioms Strategy.stuck
   where
     applyAxioms next = Strategy.all (axiomStep <$> axioms <*> pure next)
 
@@ -124,9 +124,9 @@ simpleStepper
     -- ^ The maximum number of steps to be made
     -> (CommonExpandedPattern level, StepProof level)
     -- ^ Configuration being rewritten and its accompanying proof
-    -> Simplifier [(CommonExpandedPattern level, StepProof level)]
+    -> Simplifier (CommonExpandedPattern level, StepProof level)
 simpleStepper tools simplifier axioms stepLimit =
-    (<$>) Strategy.pickDone . runStrategy rule strategy stepLimit
+    (<$>) Strategy.pickLongest . runStrategy rule strategy stepLimit
   where
     rule = simpleRule tools simplifier
     strategy = simpleStrategy axioms

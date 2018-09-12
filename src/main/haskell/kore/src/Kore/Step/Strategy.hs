@@ -2,7 +2,6 @@ module Kore.Step.Strategy
     ( -- * Strategies
       Strategy
     , apply
-    , done
     , stuck
     , and
     , all
@@ -18,19 +17,16 @@ module Kore.Step.Strategy
     , Limit (..)
     , withinLimit
     , runStrategy
-    , pickFirst
     , pickLongest
-    , pickFirstOrLongest
-    , pickDone
-    , pickDoneAndStuck
+    , pickStuck
     ) where
 
 import           Data.Bifunctor
                  ( first )
+import           Data.Foldable
+                 ( foldl' )
 import           Data.List.NonEmpty
                  ( NonEmpty (..) )
-import           Data.Maybe
-                 ( fromMaybe )
 import           Data.Semigroup
 import           Data.Tree
                  ( Tree )
@@ -55,8 +51,6 @@ data Strategy prim where
 
     And :: Strategy prim -> Strategy prim -> Strategy prim
 
-    Done :: Strategy prim
-
     Stuck :: Strategy prim
 
     Or :: Strategy prim -> Strategy prim -> Strategy prim
@@ -70,11 +64,7 @@ apply
     -> Strategy app
 apply = Apply
 
--- | Successfully terminate execution.
-done :: Strategy app
-done = Done
-
--- | Unsuccessfully terminate execution.
+-- | Terminate execution.
 stuck :: Strategy app
 stuck = Stuck
 
@@ -90,7 +80,8 @@ and = And
 
  -}
 all :: [Strategy app] -> Strategy app
-all = foldr and stuck
+all [] = stuck
+all (x : xs) = foldl' and x xs
 
 -- | Apply the second strategy if the first fails.
 or :: Strategy app -> Strategy app -> Strategy app
@@ -104,7 +95,8 @@ or = Or
 
  -}
 any :: [Strategy app] -> Strategy app
-any = foldr or stuck
+any [] = stuck
+any (x : xs) = foldl' or x xs
 
 -- | Apply the strategy zero or more times.
 many :: (Strategy app -> Strategy app) -> Strategy app -> Strategy app
@@ -220,7 +212,6 @@ strategyTransition
 strategyTransition applyPrim stepLimit =
     \state@Machine { instrA, instrB, accum = config } ->
         case instrA of
-            Done -> return []
             Stuck -> return []
             And instr1 instr2 ->
                 -- Distribute the instructions to child branches.
@@ -296,15 +287,6 @@ runStrategy applyPrim strategy stepLimit config =
         }
     annotateConfig Machine { instrA, accum } = (instrA, accum)
 
-{- | Pick the first 'Done' result from all the branches of a 'Tree'.
-
-  See also: 'runStrategy'
-
- -}
-pickFirst :: Tree (Strategy prim, config) -> Maybe config
-pickFirst =
-    (<$>) getFirst . getOption . Tree.foldTree pickFirstAt
-
 {- | Pick the longest-running branch from a 'Tree'.
 
   See also: 'runStrategy'
@@ -313,76 +295,6 @@ pickFirst =
 pickLongest :: Tree (Strategy prim, config) -> config
 pickLongest =
     getLongest . Tree.foldTree pickLongestAt
-
-{- | Pick the first 'Done' result from a 'Tree', or the longest-running branch.
-
-  The longest-running branch is returned if no branch reaches 'Done'. The tree
-  is traversed only once.
-
-  See also: 'pickFirst', 'pickLongest'
-
- -}
-pickFirstOrLongest :: Tree (Strategy prim, config) -> config
-pickFirstOrLongest =
-    getFirstOrLongest . Tree.foldTree pickFirstOrLongestAt
-  where
-    getFirstOrLongest (f, l) =
-        fromMaybe
-            (getLongest l)
-            (getFirst <$> getOption f)
-
--- | Return all 'done' configurations.
-pickDone :: Tree (Strategy prim, config) -> [config]
-pickDone =
-    fromMaybe [] . getOption . Tree.foldTree pickDoneAt
-
-pickDoneAt :: (Strategy prim, config) -> [Option [config]] -> Option [config]
-pickDoneAt (instr, config) children =
-    let
-        this =
-            case instr of
-                Done -> pure [config]
-                _ -> mempty
-    in
-        mconcat (this : children)
-
--- | Return all 'done' and all 'stuck' configurations.
-pickDoneAndStuck :: Tree (Strategy prim, config) -> ([config], [config])
-pickDoneAndStuck = Tree.foldTree pickDoneAndStuckAt
-
-pickDoneAndStuckAt
-    :: (Strategy prim, config)
-    -- ^ Node
-    -> [([config], [config])]
-    -- ^ Children
-    -> ([config], [config])
-pickDoneAndStuckAt (instr, config) children =
-    let
-        this =
-            case instr of
-                Done -> ([config], [])
-                Stuck -> ([], [config])
-                _ -> ([], [])
-    in
-        mconcat (this : children)
-
-{- | Pick the first result at one node of a tree.
-
-  'pickFirst' folds @pickFirstAt@ over an entire tree.
-
- -}
-pickFirstAt
-    :: (Strategy prim, config)
-    -> [Option (First config)]
-    -> Option (First config)
-pickFirstAt (instr, config) children =
-    let
-        this =
-            case instr of
-                Done -> pure (First config)
-                _ -> mempty
-    in
-        mconcat (this : children)
 
 {- | A 'Semigroup' which returns its longest-running argument.
 
@@ -414,14 +326,11 @@ pickLongestAt :: (instr, config) -> [Longest config] -> Longest config
 pickLongestAt (_, config) children =
     sconcat (longest config :| (longer <$> children))
 
-{- | Pick the first and longest results at one node of a tree.
+pickStuck :: Tree (Strategy prim, config) -> [config]
+pickStuck = Tree.foldTree pickStuckAt
 
-  'pickFirstOrLongest' unfolds @pickFirstOrLongestAt@ over an entire tree.
-
- -}
-pickFirstOrLongestAt
-    :: (Strategy prim, config)
-    -> [(Option (First config), Longest config)]
-    -> (Option (First config), Longest config)
-pickFirstOrLongestAt node (unzip -> (firstChildren, longestChildren)) =
-    (pickFirstAt node firstChildren, pickLongestAt node longestChildren)
+pickStuckAt :: (Strategy prim, config) -> [[config]] -> [config]
+pickStuckAt (instr, config) children =
+    case instr of
+        Stuck -> [config]
+        _ -> mconcat children
