@@ -23,8 +23,6 @@ module Kore.Step.Strategy
 
 import           Data.Bifunctor
                  ( first )
-import           Data.Foldable
-                 ( foldl' )
 import           Data.List.NonEmpty
                  ( NonEmpty (..) )
 import           Data.Semigroup
@@ -81,7 +79,8 @@ and = And
  -}
 all :: [Strategy app] -> Strategy app
 all [] = stuck
-all (x : xs) = foldl' and x xs
+all [x] = x
+all (x : xs) = and x (all xs)
 
 -- | Apply the second strategy if the first fails.
 or :: Strategy app -> Strategy app -> Strategy app
@@ -96,7 +95,8 @@ or = Or
  -}
 any :: [Strategy app] -> Strategy app
 any [] = stuck
-any (x : xs) = foldl' or x xs
+any [x] = x
+any (x : xs) = or x (any xs)
 
 -- | Apply the strategy zero or more times.
 many :: (Strategy app -> Strategy app) -> Strategy app -> Strategy app
