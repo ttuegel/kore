@@ -30,7 +30,7 @@ import           Kore.MetaML.AST
 import           Kore.Substitution.Class
                  ( PatternSubstitutionClass (..) )
 import qualified Kore.Substitution.List as Substitution
-import           Kore.Unparser.Unparse
+import           Kore.Unparser
                  ( Unparse, unparseToString )
 import           Kore.Variables.Fresh.Class
                  ( FreshVariablesClass (..) )

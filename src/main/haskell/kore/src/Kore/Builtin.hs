@@ -22,6 +22,8 @@ module Kore.Builtin
     , koreVerifiers
     , koreEvaluators
     , evaluators
+    , asMetaPattern
+    , asPattern
     ) where
 
 import           Data.Map
@@ -32,7 +34,10 @@ import           Data.Semigroup
 
 import qualified Kore.AST.Common as Kore
 import           Kore.AST.MetaOrObject
-                 ( Object )
+                 ( Meta, Object )
+import           Kore.AST.PureML
+                 ( CommonPurePattern )
+import qualified Kore.ASTUtils.SmartPatterns as Kore
 import qualified Kore.Builtin.Bool as Bool
 import qualified Kore.Builtin.Builtin as Builtin
 import qualified Kore.Builtin.Hook as Hook
@@ -128,3 +133,24 @@ evaluators builtins indexedModule =
             name <- Hook.getHook hook
             impl <- Map.lookup name builtins
             pure [impl]
+
+asPattern
+    :: Kore.DomainValue Object (CommonPurePattern Meta)
+    -> CommonPurePattern Object
+asPattern Kore.DomainValue { domainValueSort, domainValueChild } =
+    case domainValueChild of
+        Kore.BuiltinDomainPattern _ ->
+            Kore.DV_ domainValueSort domainValueChild
+        Kore.BuiltinDomainInteger i ->
+            Int.asPattern domainValueSort i
+        Kore.BuiltinDomainBool b ->
+            Bool.asPattern domainValueSort b
+
+asMetaPattern
+    :: Kore.DomainValue Object (CommonPurePattern Meta)
+    -> CommonPurePattern Meta
+asMetaPattern Kore.DomainValue { domainValueChild } =
+    case domainValueChild of
+        Kore.BuiltinDomainPattern pat -> pat
+        Kore.BuiltinDomainInteger i -> Int.asMetaPattern i
+        Kore.BuiltinDomainBool b -> Bool.asMetaPattern b
