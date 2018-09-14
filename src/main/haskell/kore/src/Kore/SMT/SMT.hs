@@ -129,7 +129,7 @@ patternToSMT p = goTranslate
         goBoolean (V v) = tryLookupVar v boolTable "BOOL.Bool"
         goBoolean pat@(DV_ _ _) = goLiteral pat "BOOL.Bool" :: Symbolic SBool
         goBoolean (Top_ _)    = return true
-        goBoolean (Bottom_ _) = return false 
+        goBoolean (Bottom_ _) = return false
         goBoolean pat = error $ "Can't translate constructor: " ++ show pat
         goInteger
             :: Given (MetadataTools Object SMTAttributes)
@@ -145,17 +145,20 @@ patternToSMT p = goTranslate
                 "INT.tmod" -> goBinaryOp (sMod) goInteger
                 other -> error $ "Hook " ++ other ++ " is not supported by SMT"
         goInteger (V v) = tryLookupVar v intTable "INT.Int"
-        goInteger pat@(DV_ _ _) = goLiteral pat "INT.Int" :: Symbolic SInteger 
+        goInteger pat@(DV_ _ _) = goLiteral pat "INT.Int" :: Symbolic SInteger
         goInteger pat = error $ "Can't translate constructor: " ++ show pat
-        goLiteral 
+        goLiteral
             :: (Given (MetadataTools Object SMTAttributes), Read a, SymWord a)
-            => CommonPurePattern Object 
-            -> String 
-            -> Symbolic (SBV a) 
-        goLiteral (DV_ s (StringLiteral_ (StringLiteral i))) hookName
-         | (getHookString $ getSortHook s) == hookName
-             = return $ literal $ read i
-        goLiteral pat _ = 
+            => CommonPurePattern Object
+            -> String
+            -> Symbolic (SBV a)
+        goLiteral (DV_ s dv) hookName =
+            case dv of
+                BuiltinDomainPattern (StringLiteral_ i)
+                    | (getHookString $ getSortHook s) == hookName
+                      -> return $ literal $ read i
+                _ -> error "Domain value must be a string literal"
+        goLiteral pat _ =
           error $ "Expected a domain value literal: " ++ show pat
         tryLookupVar v table hookName
          | getHookString (getSortHook (variableSort v)) == hookName

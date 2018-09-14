@@ -25,11 +25,11 @@ import Data.Functor.Foldable
 
 import           Kore.AST.Common
                  ( Application (..), CharLiteral, DomainValue, Pattern (..),
-                 StringLiteral, SymbolOrAlias, Variable )
+                 StringLiteral, SymbolOrAlias )
 import           Kore.AST.MetaOrObject
                  ( Meta )
 import           Kore.AST.PureML
-                 ( PureMLPattern )
+                 ( CommonPurePattern, PureMLPattern )
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )
 import qualified Kore.IndexedModule.MetadataTools as MetadataTools
@@ -50,7 +50,7 @@ data FunctionalProof level variable
     -- ^Variables are functional as per Corollary 5.19
     -- https://arxiv.org/pdf/1705.06312.pdf#subsection.5.4
     -- |= ∃y . x = y
-    | FunctionalDomainValue (DomainValue level (PureMLPattern Meta Variable))
+    | FunctionalDomainValue (DomainValue level (CommonPurePattern Meta))
     -- ^Domain values are functional as ther represent one value in the model.
     | FunctionalHead (SymbolOrAlias level)
     -- ^Head of a total function, conforming to Definition 5.21
@@ -115,7 +115,7 @@ isFunctionalPattern tools = cata  reduceM
 -- Tells whether the pattern is a built-in constructor-like pattern
 isPreconstructedPattern
     :: err
-    -> Pattern level variable pat
+    -> Pattern level variable child
     -> Either err (FunctionalProof level variable)
 isPreconstructedPattern _ (DomainValuePattern dv) =
     Right (FunctionalDomainValue dv)

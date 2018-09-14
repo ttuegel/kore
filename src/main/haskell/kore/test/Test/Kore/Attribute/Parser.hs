@@ -8,8 +8,8 @@ import qualified Data.Foldable as Foldable
 import Kore.Attribute.Parser
 import qualified Kore.AST.Common as Kore
 import qualified Kore.AST.Kore as Kore
-import qualified Kore.AST.PureML as Kore
 import qualified Kore.AST.Sentence as Kore
+import qualified Kore.ASTUtils.SmartPatterns as Kore
 import qualified Kore.Error
 import qualified Kore.Implicit.Attributes as Kore
 
@@ -75,8 +75,7 @@ dv =
                     , sortActualSorts = []
                     }
             , domainValueChild =
-                (Kore.asPurePattern . Kore.StringLiteralPattern)
-                    (Kore.StringLiteral "true")
+                Kore.BuiltinDomainPattern (Kore.StringLiteral_ "true")
             }
 
 dvAttrs :: Kore.Attributes
