@@ -604,25 +604,20 @@ data Exists level v child = Exists
     }
     deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
+{-
+    Dummy top-level splice to start a new declaration group, bringing ''Exists
+    into scope.
+ -}
+$(return [])
+
 instance (Ord (Sort level), Ord (v level)) => Ord1 (Exists level v) where
-    liftCompare liftedCompare a b =
-        (existsSort a `compare` existsSort b)
-        <> (existsVariable a `compare` existsVariable b)
-        <> (existsChild a) `liftedCompare` (existsChild b)
+    liftCompare = $(makeLiftCompare ''Exists)
 
 instance (Eq (Sort level), Eq (v level)) => Eq1 (Exists level v) where
-    liftEq liftedEq a b =
-        (existsSort a == existsSort b)
-        && (existsVariable a == existsVariable b)
-        && liftedEq (existsChild a) (existsChild b)
+    liftEq = $(makeLiftEq ''Exists)
 
 instance (Show (Sort level), Show (v level)) => Show1 (Exists level v) where
-    liftShowsPrec liftedShowsPrec _ _ e =
-        showString "Exists { "
-        . showString "existsSort = " . shows (existsSort e)
-        . showString ", existsVariable = " . shows (existsVariable e)
-        . showString ", existsChild = " . liftedShowsPrec 0 (existsChild e)
-        . showString " }"
+    liftShowsPrec = $(makeLiftShowsPrec ''Exists)
 
 instance (Hashable child, Hashable (v level)) => Hashable (Exists level v child)
 
@@ -674,25 +669,20 @@ data Forall level v child = Forall
     }
     deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
+{-
+    Dummy top-level splice to start a new declaration group, bringing ''Forall
+    into scope.
+ -}
+$(return [])
+
 instance (Ord (Sort level), Ord (v level)) => Ord1 (Forall level v) where
-    liftCompare liftedCompare a b =
-        (forallSort a `compare` forallSort b)
-        <> (forallVariable a `compare` forallVariable b)
-        <> (forallChild a) `liftedCompare` (forallChild b)
+    liftCompare = $(makeLiftCompare ''Forall)
 
 instance (Eq (Sort level), Eq (v level)) => Eq1 (Forall level v) where
-    liftEq liftedEq a b =
-        (forallSort a == forallSort b)
-        && (forallVariable a == forallVariable b)
-        && liftedEq (forallChild a) (forallChild b)
+    liftEq = $(makeLiftEq ''Forall)
 
 instance (Show (Sort level), Show (v level)) => Show1 (Forall level v) where
-    liftShowsPrec liftedShowsPrec _ _ e =
-        showString "Forall { "
-        . showString "forallSort = " . shows (forallSort e)
-        . showString ", forallVariable = " . shows (forallVariable e)
-        . showString ", forallChild = " . liftedShowsPrec 0 (forallChild e)
-        . showString " }"
+    liftShowsPrec = $(makeLiftShowsPrec ''Forall)
 
 instance (Hashable child, Hashable (v level)) => Hashable (Forall level v child)
 
@@ -1004,8 +994,11 @@ instance Hashable child => Hashable (BuiltinDomain child) where
 
 instance NFData child => NFData (BuiltinDomain child)
 
+{-
+    Dummy top-level splice to start a new declaration group, bringing ''Pattern
+    into scope.
+ -}
 $(return [])
-{- dummy top-level splice to make ''Pattern available for lifting -}
 
 instance (Ord level, Ord (variable level)) => Ord1 (Pattern level variable) where
     liftCompare liftedCompare a b = $(makeLiftCompare ''Pattern) liftedCompare a b
@@ -1021,11 +1014,6 @@ deriving instance Eq child => Eq (BuiltinDomain child)
 deriving instance Ord child => Ord (BuiltinDomain child)
 
 deriving instance Show child => Show (BuiltinDomain child)
-
--- instance Generic child => Generic (Pattern level variable child)
-
--- instance (Hashable child, Generic child, Hashable (variable level))
--- => Hashable (Pattern level variable child)
 
 instance (Hashable child, Hashable (variable level))
  => Hashable (Pattern level variable child) where
