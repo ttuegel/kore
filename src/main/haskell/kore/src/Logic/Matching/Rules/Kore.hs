@@ -64,7 +64,6 @@ formulaVerifier indexedModule formula = do
             mempty -- Kore.Builtin.Verifiers: don't validate builtin patterns
             indexedModule
             (sortVariables unifiedFormula)
-            Nothing
             unifiedFormula
         )
     return ()

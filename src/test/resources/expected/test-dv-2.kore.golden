@@ -1,1 +1,34 @@
-Parse error: Error in module 'DV-2' -> axiom declaration -> \dv (../../../test/resources//test-dv-2.kore 3:19): Domain value argument must be a literal string.
+Definition
+    { definitionAttributes = Attributes []
+    , definitionModules =
+        [ Module
+            { moduleName = ModuleName "DV-2"
+            , moduleSentences =
+                [ MetaSentence (SentenceAxiomSentence SentenceAxiom
+                    { sentenceAxiomParameters =
+                        [ UnifiedObject (SortVariable ((Id "s" AstLocationNone) :: Id Object))
+                        ]
+                    , sentenceAxiomPattern =
+                        Fix (UnifiedPattern (UnifiedObject (Rotate31 (DomainValuePattern DomainValue
+                            { domainValueSort =
+                                SortVariableSort (SortVariable ((Id "s" AstLocationNone) :: Id Object))
+                            , domainValueChild =
+                                BuiltinDomainString (Fix (OrPattern Or
+                                    { orSort =
+                                        SortActualSort SortActual
+                                            { sortActualName = (Id "#CharList" AstLocationNone) :: Id Meta
+                                            , sortActualSorts = []
+                                            }
+                                    , orFirst =
+                                        Fix (StringLiteralPattern (StringLiteral "0"))
+                                    , orSecond =
+                                        Fix (StringLiteralPattern (StringLiteral "1"))
+                                    }))
+                            }))))
+                    , sentenceAxiomAttributes = Attributes []
+                    })
+                ]
+            , moduleAttributes = Attributes []
+            }
+        ]
+    }

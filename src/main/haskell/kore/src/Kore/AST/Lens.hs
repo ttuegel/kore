@@ -83,9 +83,22 @@ module Kore.AST.Lens
       -- ** Variable
     , variableSort
     , variableName
+      -- ** SentenceAlias
+    , sentenceAliasAlias
+    , sentenceAliasLeftPattern
+    , sentenceAliasRightPattern
+    , sentenceAliasResultSort
+    , sentenceAliasSorts
+    , sentenceAliasAttributes
+      -- ** SentenceSymbol
+    , sentenceSymbolSymbol
+    , sentenceSymbolSorts
+    , sentenceSymbolResultSort
+    , sentenceSymbolAttributes
     ) where
 
 import qualified Kore.AST.Common as Common
+import qualified Kore.AST.Sentence as Sentence
 
 import Control.Lens.TH.Simple
 
@@ -107,3 +120,6 @@ makeSimpleLenses ''Common.Or
 makeSimpleLenses ''Common.Rewrites
 makeSimpleLenses ''Common.Top
 makeSimpleLenses ''Common.Variable
+
+makeSimpleLenses ''Sentence.SentenceAlias
+makeSimpleLenses ''Sentence.SentenceSymbol

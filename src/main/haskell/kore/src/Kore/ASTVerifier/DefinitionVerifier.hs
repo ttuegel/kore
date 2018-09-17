@@ -90,8 +90,8 @@ verifyAndIndexDefinition attributesVerification builtinVerifiers definition = do
             (definitionModules definition)
     mapM_ (verifyModule attributesVerification builtinVerifiers) (Map.elems indexedModules)
     _ <- verifyAttributes
-        (definitionAttributes definition)
         attributesVerification
+        (definitionAttributes definition)
     return indexedModules
   where
     runIndexer = either throwError return . castError

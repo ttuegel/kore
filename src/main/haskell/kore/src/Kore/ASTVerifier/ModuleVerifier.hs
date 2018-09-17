@@ -43,14 +43,14 @@ verifyModule
     :: AttributesVerification atts
     -> Builtin.Verifiers
     -> KoreIndexedModule atts
-    -> Verifier VerifySuccess
+    -> Verifier ()
 verifyModule attributesVerification builtinVerifiers indexedModule =
     withContext
         ("module '" ++ getModuleName (indexedModuleName indexedModule) ++ "'")
         (do
             _ <- verifyAttributes
-                (snd (indexedModuleAttributes indexedModule))
                 attributesVerification
+                (snd (indexedModuleAttributes indexedModule))
             SentenceVerifier.verifySentences
                 indexedModule
                 attributesVerification

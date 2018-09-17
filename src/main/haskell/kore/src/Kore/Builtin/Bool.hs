@@ -19,7 +19,7 @@ module Kore.Builtin.Bool
     , assertSort
     , sortDeclVerifiers
     , symbolVerifiers
-    , patternVerifier
+    , domainVerifier
     , builtinFunctions
     , asMetaPattern
     , asPattern
@@ -86,10 +86,9 @@ symbolVerifiers =
 
 {- | Verify that domain value patterns are well-formed.
  -}
-patternVerifier :: Builtin.PatternVerifier
-patternVerifier =
-    Builtin.verifyDomainValue sort
-    $ Builtin.verifyStringLiteral
+domainVerifier :: Builtin.DomainVerifier child
+domainVerifier =
+    Builtin.verifyStringLiteral sort
     $ Builtin.parseStringLiteral parseBuiltinDomain
 
 {- | Parse an integer string literal.

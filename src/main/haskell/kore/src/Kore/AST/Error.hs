@@ -12,6 +12,8 @@ module Kore.AST.Error
     , koreFailWithLocationsWhen
     , withLocationAndContext
     , withLocationsContext
+    , withCommonKorePatternContext
+    , withPatternContext
     , withSentenceAliasContext
     , withSentenceAxiomContext
     , withSentenceHookContext
@@ -73,6 +75,63 @@ withLocationAndContext
     -> m result
 withLocationAndContext location message =
     withContext (message ++ " (" ++ prettyPrintLocationFromAst location ++ ")")
+
+withCommonKorePatternContext
+    :: MonadError (Error e) m
+    => CommonKorePattern -> m result -> m result
+withCommonKorePatternContext pat go =
+    applyKorePattern
+        (\p -> withPatternContext p go)
+        (\p -> withPatternContext p go)
+        pat
+
+withPatternContext
+    :: MonadError (Error e) m
+    => Pattern level Variable child -> m result -> m result
+withPatternContext pat =
+    withLocationAndContext pat (patternNameForContext pat)
+  where
+    patternNameForContext :: Pattern level Variable p -> String
+    patternNameForContext (AndPattern _) = "\\and"
+    patternNameForContext (ApplicationPattern application) =
+        let Application { applicationSymbolOrAlias } = application
+            SymbolOrAlias { symbolOrAliasConstructor } = applicationSymbolOrAlias
+        in
+            "symbol or alias '"
+            ++ getId symbolOrAliasConstructor
+            ++ "'"
+    patternNameForContext (BottomPattern _) = "\\bottom"
+    patternNameForContext (CeilPattern _) = "\\ceil"
+    patternNameForContext (DomainValuePattern _) = "\\dv"
+    patternNameForContext (EqualsPattern _) = "\\equals"
+    patternNameForContext (ExistsPattern exists) =
+        let Exists { existsVariable } = exists
+        in
+            "\\exists '"
+            ++ variableNameForContext existsVariable
+            ++ "'"
+    patternNameForContext (FloorPattern _) = "\\floor"
+    patternNameForContext (ForallPattern forall) =
+        let Forall { forallVariable } = forall
+        in
+            "\\forall '"
+            ++ variableNameForContext forallVariable
+            ++ "'"
+    patternNameForContext (IffPattern _) = "\\iff"
+    patternNameForContext (ImpliesPattern _) = "\\implies"
+    patternNameForContext (InPattern _) = "\\in"
+    patternNameForContext (NextPattern _) = "\\next"
+    patternNameForContext (NotPattern _) = "\\not"
+    patternNameForContext (OrPattern _) = "\\or"
+    patternNameForContext (RewritesPattern _) = "\\rewrites"
+    patternNameForContext (StringLiteralPattern _) = "<string>"
+    patternNameForContext (CharLiteralPattern _) = "<char>"
+    patternNameForContext (TopPattern _) = "\\top"
+    patternNameForContext (VariablePattern variable) =
+        "variable '" ++ variableNameForContext variable ++ "'"
+
+    variableNameForContext :: Variable level -> String
+    variableNameForContext Variable { variableName } = getId variableName
 
 {- | Identify and locate the given symbol declaration in the error context.
  -}

@@ -22,7 +22,7 @@ module Kore.Builtin.Int
     , assertSort
     , sortDeclVerifiers
     , symbolVerifiers
-    , patternVerifier
+    , domainVerifier
     , builtinFunctions
     , expectBuiltinDomainInt
     , asMetaPattern
@@ -102,7 +102,7 @@ symbolVerifiers =
       )
 
     , ("INT.rand", Builtin.verifySymbol assertSort [assertSort])
-    , ("INT.srand", Builtin.verifySymbolArguments [assertSort])
+    , ("INT.srand", Builtin.verifySymbol trivialVerifier [assertSort])
 
       -- TODO (thomas.tuegel): Implement builtin BOOL
     , ("INT.gt", Builtin.verifySymbol Bool.assertSort [assertSort, assertSort])
@@ -141,13 +141,15 @@ symbolVerifiers =
       )
     , ("INT.log2", Builtin.verifySymbol assertSort [assertSort])
     ]
+  where
+    trivialVerifier :: Builtin.SortVerifier
+    trivialVerifier = \_ s -> return s
 
 {- | Verify that domain value patterns are well-formed.
  -}
-patternVerifier :: Builtin.PatternVerifier
-patternVerifier =
-    Builtin.verifyDomainValue sort
-    $ Builtin.verifyStringLiteral
+domainVerifier :: Builtin.DomainVerifier child
+domainVerifier =
+    Builtin.verifyStringLiteral sort
     $ Builtin.parseStringLiteral parseBuiltinDomain
 
 {- | Parse an integer string literal.

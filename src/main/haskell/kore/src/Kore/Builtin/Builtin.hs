@@ -1,3 +1,4 @@
+{-# LANGUAGE PartialTypeSignatures #-}
 {- |
 Module      : Kore.Builtin.Builtin
 Description : Built-in sort, symbol, and pattern verifiers
@@ -21,7 +22,7 @@ module Kore.Builtin.Builtin
     , SymbolVerifier, SymbolVerifiers
     , SortDeclVerifier, SortDeclVerifiers
     , SortVerifier
-    , PatternVerifier (..)
+    , DomainVerifier (..)
     , Function
     , Parser
     , symbolVerifier
@@ -31,7 +32,6 @@ module Kore.Builtin.Builtin
     , verifySort
     , verifySymbol
     , verifySymbolArguments
-    , verifyDomainValue
     , verifyStringLiteral
     , parseDomainValue
     , parseString
@@ -52,7 +52,7 @@ module Kore.Builtin.Builtin
     ) where
 
 import           Control.Monad
-                 ( zipWithM_ )
+                 ( zipWithM )
 import           Control.Monad.Except
                  ( ExceptT, MonadError, runExceptT )
 import qualified Control.Monad.Except as Except
@@ -117,14 +117,14 @@ type Function = ApplicationFunctionEvaluator Object Variable
 type SortDeclVerifier =
        KoreSentenceSort Object
     -- ^ Sort declaration to verify
-    -> Verifier ()
+    -> Verifier (KoreSentenceSort Object)
 
 type SortVerifier =
        (Id Object -> Verifier (SortDescription Object))
     -- ^ Find a sort declaration
     -> Sort Object
     -- ^ Sort to verify
-    -> Verifier ()
+    -> Verifier (Sort Object)
 
 -- | @SortDeclVerifiers@ associates a @SortDeclVerifier@ with its builtin sort name.
 type SortDeclVerifiers = HashMap String SortDeclVerifier
@@ -134,52 +134,50 @@ type SymbolVerifier =
     -- ^ Find a sort declaration
     -> KoreSentenceSymbol Object
     -- ^ Symbol declaration to verify
-    -> Verifier ()
+    -> Verifier (KoreSentenceSymbol Object)
 
 {- | @SymbolVerifiers@ associates a @SymbolVerifier@ with each builtin
   symbol name.
  -}
 type SymbolVerifiers = HashMap String SymbolVerifier
 
-newtype PatternVerifier =
-    PatternVerifier
+newtype DomainVerifier child =
+    DomainVerifier
     {
-      {- | Verify object-level patterns in builtin sorts.
+      {- | Verify domain values in builtin sorts.
 
         The first argument is a function to look up sorts.
-        The second argument is a (projected) object-level pattern to verify.
-        If the pattern is not in a builtin sort, the verifier should
-        @return ()@.
+        The second argument is a domain value to verify.
+        During verification, the domain value may be modified.
+        If the domain value is not in a builtin sort, the verifier should return
+        it unmodified.
 
-        See also: 'verifyDomainValue'
+        See also: 'verifyStringLiteral'
       -}
-      verifyPattern
+      verifyDomainValue
           :: (Id Object -> Verifier (SortDescription Object))
-          -> Pattern Object Variable CommonKorePattern
-          -> Verifier (Pattern Object Variable CommonKorePattern)
+          -> DomainValue Object (BuiltinDomain child)
+          -> Verifier (DomainValue Object (BuiltinDomain child))
     }
 
-instance Semigroup PatternVerifier where
-    {- | Conjunction of 'PatternVerifier's.
+instance Semigroup (DomainVerifier child) where
+    {- | Conjunction of 'DomainVerifier's.
 
-      The resulting @PatternVerifier@ succeeds when both constituents succeed.
+      The resulting @DomainVerifier@ succeeds when both constituents succeed.
 
      -}
     (<>) a b =
-        PatternVerifier
-        { verifyPattern = \findSort pat1 -> do
-            pat2 <- verifyPattern a findSort pat1
-            verifyPattern b findSort pat2
+        DomainVerifier
+        { verifyDomainValue = \findSort pat1 -> do
+            pat2 <- verifyDomainValue a findSort pat1
+            verifyDomainValue b findSort pat2
         }
 
-instance Monoid PatternVerifier where
+instance Monoid (DomainVerifier child) where
     {- | Trivial 'PatternVerifier' (always succeeds).
      -}
-    mempty = PatternVerifier { verifyPattern = \_ pat -> return pat }
+    mempty = DomainVerifier { verifyDomainValue = \_ pat -> return pat }
     mappend = (<>)
-
-type DomainValueVerifier child =
-    DomainValue Object child -> Verifier (DomainValue Object child)
 
 {- | Verify builtin sorts, symbols, and patterns.
  -}
@@ -187,7 +185,7 @@ data Verifiers =
     Verifiers
     { sortDeclVerifiers :: SortDeclVerifiers
     , symbolVerifiers :: SymbolVerifiers
-    , patternVerifier :: PatternVerifier
+    , domainVerifier :: DomainVerifier CommonKorePattern
     }
 
 {- | Look up and apply a builtin sort declaration verifier.
@@ -211,7 +209,7 @@ sortDeclVerifier Verifiers { sortDeclVerifiers } hook =
                 -- 1. the sort is not hooked, or
                 -- 2. there is no SortVerifier registered to the hooked name.
                 -- In either case, there is nothing more to do.
-                \_ -> pure ()
+                \a -> pure a
             Just verifier ->
                 -- Invoke the verifier that is registered to this builtin sort.
                 verifier
@@ -237,7 +235,7 @@ symbolVerifier Verifiers { symbolVerifiers } hook =
                 -- 1. the symbol is not hooked, or
                 -- 2. there is no SymbolVerifier registered to the hooked name.
                 -- In either case, there is nothing more to do.
-                \_ _ -> pure ()
+                \_ a -> pure a
             Just verifier ->
                 -- Invoke the verifier that is registered to this builtin symbol.
                 verifier
@@ -254,9 +252,9 @@ notImplemented =
 
  -}
 verifySortDecl :: SortDeclVerifier
-verifySortDecl SentenceSort { sentenceSortParameters } =
+verifySortDecl sentence@SentenceSort { sentenceSortParameters } =
     case sentenceSortParameters of
-        [] -> pure ()
+        [] -> return sentence
         _ ->
             Kore.Error.koreFail
                 ("Expected 0 sort parameters, found "
@@ -272,8 +270,8 @@ verifySort
     :: (Id Object -> Verifier (SortDescription Object))
     -> String
     -> Sort Object
-    -> Verifier ()
-verifySort findSort builtinName (SortActualSort SortActual { sortActualName }) =
+    -> Verifier (Sort Object)
+verifySort findSort builtinName sort@(SortActualSort SortActual { sortActualName }) =
     do
         SentenceSort { sentenceSortAttributes } <- findSort sortActualName
         let expectHook = Hook (Just builtinName)
@@ -282,6 +280,7 @@ verifySort findSort builtinName (SortActualSort SortActual { sortActualName }) =
             ("Sort '" ++ getId sortActualName
                 ++ "' is not hooked to builtin sort '"
                 ++ builtinName ++ "'")
+        return sort
 verifySort _ _ (SortVariableSort SortVariable { getSortVariable }) =
     Kore.Error.koreFail
         ("unexpected sort variable '" ++ getId getSortVariable ++ "'")
@@ -301,12 +300,21 @@ verifySymbol
     verifyResult
     verifyArguments
     findSort
-    decl@SentenceSymbol { sentenceSymbolResultSort = result }
+    decl@SentenceSymbol
+        { sentenceSymbolResultSort
+        , sentenceSymbolSorts
+        }
   =
     do
-        Kore.Error.withContext "In result sort"
-            (verifyResult findSort result)
-        verifySymbolArguments verifyArguments findSort decl
+        sentenceSymbolResultSort' <-
+            Kore.Error.withContext "In result sort"
+                (verifyResult findSort sentenceSymbolResultSort)
+        sentenceSymbolSorts' <-
+            verifySymbolArguments verifyArguments findSort sentenceSymbolSorts
+        return decl
+            { sentenceSymbolResultSort = sentenceSymbolResultSort'
+            , sentenceSymbolSorts = sentenceSymbolSorts'
+            }
 
 {- | Verify the arguments of a builtin sort declaration.
 
@@ -318,74 +326,26 @@ verifySymbol
 
  -}
 verifySymbolArguments
-    :: [SortVerifier]  -- ^ Builtin argument sorts
-    -> SymbolVerifier
+    :: [SortVerifier]  -- ^ builtin argument sorts
+    -> (Id Object -> Verifier (SortDescription Object))
+    -> [Sort Object]  -- ^ actual symbol argument sorts
+    -> Verifier [Sort Object]
 verifySymbolArguments
     verifyArguments
     findSort
-    SentenceSymbol { sentenceSymbolSorts = sorts }
+    sorts
   =
     Kore.Error.withContext "In argument sorts"
-    (do
-        Kore.Error.koreFailWhen (arity /= builtinArity)
-            ("Expected " ++ show builtinArity
-             ++ " arguments, found " ++ show arity)
-        zipWithM_ (\verify sort -> verify findSort sort) verifyArguments sorts
-    )
+        (do
+            Kore.Error.koreFailWhen
+                (arity /= builtinArity)
+                ("Expected " ++ show builtinArity
+                    ++ " arguments, found " ++ show arity)
+            zipWithM (\verify -> verify findSort) verifyArguments sorts
+        )
   where
     builtinArity = length verifyArguments
     arity = length sorts
-
-{- | Verify a domain value pattern.
-
-  If the given pattern is not a domain value, it is skipped.
-
-  See also: 'verifyStringLiteral'
-
- -}
-verifyDomainValue
-    :: String  -- ^ Builtin sort name
-    -> DomainValueVerifier (BuiltinDomain CommonKorePattern)
-    -- ^ validation function
-    -> PatternVerifier
-verifyDomainValue builtinSort validate =
-    PatternVerifier { verifyPattern }
-  where
-    verifyPattern
-        :: (Id Object -> Verifier (SortDescription Object))
-        -- ^ Function to lookup sorts by identifier
-        -> Pattern Object Variable CommonKorePattern
-        -- ^ Pattern to verify
-        -> Verifier (Pattern Object Variable CommonKorePattern)
-    verifyPattern findSort pat =
-        case pat of
-            DomainValuePattern dv@DomainValue { domainValueSort } ->
-                Kore.Error.withContext
-                    ("Verifying domain value in builtin sort '"
-                        ++ builtinSort ++ "'")
-                    (skipOtherSorts pat domainValueSort
-                        (DomainValuePattern <$> validate dv)
-                    )
-            _ -> return pat  -- no domain value to verify
-      where
-        -- | Run @next@ if @sort@ is hooked to @builtinSort@; do nothing
-        -- otherwise.
-        skipOtherSorts
-            :: a
-            -- ^ default value
-            -> Sort Object
-            -- ^ Sort of pattern under verification
-            -> Verifier a
-            -- ^ Verifier run iff pattern sort is hooked to designated builtin
-            -> Verifier a
-        skipOtherSorts a sort next = do
-            decl <-
-                Except.catchError
-                    (Just <$> verifySort findSort builtinSort sort)
-                    (\_ -> return Nothing)
-            case decl of
-              Nothing -> return a
-              Just () -> next
 
 {- | Verify a literal string domain value.
 
@@ -397,19 +357,40 @@ verifyDomainValue builtinSort validate =
 
  -}
 verifyStringLiteral
-    :: (String -> Verifier (BuiltinDomain child))
+    :: String
+    -- ^ builtin sort
+    -> (String -> Verifier (BuiltinDomain child))
     -- ^ validation function
-    -> DomainValueVerifier (BuiltinDomain child)
-verifyStringLiteral validate dv@DomainValue { domainValueChild } =
-    case domainValueChild of
-        BuiltinDomainPattern pat ->
-            case pat of
-                StringLiteral_ lit ->
-                    do
-                        builtin <- validate lit
-                        return dv { domainValueChild = builtin }
-                _ -> koreFail "Expected string literal"
-        _ -> return dv
+    -> DomainVerifier child
+verifyStringLiteral builtinSort validate =
+    DomainVerifier verifyStringLiteral0
+  where
+    verifyStringLiteral0
+        findSort
+        dv@DomainValue { domainValueSort, domainValueChild }
+      =
+        Kore.Error.withContext
+            ("Verifying domain value in builtin sort '" ++ builtinSort ++ "'")
+            (skipOtherSorts verify)
+      where
+        verify =
+            case domainValueChild of
+                BuiltinDomainPattern pat ->
+                    case pat of
+                        StringLiteral_ lit ->
+                            do
+                                builtin <- validate lit
+                                return dv { domainValueChild = builtin }
+                        _ -> koreFail "Expected string literal"
+                _ -> return dv
+        skipOtherSorts next = do
+            decl <-
+                Except.catchError
+                    (Just <$> verifySort findSort builtinSort domainValueSort)
+                    (\_ -> return Nothing)
+            case decl of
+                Nothing -> return dv
+                Just _ -> next
 
 {- | Run a parser in a domain value pattern.
 

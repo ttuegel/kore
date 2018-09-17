@@ -8,8 +8,14 @@ Maintainer  : virgil.serbanuta@runtimeverification.com
 Stability   : experimental
 Portability : POSIX
 -}
-module Kore.ASTVerifier.SortVerifier (verifySort) where
+module Kore.ASTVerifier.SortVerifier
+    ( verifySort
+    , verifySortOf
+    ) where
 
+import           Control.Lens
+                 ( Traversal' )
+import qualified Control.Lens as Lens
 import qualified Data.Set as Set
 
 import Kore.AST.Common
@@ -20,7 +26,8 @@ import Kore.AST.Sentence
 import Kore.ASTVerifier.Verifier
 import Kore.IndexedModule.IndexedModule
 
-{-|'verifySort' verifies the welformedness of a Kore 'Sort'. -}
+{- | Verify that a Kore 'Sort' is well-formed.
+ -}
 verifySort
     :: MetaOrObject level
     => (Id level -> Verifier (SortDescription level))
@@ -28,39 +35,61 @@ verifySort
     -> Set.Set UnifiedSortVariable
     -- ^ Sort variables visible here.
     -> Sort level
-    -> Verifier VerifySuccess
-verifySort _ declaredSortVariables (SortVariableSort variable)
-  = do
-    koreFailWithLocationsWhen
-        (not (unifiedVariable `Set.member` declaredSortVariables))
-        [variableId]
-        ("Sort variable '" ++ getId variableId ++ "' not declared.")
-    verifySuccess
+    -> Verifier (Sort level)
+verifySort findSort declaredSortVariables sort =
+    case sort of
+        SortVariableSort variable -> verifySortVariable variable
+        SortActualSort actual -> verifySortActual actual
   where
-    variableId = getSortVariable variable
-    unifiedVariable = asUnified variable
-verifySort findSortDescription declaredSortVariables (SortActualSort sort) =
-    do
-        _ <- withLocationAndContext
-            sortName
-            ("sort '" ++ getId (sortActualName sort) ++ "'")
+    verifySortVariable variable = do
+        koreFailWithLocationsWhen
+            (not (unifiedVariable `Set.member` declaredSortVariables))
+            [variableId]
+            ("Sort variable '" ++ getId variableId ++ "' not declared.")
+        return sort
+      where
+        variableId = getSortVariable variable
+        unifiedVariable = asUnified variable
+
+    verifySortActual actual@SortActual { sortActualName, sortActualSorts } =
+        withLocationAndContext
+            sortActualName
+            ("sort '" ++ sortId ++ "'")
             (do
-                sortDescription <- findSortDescription sortName
+                sortDescription <- findSort sortActualName
                 _ <- verifySortMatchesDeclaration
-                    findSortDescription
+                    findSort
                     declaredSortVariables
-                    sort
+                    actual
                     sortDescription
                 koreFailWhen
-                    (sortIsMeta && sortActualSorts sort /= [])
+                    (sortIsMeta && sortActualSorts /= [])
                     ("Malformed meta sort '" ++ sortId
                      ++ "' with non-empty Parameter sorts.")
+                return sort
             )
-        verifySuccess
-  where
-    sortIsMeta = case asUnified sort of UnifiedObject _ -> False ; UnifiedMeta _ -> True
-    sortName   = sortActualName sort
-    sortId     = getId sortName
+      where
+        sortIsMeta = case asUnified sort of UnifiedObject _ -> False ; UnifiedMeta _ -> True
+        sortId     = getId sortActualName
+
+{- | Verify the sorts of a traversable structure.
+
+    Return the verified structure, possibly with updated sorts.
+
+    See also: 'verifySort'
+
+ -}
+verifySortOf
+    :: MetaOrObject level
+    => Traversal' s (Sort level)
+    -> (Id level -> Verifier (SortDescription level))
+    -- ^ Provides a sortMetaSorts description.
+    -> Set.Set UnifiedSortVariable
+    -- ^ Sort variables visible here.
+    -> s
+    -> Verifier s
+verifySortOf traversal findSort declaredSortVariables =
+    Lens.traverseOf traversal (verifySort findSort declaredSortVariables)
 
 verifySortMatchesDeclaration
     :: MetaOrObject level

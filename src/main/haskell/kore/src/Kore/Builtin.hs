@@ -15,7 +15,7 @@ This module is intended to be imported qualified.
  -}
 module Kore.Builtin
     ( Builtin.Verifiers (..)
-    , Builtin.PatternVerifier (..)
+    , Builtin.DomainVerifier (..)
     , Builtin.Function
     , Builtin
     , Builtin.sortDeclVerifier
@@ -84,9 +84,9 @@ koreVerifiers =
         <> Map.symbolVerifiers
         <> KEqual.symbolVerifiers
         <> Set.symbolVerifiers
-    , patternVerifier =
-           Bool.patternVerifier
-        <> Int.patternVerifier
+    , domainVerifier =
+           Bool.domainVerifier
+        <> Int.domainVerifier
     }
 
 {- | Construct an evaluation context for Kore builtin functions.

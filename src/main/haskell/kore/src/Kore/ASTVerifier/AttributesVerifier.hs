@@ -11,15 +11,19 @@ module Kore.ASTVerifier.AttributesVerifier
     ( verifyAttributes
     , verifyHookAttribute
     , verifyNoHookAttribute
+    , verifyAttributesOf
     , AttributesVerification (..)
     ) where
 
-import Data.Proxy
-       ( Proxy )
+import           Control.Lens
+                 ( Traversal' )
+import qualified Control.Lens as Lens
+import           Data.Proxy
+                 ( Proxy )
 
 import Kore.AST.Common
 import Kore.AST.Kore
-       ( KorePattern, applyKorePattern )
+       ( KorePattern, applyKorePattern, asKorePattern )
 import Kore.AST.MetaOrObject
        ( Object )
 import Kore.AST.Sentence
@@ -37,35 +41,42 @@ data AttributesVerification atts
     = VerifyAttributes (Proxy atts)
     | DoNotVerifyAttributes
 
-{-|'verifyAttributes' verifies the wellformedness of the given attributes.
--}
+{- | Verify that the given attributes are well-formed.
+ -}
 verifyAttributes
-    :: Attributes
-    -> AttributesVerification atts
-    -> Verifier VerifySuccess
+    :: AttributesVerification atts
+    -> Attributes
+    -> Verifier Attributes
 verifyAttributes
-    (Attributes patterns)
     (VerifyAttributes _)
+    (Attributes patterns)
   = do
     withContext
         "attributes"
-        (mapM_
+        (Attributes <$> mapM
             (applyKorePattern
                 (const (koreFail "Meta attributes are not supported"))
                 verifyAttributePattern
             )
             patterns
         )
-    verifySuccess
-verifyAttributes _ DoNotVerifyAttributes =
-    verifySuccess
+verifyAttributes DoNotVerifyAttributes attrs = return attrs
+
+verifyAttributesOf
+    :: Traversal' s Attributes
+    -> AttributesVerification atts
+    -> s
+    -> Verifier s
+verifyAttributesOf traversal verify =
+    Lens.traverseOf traversal (verifyAttributes verify)
 
 verifyAttributePattern
     :: Pattern Object variable (KorePattern variable)
-    -> Verifier VerifySuccess
-verifyAttributePattern (ApplicationPattern _) = verifySuccess
-verifyAttributePattern _
-     = koreFail "Non-application attributes are not supported"
+    -> Verifier (KorePattern variable)
+verifyAttributePattern pat@(ApplicationPattern _) =
+    return (asKorePattern pat)
+verifyAttributePattern _ =
+    koreFail "Non-application attributes are not supported"
 
 {- | Verify that the @hook{}()@ attribute is present and well-formed.
 

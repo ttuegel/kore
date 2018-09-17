@@ -101,7 +101,7 @@ symbolVerifiers =
     ]
   where
     anySort :: Builtin.SortVerifier
-    anySort _ _ = return ()
+    anySort _ = return
 
 type Builtin = Seq (Kore.CommonPurePattern Object)
 
