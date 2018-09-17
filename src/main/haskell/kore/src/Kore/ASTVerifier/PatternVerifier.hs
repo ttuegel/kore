@@ -220,11 +220,10 @@ internalVerifyMetaPattern
                 declaredVariables
         case maybeExpectedSort of
             Just expectedSort ->
-                verifySameSort
-                    expectedSort
-                    (UnifiedMeta sort)
+                assertSameSort expectedSort (UnifiedMeta sort)
             Nothing ->
-                verifySuccess
+                return ()
+        verifySuccess
     )
 
 internalVerifyObjectPattern
@@ -244,21 +243,22 @@ internalVerifyObjectPattern
     p
   =
     withLocationAndContext p (patternNameForContext p)
-    (do
-        Builtin.runPatternVerifier builtinVerifier findSort p
-        sort <- verifyParameterizedPattern
-                    p
-                    builtinVerifier
-                    indexedModule
-                    verifyHelpers
-                    sortVariables
-                    declaredVariables
-        case maybeExpectedSort of
-            Just expectedSort ->
-                verifySameSort expectedSort (UnifiedObject sort)
-            Nothing ->
-                verifySuccess
-    )
+        (do
+            Builtin.runPatternVerifier builtinVerifier findSort p
+            sort <- verifyParameterizedPattern
+                        p
+                        builtinVerifier
+                        indexedModule
+                        verifyHelpers
+                        sortVariables
+                        declaredVariables
+            case maybeExpectedSort of
+                Just expectedSort ->
+                    assertSameSort expectedSort (UnifiedObject sort)
+                Nothing ->
+                    return ()
+            verifySuccess
+        )
   where
     findSort = fmap getIndexedSentence . resolveSort indexedModule
     verifyHelpers = objectVerifyHelpers indexedModule declaredVariables
@@ -573,11 +573,19 @@ applicationSortsFromSymbolOrAliasSentence
         (symbolOrAliasParams symbolOrAlias)
     symbolOrAliasSorts (symbolOrAliasParams symbolOrAlias) sentence
 
-verifySameSort
+{- | Produce an error message if the expected and actual sort differ.
+
+    @assertSameSort@ is purely an assertion; it does no work beyond checking the
+    equality of the provided sorts.
+
+ -}
+assertSameSort
     :: Unified Sort
+    -- ^ expected sort
     -> Unified Sort
-    -> Either (Error VerifyError) VerifySuccess
-verifySameSort (UnifiedObject expectedSort) (UnifiedObject actualSort) = do
+    -- ^ actual sort
+    -> Either (Error VerifyError) ()
+assertSameSort (UnifiedObject expectedSort) (UnifiedObject actualSort) =
     koreFailWithLocationsWhen
         (expectedSort /= actualSort)
         [expectedSort, actualSort]
@@ -588,8 +596,7 @@ verifySameSort (UnifiedObject expectedSort) (UnifiedObject actualSort) = do
           <+> Pretty.squotes (unparse actualSort)
           <> Pretty.dot)
         )
-    verifySuccess
-verifySameSort (UnifiedMeta expectedSort) (UnifiedMeta actualSort) = do
+assertSameSort (UnifiedMeta expectedSort) (UnifiedMeta actualSort) =
     koreFailWithLocationsWhen
         (expectedSort /= actualSort)
         [expectedSort, actualSort]
@@ -600,8 +607,7 @@ verifySameSort (UnifiedMeta expectedSort) (UnifiedMeta actualSort) = do
           <+> Pretty.squotes (unparse actualSort)
           <> Pretty.dot)
         )
-    verifySuccess
-verifySameSort (UnifiedMeta expectedSort) (UnifiedObject actualSort) = do
+assertSameSort (UnifiedMeta expectedSort) (UnifiedObject actualSort) =
     koreFailWithLocationsWhen
         (expectedSort /= patternMetaSort)
         [asUnified expectedSort, asUnified actualSort]
@@ -612,8 +618,7 @@ verifySameSort (UnifiedMeta expectedSort) (UnifiedObject actualSort) = do
           <+> Pretty.squotes (unparse actualSort)
           <> Pretty.dot)
         )
-    verifySuccess
-verifySameSort (UnifiedObject expectedSort) (UnifiedMeta actualSort) = do
+assertSameSort (UnifiedObject expectedSort) (UnifiedMeta actualSort) =
     koreFailWithLocationsWhen
         (actualSort /= patternMetaSort)
         [asUnified expectedSort, asUnified actualSort]
@@ -624,7 +629,6 @@ verifySameSort (UnifiedObject expectedSort) (UnifiedMeta actualSort) = do
           <+> Pretty.squotes (unparse actualSort)
           <> Pretty.dot)
         )
-    verifySuccess
 
 verifyFreeVariables
     :: CommonKorePattern -> Either (Error VerifyError) DeclaredVariables
