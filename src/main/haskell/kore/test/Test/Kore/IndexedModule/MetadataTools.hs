@@ -22,8 +22,8 @@ import           Kore.AST.Sentence
 import           Kore.ASTHelpers
                  ( ApplicationSorts (..) )
 import           Kore.ASTVerifier.DefinitionVerifier
+import           Kore.ASTVerifier.Verifier
 import qualified Kore.Builtin as Builtin
-import           Kore.Error
 import           Kore.Implicit.Attributes
 import           Kore.Implicit.ImplicitSorts
 import           Kore.IndexedModule.IndexedModule
@@ -111,7 +111,7 @@ testDefinition =
 testIndexedModule :: KoreIndexedModule StepperAttributes
 testIndexedModule =
     case
-        verifyAndIndexDefinition
+        runVerifier $ verifyAndIndexDefinition
             DoNotVerifyAttributes
             Builtin.koreVerifiers
             testDefinition
@@ -193,9 +193,12 @@ testSubsorts =
   where
     test name cond = testCase name (assertBool "" cond)
     moduleIndex :: Map.Map ModuleName (KoreIndexedModule ImplicitAttributes)
-    Right moduleIndex = verifyAndIndexDefinition DoNotVerifyAttributes
-        Builtin.koreVerifiers
-        testSubsortDefinition
+    Right moduleIndex =
+        runVerifier
+        $ verifyAndIndexDefinition
+            DoNotVerifyAttributes
+            Builtin.koreVerifiers
+            testSubsortDefinition
     meta :: MetadataTools Object ImplicitAttributes
     meta = extractMetadataTools $ moduleIndex Map.! testObjectModuleName
 

@@ -59,7 +59,7 @@ symbolVerifiers =
     ]
   where
     trivialVerifier :: Builtin.SortVerifier
-    trivialVerifier = const $ const $ Right ()
+    trivialVerifier = \_ _ -> return ()
 
 {- | @builtinFunctions@ defines the hooks for @KEQUAL.eq@ and @KEQUAL.neq@
 which can take arbitrary terms (of the same sort) and check whether they are

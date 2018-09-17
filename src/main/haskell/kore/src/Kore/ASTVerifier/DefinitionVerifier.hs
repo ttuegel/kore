@@ -18,6 +18,8 @@ module Kore.ASTVerifier.DefinitionVerifier
 
 import           Control.Monad
                  ( foldM, foldM_ )
+import           Control.Monad.Except
+                 ( throwError )
 import qualified Data.Map as Map
 import           Data.Proxy
                  ( Proxy )
@@ -25,12 +27,11 @@ import           Data.Proxy
 import           Kore.AST.Common
 import           Kore.AST.Sentence
 import           Kore.ASTVerifier.AttributesVerifier
-import           Kore.ASTVerifier.Error
 import           Kore.ASTVerifier.ModuleVerifier
+import           Kore.ASTVerifier.Verifier
 import           Kore.Attribute.Parser
                  ( ParseAttributes (..) )
 import qualified Kore.Builtin as Builtin
-import           Kore.Error
 import           Kore.Implicit.Definitions
                  ( uncheckedKoreModules )
 import           Kore.IndexedModule.IndexedModule
@@ -59,7 +60,7 @@ verifyDefinition
     => AttributesVerification atts
     -> Builtin.Verifiers
     -> KoreDefinition
-    -> Either (Error VerifyError) VerifySuccess
+    -> Verifier VerifySuccess
 verifyDefinition attributesVerification builtinVerifiers definition = do
     _ <- verifyAndIndexDefinition attributesVerification builtinVerifiers definition
     verifySuccess
@@ -72,7 +73,7 @@ verifyAndIndexDefinition
     => AttributesVerification atts
     -> Builtin.Verifiers
     -> KoreDefinition
-    -> Either (Error VerifyError) (Map.Map ModuleName (KoreIndexedModule atts))
+    -> Verifier (Map.Map ModuleName (KoreIndexedModule atts))
 verifyAndIndexDefinition attributesVerification builtinVerifiers definition = do
     (implicitIndexedModules, implicitIndexedModule, defaultNames) <-
         indexImplicitModules
@@ -80,7 +81,7 @@ verifyAndIndexDefinition attributesVerification builtinVerifiers definition = do
     foldM_ verifyUniqueNames defaultNames (definitionModules definition)
 
     indexedModules <-
-        castError $ foldM
+        runIndexer $ foldM
             (indexModuleIfNeeded
                 implicitIndexedModule
                 nameToModule
@@ -88,11 +89,12 @@ verifyAndIndexDefinition attributesVerification builtinVerifiers definition = do
             implicitIndexedModules
             (definitionModules definition)
     mapM_ (verifyModule attributesVerification builtinVerifiers) (Map.elems indexedModules)
-    verifyAttributes
+    _ <- verifyAttributes
         (definitionAttributes definition)
         attributesVerification
     return indexedModules
   where
+    runIndexer = either throwError return . castError
     nameToModule =
         Map.fromList
             (map (\m -> (moduleName m, m)) (definitionModules definition))
@@ -105,8 +107,7 @@ defaultAttributesVerification = VerifyAttributes
 
 indexImplicitModules
     :: ParseAttributes atts
-    => Either
-        (Error VerifyError)
+    => Verifier
         ( Map.Map ModuleName (KoreIndexedModule atts)
         , KoreImplicitIndexedModule atts
         , Map.Map String AstLocation
@@ -114,7 +115,7 @@ indexImplicitModules
 indexImplicitModules = do
     defaultNames <- foldM verifyUniqueNames sortNames uncheckedKoreModules
     (indexedModules, defaultModule) <-
-        castError $ foldM
+        runIndexer $ foldM
             indexImplicitModule
             ( Map.singleton defaultModuleName defaultModuleWithMetaSorts
             , moduleWithMetaSorts
@@ -122,6 +123,7 @@ indexImplicitModules = do
             uncheckedKoreModules
     return (indexedModules, defaultModule, defaultNames)
   where
+    runIndexer = either throwError return . castError
     defaultModuleName = ModuleName "Default module"
     getIndexedModule (ImplicitIndexedModule im) = im
     defaultModuleWithMetaSorts = getIndexedModule moduleWithMetaSorts
@@ -137,7 +139,7 @@ verifyNormalKoreDefinition
     => AttributesVerification atts
     -> Builtin.Verifiers
     -> KoreDefinition
-    -> Either (Error VerifyError) (KoreIndexedModule atts)
+    -> Verifier (KoreIndexedModule atts)
 verifyNormalKoreDefinition
     attributesVerification
     builtinVerifiers
@@ -161,7 +163,7 @@ verifyImplicitKoreDefinition
     => AttributesVerification atts
     -> Builtin.Verifiers
     -> KoreDefinition
-    -> Either (Error VerifyError) (KoreIndexedModule atts)
+    -> Verifier (KoreIndexedModule atts)
 verifyImplicitKoreDefinition
     attributesVerification
     builtinVerifiers
@@ -177,7 +179,7 @@ verifyImplicitKoreDefinition
 
 extractSingleModuleNameFromDefinition
     :: KoreDefinition
-    -> Either (Error VerifyError) ModuleName
+    -> Verifier ModuleName
 extractSingleModuleNameFromDefinition definition =
     case definitionModules definition of
         [] ->
@@ -195,7 +197,7 @@ extractSingleModuleNameFromDefinition definition =
 findModule
     :: ModuleName
     -> Map.Map ModuleName (KoreIndexedModule atts)
-    -> Either (Error VerifyError) (KoreIndexedModule atts)
+    -> Verifier (KoreIndexedModule atts)
 findModule name modules =
     case Map.lookup name modules of
         Just a -> return a

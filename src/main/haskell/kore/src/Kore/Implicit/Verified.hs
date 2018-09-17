@@ -22,18 +22,15 @@ import           Kore.AST.Sentence
 import           Kore.ASTVerifier.DefinitionVerifier
                  ( defaultAttributesVerification,
                  verifyImplicitKoreDefinition )
-import           Kore.ASTVerifier.Error
-                 ( VerifyError )
+import           Kore.ASTVerifier.Verifier
 import qualified Kore.Builtin as Builtin
-import           Kore.Error
-                 ( Error, printError )
 import           Kore.Implicit.Attributes
                  ( ImplicitAttributes )
 import           Kore.Implicit.Definitions
                  ( uncheckedKoreDefinition, uncheckedMetaDefinition )
 import           Kore.MetaML.AST
 
-checkedMetaDefinition :: Either (Error VerifyError) MetaDefinition
+checkedMetaDefinition :: Verifier MetaDefinition
 checkedMetaDefinition = do
     _ <- verifyImplicitKoreDefinition
         attributesVerification
@@ -50,11 +47,11 @@ validation checks.
 -}
 implicitMetaDefinition :: MetaDefinition
 implicitMetaDefinition =
-    case checkedMetaDefinition of
+    case runVerifier checkedMetaDefinition of
         Left err -> error (printError err)
         Right d  -> d
 
-checkedKoreDefinition :: Either (Error VerifyError) KoreDefinition
+checkedKoreDefinition :: Verifier KoreDefinition
 checkedKoreDefinition = do
     _ <- verifyImplicitKoreDefinition
         attributesVerification
@@ -71,6 +68,6 @@ validation checks.
 -}
 implicitKoreDefinition :: KoreDefinition
 implicitKoreDefinition =
-    case checkedKoreDefinition of
+    case runVerifier checkedKoreDefinition of
         Left err -> error (printError err)
         Right d  -> d

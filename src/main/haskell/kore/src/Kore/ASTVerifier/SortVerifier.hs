@@ -17,19 +17,18 @@ import Kore.AST.Error
 import Kore.AST.Kore
 import Kore.AST.MetaOrObject
 import Kore.AST.Sentence
-import Kore.ASTVerifier.Error
-import Kore.Error
+import Kore.ASTVerifier.Verifier
 import Kore.IndexedModule.IndexedModule
 
 {-|'verifySort' verifies the welformedness of a Kore 'Sort'. -}
 verifySort
     :: MetaOrObject level
-    => (Id level -> Either (Error VerifyError) (SortDescription level))
+    => (Id level -> Verifier (SortDescription level))
     -- ^ Provides a sortMetaSorts description.
     -> Set.Set UnifiedSortVariable
     -- ^ Sort variables visible here.
     -> Sort level
-    -> Either (Error VerifyError) VerifySuccess
+    -> Verifier VerifySuccess
 verifySort _ declaredSortVariables (SortVariableSort variable)
   = do
     koreFailWithLocationsWhen
@@ -40,23 +39,24 @@ verifySort _ declaredSortVariables (SortVariableSort variable)
   where
     variableId = getSortVariable variable
     unifiedVariable = asUnified variable
-verifySort findSortDescription declaredSortVariables (SortActualSort sort)
-  = do
-    withLocationAndContext
-        sortName
-        ("sort '" ++ getId (sortActualName sort) ++ "'")
-        ( do
-            sortDescription <- findSortDescription sortName
-            verifySortMatchesDeclaration
-                findSortDescription
-                declaredSortVariables
-                sort
-                sortDescription )
-    koreFailWithLocationsWhen
-        (sortIsMeta && sortActualSorts sort /= [])
-        [sortName]
-        ("Malformed meta sort '" ++ sortId ++ "' with non-empty Parameter sorts.")
-    verifySuccess
+verifySort findSortDescription declaredSortVariables (SortActualSort sort) =
+    do
+        _ <- withLocationAndContext
+            sortName
+            ("sort '" ++ getId (sortActualName sort) ++ "'")
+            (do
+                sortDescription <- findSortDescription sortName
+                _ <- verifySortMatchesDeclaration
+                    findSortDescription
+                    declaredSortVariables
+                    sort
+                    sortDescription
+                koreFailWhen
+                    (sortIsMeta && sortActualSorts sort /= [])
+                    ("Malformed meta sort '" ++ sortId
+                     ++ "' with non-empty Parameter sorts.")
+            )
+        verifySuccess
   where
     sortIsMeta = case asUnified sort of UnifiedObject _ -> False ; UnifiedMeta _ -> True
     sortName   = sortActualName sort
@@ -64,11 +64,11 @@ verifySort findSortDescription declaredSortVariables (SortActualSort sort)
 
 verifySortMatchesDeclaration
     :: MetaOrObject level
-    => (Id level -> Either (Error VerifyError) (SortDescription level))
+    => (Id level -> Verifier (SortDescription level))
     -> Set.Set UnifiedSortVariable
     -> SortActual level
     -> SortDescription level
-    -> Either (Error VerifyError) VerifySuccess
+    -> Verifier VerifySuccess
 verifySortMatchesDeclaration
     findSortDescription declaredSortVariables sort sortDescription
   = do

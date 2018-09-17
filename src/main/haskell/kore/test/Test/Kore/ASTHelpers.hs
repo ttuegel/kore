@@ -71,6 +71,7 @@ test_symbolOrAliasSorts =
                 [simpleSortActual]
                 (symbolSentence
                     [anotherSortVariable'] [sortVariableSort'] simpleSortActual)
+                :: Either (Error a) (ApplicationSorts level)
             )
         )
     , testCase "more sorts than the declaration"
@@ -80,6 +81,7 @@ test_symbolOrAliasSorts =
                 [simpleSortActual, simpleSortActual]
                 (symbolSentence
                     [sortVariable'] [simpleSortActual] simpleSortActual)
+                :: Either (Error a) (ApplicationSorts level)
             )
         )
     , testCase "less sorts than the declaration"
@@ -89,6 +91,7 @@ test_symbolOrAliasSorts =
                 []
                 (symbolSentence
                     [sortVariable'] [simpleSortActual] simpleSortActual)
+                :: Either (Error a) (ApplicationSorts level)
             )
         )
     ]

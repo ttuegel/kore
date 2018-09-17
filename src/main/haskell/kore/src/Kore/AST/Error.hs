@@ -21,6 +21,8 @@ module Kore.AST.Error
     , withSentenceContext
     ) where
 
+import Control.Monad.Except
+       ( MonadError )
 import Data.List
        ( intercalate )
 
@@ -33,8 +35,8 @@ import Kore.Error
 {-|'koreFailWithLocations' produces an error result with a context containing
 the provided locations. -}
 koreFailWithLocations
-    :: AstWithLocation astWithLocation
-    => [astWithLocation] -> String -> Either (Error a) b
+    :: (AstWithLocation astWithLocation, MonadError (Error a) m)
+    => [astWithLocation] -> String -> m b
 koreFailWithLocations locations errorMessage =
     withLocationsContext locations (koreFail errorMessage)
 
@@ -42,8 +44,8 @@ koreFailWithLocations locations errorMessage =
 containing the provided locations whenever the provided flag is true.
 -}
 koreFailWithLocationsWhen
-    :: AstWithLocation astWithLocation
-    => Bool -> [astWithLocation] -> String -> Either (Error a) ()
+    :: (AstWithLocation astWithLocation, MonadError (Error a) m)
+    => Bool -> [astWithLocation] -> String -> m ()
 koreFailWithLocationsWhen condition locations errorMessage =
     withLocationsContext locations (koreFailWhen condition errorMessage)
 
@@ -51,8 +53,8 @@ koreFailWithLocationsWhen condition locations errorMessage =
 whenever the given action fails.
 -}
 withLocationsContext
-    :: AstWithLocation astWithLocation
-    => [astWithLocation] -> Either (Error a) result -> Either (Error a) result
+    :: (AstWithLocation astWithLocation, MonadError (Error a) m)
+    => [astWithLocation] -> m result -> m result
 withLocationsContext locations =
     withContext
         (  "("
@@ -88,9 +90,10 @@ withSentenceSymbolContext
 {- | Identify and locate the given alias declaration in the error context.
  -}
 withSentenceAliasContext
-    :: KoreSentenceAlias level
-    -> Either (Error e) a
-    -> Either (Error e) a
+    :: MonadError (Error e) m
+    => KoreSentenceAlias level
+    -> m result
+    -> m result
 withSentenceAliasContext
     SentenceAlias { sentenceAliasAlias = Alias { aliasConstructor } }
   =
@@ -100,17 +103,19 @@ withSentenceAliasContext
 {- | Identify and locate the given axiom declaration in the error context.
  -}
 withSentenceAxiomContext
-    :: KoreSentenceAxiom
-    -> Either (Error e) a
-    -> Either (Error e) a
+    :: MonadError (Error e) m
+    => KoreSentenceAxiom
+    -> m result
+    -> m result
 withSentenceAxiomContext _ = withContext "axiom declaration"
 
 {- | Identify and locate the given sort declaration in the error context.
  -}
 withSentenceSortContext
-    :: KoreSentenceSort level
-    -> Either (Error e) a
-    -> Either (Error e) a
+    :: MonadError (Error e) m
+    => KoreSentenceSort level
+    -> m result
+    -> m result
 withSentenceSortContext
     SentenceSort { sentenceSortName }
   =
@@ -120,9 +125,10 @@ withSentenceSortContext
 {- | Identify and locate the given hooked declaration in the error context.
  -}
 withSentenceHookContext
-    :: KoreSentenceHook
-    -> Either (Error e) a
-    -> Either (Error e) a
+    :: MonadError (Error e) m
+    => KoreSentenceHook
+    -> m result
+    -> m result
 withSentenceHookContext =
     \case
         SentenceHookedSort SentenceSort { sentenceSortName } ->
@@ -137,17 +143,19 @@ withSentenceHookContext =
 {- | Locate the given import declaration in the error context.
  -}
 withSentenceImportContext
-    :: KoreSentenceImport
-    -> Either (Error e) a
-    -> Either (Error e) a
+    :: MonadError (Error e) m
+    => KoreSentenceImport
+    -> m result
+    -> m result
 withSentenceImportContext _ = \go -> go
 
 {- | Identify and  locate the given sentence in the error context.
  -}
 withSentenceContext
-    :: Sentence level UnifiedSortVariable UnifiedPattern Variable
-    -> Either (Error e) a
-    -> Either (Error e) a
+    :: MonadError (Error e) m
+    => Sentence level UnifiedSortVariable UnifiedPattern Variable
+    -> m result
+    -> m result
 withSentenceContext =
     \case
         SentenceAliasSentence s -> withSentenceAliasContext s

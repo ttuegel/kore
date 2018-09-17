@@ -85,14 +85,9 @@ import           Kore.AST.Sentence
                  SentenceSymbol (..) )
 import           Kore.ASTUtils.SmartPatterns
                  ( pattern StringLiteral_ )
-import           Kore.ASTVerifier.Error
-                 ( VerifyError )
-import           Kore.Attribute.Parser
-                 ( parseAttributes )
+import           Kore.ASTVerifier.Verifier
 import           Kore.Builtin.Hook
                  ( Hook (..) )
-import           Kore.Error
-                 ( Error )
 import qualified Kore.Error
 import           Kore.IndexedModule.IndexedModule
                  ( KoreIndexedModule, SortDescription )
@@ -121,24 +116,24 @@ type Function = ApplicationFunctionEvaluator Object Variable
 type SortDeclVerifier =
        KoreSentenceSort Object
     -- ^ Sort declaration to verify
-    -> Either (Error VerifyError) ()
+    -> Verifier ()
 
 type SortVerifier =
-       (Id Object -> Either (Error VerifyError) (SortDescription Object))
+       (Id Object -> Verifier (SortDescription Object))
     -- ^ Find a sort declaration
     -> Sort Object
     -- ^ Sort to verify
-    -> Either (Error VerifyError) ()
+    -> Verifier ()
 
 -- | @SortDeclVerifiers@ associates a @SortDeclVerifier@ with its builtin sort name.
 type SortDeclVerifiers = HashMap String SortDeclVerifier
 
 type SymbolVerifier =
-       (Id Object -> Either (Error VerifyError) (SortDescription Object))
+       (Id Object -> Verifier (SortDescription Object))
     -- ^ Find a sort declaration
     -> KoreSentenceSymbol Object
     -- ^ Symbol declaration to verify
-    -> Either (Error VerifyError) ()
+    -> Verifier ()
 
 {- | @SymbolVerifiers@ associates a @SymbolVerifier@ with each builtin
   symbol name.
@@ -158,9 +153,9 @@ newtype PatternVerifier =
         See also: 'verifyDomainValue'
       -}
       runPatternVerifier
-          :: (Id Object -> Either (Error VerifyError) (SortDescription Object))
+          :: (Id Object -> Verifier (SortDescription Object))
           -> Pattern Object Variable CommonKorePattern
-          -> Either (Error VerifyError) ()
+          -> Verifier ()
     }
 
 instance Semigroup PatternVerifier where
@@ -183,8 +178,7 @@ instance Monoid PatternVerifier where
     mappend = (<>)
 
 type DomainValueVerifier =
-    DomainValue Object (BuiltinDomain CommonKorePattern)
-    -> Either (Error VerifyError) ()
+    DomainValue Object (BuiltinDomain CommonKorePattern) -> Verifier ()
 
 {- | Verify builtin sorts, symbols, and patterns.
  -}
@@ -274,15 +268,15 @@ verifySortDecl SentenceSort { sentenceSortParameters } =
 
  -}
 verifySort
-    :: (Id Object -> Either (Error VerifyError) (SortDescription Object))
+    :: (Id Object -> Verifier (SortDescription Object))
     -> String
     -> Sort Object
-    -> Either (Error VerifyError) ()
+    -> Verifier ()
 verifySort findSort builtinName (SortActualSort SortActual { sortActualName }) =
     do
         SentenceSort { sentenceSortAttributes } <- findSort sortActualName
         let expectHook = Hook (Just builtinName)
-        declHook <- Kore.Error.castError (parseAttributes sentenceSortAttributes)
+        declHook <- parseAttributes sentenceSortAttributes
         Kore.Error.koreFailWhen (expectHook /= declHook)
             ("Sort '" ++ getId sortActualName
                 ++ "' is not hooked to builtin sort '"
@@ -357,11 +351,11 @@ verifyDomainValue builtinSort validate =
     PatternVerifier { runPatternVerifier }
   where
     runPatternVerifier
-        :: (Id Object -> Either (Error VerifyError) (SortDescription Object))
+        :: (Id Object -> Verifier (SortDescription Object))
         -- ^ Function to lookup sorts by identifier
         -> Pattern Object Variable CommonKorePattern
         -- ^ Pattern to verify
-        -> Either (Error VerifyError) ()
+        -> Verifier ()
     runPatternVerifier findSort =
         \case
             DomainValuePattern dv@DomainValue { domainValueSort } ->
@@ -375,9 +369,9 @@ verifyDomainValue builtinSort validate =
         skipOtherSorts
             :: Sort Object
             -- ^ Sort of pattern under verification
-            -> Either (Error VerifyError) ()
+            -> Verifier ()
             -- ^ Verifier run iff pattern sort is hooked to designated builtin
-            -> Either (Error VerifyError) ()
+            -> Verifier ()
         skipOtherSorts sort next = do
             decl <-
                 Except.catchError
@@ -395,7 +389,7 @@ verifyDomainValue builtinSort validate =
 
  -}
 verifyStringLiteral
-    :: (String -> Either (Error VerifyError) ())
+    :: (String -> Verifier ())
     -- ^ validation function
     -> DomainValueVerifier
 verifyStringLiteral validate DomainValue { domainValueChild } =
@@ -412,7 +406,7 @@ verifyStringLiteral validate DomainValue { domainValueChild } =
 parseDomainValue
     :: Parser a
     -> DomainValue Object (BuiltinDomain child)
-    -> Either (Error VerifyError) a
+    -> Verifier a
 parseDomainValue
     parser
     DomainValue { domainValueChild }
@@ -430,7 +424,7 @@ parseDomainValue
 parseString
     :: Parser a
     -> String
-    -> Either (Error VerifyError) a
+    -> Verifier a
 parseString parser lit =
     let parsed = Parsec.parse (parser <* Parsec.eof) "<string literal>" lit
     in castParseError parsed
@@ -614,9 +608,9 @@ wrongArity ctx = verifierBug (ctx ++ ": Wrong number of arguments")
     case an error is thrown.
 
  -}
-runParser :: HasCallStack => String -> Either (Error e) a -> a
-runParser ctx result =
-    case result of
+runParser :: HasCallStack => String -> Verifier a -> a
+runParser ctx verifier =
+    case runVerifier verifier of
         Left e -> verifierBug (ctx ++ ": " ++ Kore.Error.printError e)
         Right a -> a
 

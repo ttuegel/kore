@@ -110,7 +110,7 @@ symbolVerifiers =
     ]
   where
     anySort :: Builtin.SortVerifier
-    anySort = const $ const $ Right ()
+    anySort _ _ = return ()
 
 type Builtin = Set (Kore.ConcretePurePattern Object)
 

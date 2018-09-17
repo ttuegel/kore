@@ -22,6 +22,7 @@ import           Kore.ASTVerifier.DefinitionVerifier
                  defaultAttributesVerification, verifyAndIndexDefinition )
 import           Kore.ASTVerifier.PatternVerifier
                  ( verifyStandalonePattern )
+import           Kore.ASTVerifier.Verifier
 import qualified Kore.Builtin as Builtin
 import           Kore.Error
                  ( printError )
@@ -182,11 +183,11 @@ mainVerify willChkAttr definition =
     in do
       verifyResult <-
         clockSomething "Verifying the definition"
-            (verifyAndIndexDefinition
+            $ runVerifier
+            $ verifyAndIndexDefinition
                 attributesVerification
                 Builtin.koreVerifiers
                 definition
-            )
       case verifyResult of
         Left err1            -> error (printError err1)
         Right indexedModules -> return indexedModules
@@ -203,7 +204,8 @@ mainPatternVerify indexedModule patt =
     do
       verifyResult <-
         clockSomething "Verifying the pattern"
-            (verifyStandalonePattern patternVerifier indexedModule patt)
+            $ runVerifier
+            $ verifyStandalonePattern patternVerifier indexedModule patt
       case verifyResult of
         Left err1 -> error (printError err1)
         Right _   -> return ()

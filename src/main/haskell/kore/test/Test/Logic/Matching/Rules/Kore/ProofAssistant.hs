@@ -28,11 +28,11 @@ import           Kore.AST.PureToKore
 import           Kore.AST.Sentence
 import           Kore.ASTVerifier.DefinitionVerifier
                  ( AttributesVerification (..), verifyAndIndexDefinition )
+import           Kore.ASTVerifier.Verifier
 import           Kore.Building.AsAst
 import           Kore.Building.Patterns
 import           Kore.Building.Sorts
 import qualified Kore.Builtin as Builtin
-import           Kore.Error
 import           Kore.Implicit.Attributes
                  ( ImplicitAttributes )
 import           Kore.IndexedModule.IndexedModule
@@ -2783,17 +2783,16 @@ defaultIndexedModuleWithError
     :: Either (Error MLError) (KoreIndexedModule ImplicitAttributes)
 defaultIndexedModuleWithError = do
     modules <-
-        castError
-        (verifyAndIndexDefinition
+        runIndexer $ verifyAndIndexDefinition
             DoNotVerifyAttributes
             Builtin.koreVerifiers
             definition
-        )
     case Map.lookup moduleName1 modules of
         Just a -> return a
         Nothing ->
             koreFail "Internal error: the implicit kore module was not indexed."
   where
+    runIndexer = castError . runVerifier
     moduleName1 = ModuleName "test-module"
     definition = Definition
         { definitionAttributes = Attributes []
@@ -2838,4 +2837,3 @@ defaultIndexedModuleWithError = do
                 }
             ]
         }
-

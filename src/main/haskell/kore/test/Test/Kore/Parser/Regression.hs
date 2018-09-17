@@ -31,8 +31,8 @@ import           Kore.AST.PureToKore
 import           Kore.AST.Sentence
 import           Kore.ASTPrettyPrint
 import           Kore.ASTVerifier.DefinitionVerifier
+import           Kore.ASTVerifier.Verifier
 import qualified Kore.Builtin as Builtin
-import           Kore.Error
 import           Kore.Implicit.Attributes
                  ( ImplicitAttributes )
 import           Kore.MetaML.Lift
@@ -92,7 +92,7 @@ toByteString (Right definition) =
 verify :: KoreDefinition -> Either String KoreDefinition
 verify definition =
     case
-        verifyDefinition
+        runVerifier $ verifyDefinition
             attributesVerification
             Builtin.koreVerifiers
             definition

@@ -17,10 +17,9 @@ import qualified Data.Map as Map
 import           Kore.AST.Common
 import           Kore.AST.Sentence
 import           Kore.ASTVerifier.AttributesVerifier
-import           Kore.ASTVerifier.Error
 import qualified Kore.ASTVerifier.SentenceVerifier as SentenceVerifier
+import           Kore.ASTVerifier.Verifier
 import qualified Kore.Builtin as Builtin
-import           Kore.Error
 import           Kore.IndexedModule.IndexedModule
 
 {-|'verifyUniqueNames' verifies that names defined in a module are unique both
@@ -29,7 +28,7 @@ verifyUniqueNames
     :: Map.Map String AstLocation
     -- ^ Names that are already defined.
     -> KoreModule
-    -> Either (Error VerifyError) (Map.Map String AstLocation)
+    -> Verifier (Map.Map String AstLocation)
     -- ^ On success returns the names that were previously defined together with
     -- the names defined in the given 'Module'.
 verifyUniqueNames existingNames koreModule =
@@ -44,12 +43,12 @@ verifyModule
     :: AttributesVerification atts
     -> Builtin.Verifiers
     -> KoreIndexedModule atts
-    -> Either (Error VerifyError) VerifySuccess
+    -> Verifier VerifySuccess
 verifyModule attributesVerification builtinVerifiers indexedModule =
     withContext
         ("module '" ++ getModuleName (indexedModuleName indexedModule) ++ "'")
         (do
-            verifyAttributes
+            _ <- verifyAttributes
                 (snd (indexedModuleAttributes indexedModule))
                 attributesVerification
             SentenceVerifier.verifySentences

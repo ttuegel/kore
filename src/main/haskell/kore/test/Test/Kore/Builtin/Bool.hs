@@ -14,8 +14,7 @@ import           Kore.AST.MetaOrObject
 import           Kore.AST.Sentence
 import           Kore.ASTUtils.SmartPatterns
 import           Kore.ASTVerifier.DefinitionVerifier
-import           Kore.ASTVerifier.Error
-                 ( VerifyError )
+import           Kore.ASTVerifier.Verifier
 import qualified Kore.Builtin as Builtin
 import qualified Kore.Builtin.Bool as Bool
 import           Kore.Builtin.Hook
@@ -195,7 +194,9 @@ boolDefinition =
         }
 
 indexedModules :: Map ModuleName (KoreIndexedModule StepperAttributes)
-indexedModules = either (error . Kore.Error.printError) id (verify boolDefinition)
+indexedModules =
+    either (error . Kore.Error.printError) id
+        (runVerifier $ verify boolDefinition)
 
 indexedModule :: KoreIndexedModule StepperAttributes
 Just indexedModule = Map.lookup boolModuleName indexedModules
@@ -205,8 +206,7 @@ evaluators = Builtin.evaluators Bool.builtinFunctions indexedModule
 
 verify
     :: KoreDefinition
-    -> Either (Kore.Error.Error VerifyError)
-        (Map ModuleName (KoreIndexedModule StepperAttributes))
+    -> Verifier (Map ModuleName (KoreIndexedModule StepperAttributes))
 verify = verifyAndIndexDefinition attrVerify Builtin.koreVerifiers
   where
     attrVerify = defaultAttributesVerification Proxy

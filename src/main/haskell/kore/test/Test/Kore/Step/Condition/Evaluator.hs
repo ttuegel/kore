@@ -17,7 +17,7 @@ import           Kore.AST.Sentence
 import           Kore.ASTUtils.SmartConstructors
 import           Kore.ASTUtils.SmartPatterns
 import           Kore.ASTVerifier.DefinitionVerifier
-import           Kore.ASTVerifier.Error
+import           Kore.ASTVerifier.Verifier
 import qualified Kore.Builtin as Builtin
 import           Kore.Error
 import           Kore.IndexedModule.IndexedModule
@@ -39,7 +39,7 @@ verify'
     :: KoreDefinition
     -> Either (Kore.Error.Error VerifyError)
         (Map ModuleName (KoreIndexedModule StepperAttributes))
-verify' = verifyAndIndexDefinition attrVerify Builtin.koreVerifiers
+verify' = runVerifier . verifyAndIndexDefinition attrVerify Builtin.koreVerifiers
   where
     attrVerify = defaultAttributesVerification Proxy
 

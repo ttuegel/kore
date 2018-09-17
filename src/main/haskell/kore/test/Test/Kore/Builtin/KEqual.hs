@@ -24,11 +24,9 @@ import           Kore.AST.PureToKore
 import           Kore.AST.Sentence
 import           Kore.ASTUtils.SmartPatterns
 import           Kore.ASTVerifier.DefinitionVerifier
-import           Kore.ASTVerifier.Error
-                 ( VerifyError )
+import           Kore.ASTVerifier.Verifier
 import qualified Kore.Builtin as Builtin
 import qualified Kore.Builtin.KEqual as KEqual
-import qualified Kore.Error as Error
 import           Kore.IndexedModule.IndexedModule
 import           Kore.IndexedModule.MetadataTools
 import           Kore.Step.ExpandedPattern
@@ -119,9 +117,7 @@ kEqualDefinition =
         }
 
 indexedModules :: Map ModuleName (KoreIndexedModule StepperAttributes)
-indexedModules =
-    either (error . Error.printError) id
-        (verify kEqualDefinition)
+Right indexedModules = runVerifier (verify kEqualDefinition)
 
 indexedModule :: KoreIndexedModule StepperAttributes
 Just indexedModule = Map.lookup kEqualModuleName indexedModules
@@ -131,7 +127,7 @@ evaluators = Builtin.evaluators KEqual.builtinFunctions indexedModule
 
 verify
     :: KoreDefinition
-    -> Either (Error.Error VerifyError)
+    -> Verifier
         (Map ModuleName (KoreIndexedModule StepperAttributes))
 verify = verifyAndIndexDefinition attrVerify Builtin.koreVerifiers
     where

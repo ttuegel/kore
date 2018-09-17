@@ -23,11 +23,9 @@ import Kore.AST.Kore
 import Kore.AST.MetaOrObject
        ( Object )
 import Kore.AST.Sentence
-import Kore.ASTVerifier.Error
-import Kore.Attribute.Parser
-       ( parseAttributes )
+import Kore.ASTVerifier.Verifier
 import Kore.Builtin.Hook
-import Kore.Error
+       ( Hook (..), emptyHook )
 import Kore.IndexedModule.IndexedModule
        ( KoreIndexedModule )
 import Kore.IndexedModule.Resolvers
@@ -44,7 +42,7 @@ data AttributesVerification atts
 verifyAttributes
     :: Attributes
     -> AttributesVerification atts
-    -> Either (Error VerifyError) VerifySuccess
+    -> Verifier VerifySuccess
 verifyAttributes
     (Attributes patterns)
     (VerifyAttributes _)
@@ -64,7 +62,7 @@ verifyAttributes _ DoNotVerifyAttributes =
 
 verifyAttributePattern
     :: Pattern Object variable (KorePattern variable)
-    -> Either (Error VerifyError) VerifySuccess
+    -> Verifier VerifySuccess
 verifyAttributePattern (ApplicationPattern _) = verifySuccess
 verifyAttributePattern _
      = koreFail "Non-application attributes are not supported"
@@ -80,14 +78,14 @@ verifyHookAttribute
     :: KoreIndexedModule atts
     -> AttributesVerification atts
     -> Attributes
-    -> Either (Error VerifyError) Hook
+    -> Verifier Hook
 verifyHookAttribute indexedModule =
     \case
         DoNotVerifyAttributes ->
             -- Do not attempt to parse, verify, or return the hook attribute.
             \_ -> return emptyHook
         VerifyAttributes _ -> \attributes -> do
-            hook@Hook { getHook } <- castError (parseAttributes attributes)
+            hook@Hook { getHook } <- parseAttributes attributes
             case getHook of
                 Nothing ->
                     -- The hook attribute is absent; nothing more to verify.
@@ -108,14 +106,14 @@ verifyHookAttribute indexedModule =
 verifyNoHookAttribute
     :: AttributesVerification atts
     -> Attributes
-    -> Either (Error VerifyError) ()
+    -> Verifier ()
 verifyNoHookAttribute =
     \case
         DoNotVerifyAttributes ->
             -- Do not verify anything.
             \_ -> return ()
         VerifyAttributes _ -> \attributes -> do
-            Hook { getHook } <- castError (parseAttributes attributes)
+            Hook { getHook } <- parseAttributes attributes
             case getHook of
                 Nothing ->
                     -- The hook attribute is (correctly) absent.

@@ -21,6 +21,7 @@ import           Kore.AST.PureToKore
 import           Kore.AST.Sentence
 import           Kore.ASTUtils.SmartPatterns
 import           Kore.ASTVerifier.DefinitionVerifier
+import           Kore.ASTVerifier.Verifier
 import qualified Kore.Builtin as Builtin
 import           Kore.Error
                  ( printError )
@@ -198,10 +199,11 @@ testIndexedModule :: KoreIndexedModule StepperAttributes
 testIndexedModule =
     let
         attributesVerification = defaultAttributesVerification Proxy
-        verifyResult = verifyAndIndexDefinition
-            attributesVerification
-            Builtin.koreVerifiers
-            testDef
+        verifyResult =
+            runVerifier $ verifyAndIndexDefinition
+                attributesVerification
+                Builtin.koreVerifiers
+                testDef
     in
         case verifyResult of
             Left err1            -> error (printError err1)

@@ -18,6 +18,7 @@ import           Kore.AST.Sentence
 import qualified Kore.ASTUtils.SmartConstructors as Kore
 import           Kore.ASTUtils.SmartPatterns
 import           Kore.ASTVerifier.DefinitionVerifier
+import           Kore.ASTVerifier.Verifier
 import           Kore.Attribute.Parser
                  ( ParseAttributes (..) )
 import qualified Kore.Builtin as Builtin
@@ -452,7 +453,11 @@ verify
     -> Map ModuleName (KoreIndexedModule a)
 verify defn =
     either (error . Kore.Error.printError) id
-        (verifyAndIndexDefinition attrVerify Builtin.koreVerifiers defn)
+        $ runVerifier
+        $ verifyAndIndexDefinition
+            attrVerify
+            Builtin.koreVerifiers
+            defn
   where
     attrVerify = defaultAttributesVerification Proxy
 

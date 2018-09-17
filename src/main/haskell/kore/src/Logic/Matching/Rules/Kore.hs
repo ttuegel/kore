@@ -23,6 +23,8 @@ import           Kore.AST.PureToKore
                  ( patternPureToKore )
 import           Kore.ASTVerifier.PatternVerifier
                  ( verifyPattern )
+import           Kore.ASTVerifier.Verifier
+                 ( runVerifier )
 import           Kore.Error
                  ( Error, castError, koreFail, koreFailWhen, withContext )
 import           Kore.IndexedModule.IndexedModule
@@ -57,7 +59,7 @@ formulaVerifier
     -> CommonMetaPattern
     -> Either (Error MLError) ()
 formulaVerifier indexedModule formula = do
-    castError
+    _ <- (castError . runVerifier)
         (verifyPattern
             mempty -- Kore.Builtin.Verifiers: don't validate builtin patterns
             indexedModule
