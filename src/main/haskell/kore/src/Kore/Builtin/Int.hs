@@ -32,8 +32,6 @@ module Kore.Builtin.Int
     , asPartialExpandedPattern
     ) where
 
-import           Control.Monad
-                 ( void )
 import           Control.Monad.Except
                  ( ExceptT )
 import qualified Control.Monad.Except as Except
@@ -149,7 +147,8 @@ symbolVerifiers =
 patternVerifier :: Builtin.PatternVerifier
 patternVerifier =
     Builtin.verifyDomainValue sort
-    (void . Builtin.parseDomainValue parse)
+    $ Builtin.verifyStringLiteral
+    $ Builtin.parseStringLiteral parseBuiltinDomain
 
 {- | Parse an integer string literal.
  -}
@@ -157,6 +156,10 @@ parse :: Builtin.Parser Integer
 parse = Parsec.signed noSpace Parsec.decimal
   where
     noSpace = pure ()
+
+parseBuiltinDomain
+    :: Builtin.Parser (Kore.BuiltinDomain child)
+parseBuiltinDomain = Kore.BuiltinDomainInteger <$> parse
 
 {- | Abort function evaluation if the argument is not a Int domain value.
 

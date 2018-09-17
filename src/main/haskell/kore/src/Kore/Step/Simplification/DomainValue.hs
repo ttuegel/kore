@@ -71,3 +71,5 @@ simplifyBuiltinDomain =
             _list <- sequence _list
             return (BuiltinDomainList <$> sequenceA _list)
         BuiltinDomainSet set -> (return . pure) (BuiltinDomainSet set)
+        BuiltinDomainInteger int -> (return . pure) (BuiltinDomainInteger int)
+        BuiltinDomainBool bool -> (return . pure) (BuiltinDomainBool bool)

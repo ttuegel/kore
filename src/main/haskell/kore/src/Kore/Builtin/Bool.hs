@@ -26,8 +26,6 @@ module Kore.Builtin.Bool
     , asExpandedPattern
     ) where
 
-import           Control.Monad
-                 ( void )
 import           Data.Functor
                  ( ($>) )
 import qualified Data.HashMap.Strict as HashMap
@@ -91,7 +89,8 @@ symbolVerifiers =
 patternVerifier :: Builtin.PatternVerifier
 patternVerifier =
     Builtin.verifyDomainValue sort
-    (void . Builtin.parseDomainValue parse)
+    $ Builtin.verifyStringLiteral
+    $ Builtin.parseStringLiteral parseBuiltinDomain
 
 {- | Parse an integer string literal.
  -}
@@ -100,6 +99,9 @@ parse = (Parsec.<|>) true false
   where
     true = Parsec.string "true" $> True
     false = Parsec.string "false" $> False
+
+parseBuiltinDomain :: Builtin.Parser (Kore.BuiltinDomain child)
+parseBuiltinDomain = Kore.BuiltinDomainBool <$> parse
 
 {- | Render a 'Bool' as a domain value pattern of the given sort.
 

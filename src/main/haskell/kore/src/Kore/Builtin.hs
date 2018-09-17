@@ -177,6 +177,10 @@ asPattern
             List.asPattern indexedModule domainValueSort <*> pure list
         Kore.BuiltinDomainSet set ->
             Set.asPattern indexedModule domainValueSort <*> pure set
+        Kore.BuiltinDomainInteger int ->
+            Int.asPattern domainValueSort <$> pure int
+        Kore.BuiltinDomainBool bool ->
+            Bool.asPattern domainValueSort <$> pure bool
 
 {- | Externalize all builtin domain values in the given pattern.
 
@@ -220,6 +224,8 @@ asMetaPattern =
         Kore.BuiltinDomainMap _ -> notImplementedInternal
         Kore.BuiltinDomainList _ -> notImplementedInternal
         Kore.BuiltinDomainSet _ -> notImplementedInternal
+        Kore.BuiltinDomainInteger _ -> notImplementedInternal
+        Kore.BuiltinDomainBool _ -> notImplementedInternal
 
 {- | Throw an error for operations not implemented for internal domain values.
  -}

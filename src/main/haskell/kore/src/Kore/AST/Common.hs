@@ -974,6 +974,8 @@ data BuiltinDomain child
     | BuiltinDomainMap !(Map (ConcretePurePattern Object) child)
     | BuiltinDomainList !(Seq child)
     | BuiltinDomainSet !(Set (ConcretePurePattern Object))
+    | BuiltinDomainInteger !Integer
+    | BuiltinDomainBool !Bool
     deriving (Foldable, Functor, Generic, Traversable)
 
 deriveEq1 ''BuiltinDomain
@@ -991,6 +993,10 @@ instance Hashable child => Hashable (BuiltinDomain child) where
                 salt `hashWithSalt` (2::Int) `hashWithSalt` list
             BuiltinDomainSet (Foldable.toList -> set) ->
                 salt `hashWithSalt` (3::Int) `hashWithSalt` set
+            BuiltinDomainInteger int ->
+                salt `hashWithSalt` (4::Int) `hashWithSalt` int
+            BuiltinDomainBool bool ->
+                salt `hashWithSalt` (5::Int) `hashWithSalt` bool
 
 instance NFData child => NFData (BuiltinDomain child)
 

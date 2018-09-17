@@ -35,6 +35,7 @@ module Kore.Builtin.Builtin
     , verifyStringLiteral
     , parseDomainValue
     , parseString
+    , parseStringLiteral
       -- * Implementing builtin functions
     , notImplemented
     , unaryOperator
@@ -152,10 +153,10 @@ newtype PatternVerifier =
 
         See also: 'verifyDomainValue'
       -}
-      runPatternVerifier
+      verifyPattern
           :: (Id Object -> Verifier (SortDescription Object))
           -> Pattern Object Variable CommonKorePattern
-          -> Verifier ()
+          -> Verifier (Pattern Object Variable CommonKorePattern)
     }
 
 instance Semigroup PatternVerifier where
@@ -166,19 +167,19 @@ instance Semigroup PatternVerifier where
      -}
     (<>) a b =
         PatternVerifier
-        { runPatternVerifier = \findSort pat -> do
-            runPatternVerifier a findSort pat
-            runPatternVerifier b findSort pat
+        { verifyPattern = \findSort pat1 -> do
+            pat2 <- verifyPattern a findSort pat1
+            verifyPattern b findSort pat2
         }
 
 instance Monoid PatternVerifier where
     {- | Trivial 'PatternVerifier' (always succeeds).
      -}
-    mempty = PatternVerifier { runPatternVerifier = \_ _ -> return () }
+    mempty = PatternVerifier { verifyPattern = \_ pat -> return pat }
     mappend = (<>)
 
-type DomainValueVerifier =
-    DomainValue Object (BuiltinDomain CommonKorePattern) -> Verifier ()
+type DomainValueVerifier child =
+    DomainValue Object child -> Verifier (DomainValue Object child)
 
 {- | Verify builtin sorts, symbols, and patterns.
  -}
@@ -344,58 +345,71 @@ verifySymbolArguments
  -}
 verifyDomainValue
     :: String  -- ^ Builtin sort name
-    -> DomainValueVerifier
+    -> DomainValueVerifier (BuiltinDomain CommonKorePattern)
     -- ^ validation function
     -> PatternVerifier
 verifyDomainValue builtinSort validate =
-    PatternVerifier { runPatternVerifier }
+    PatternVerifier { verifyPattern }
   where
-    runPatternVerifier
+    verifyPattern
         :: (Id Object -> Verifier (SortDescription Object))
         -- ^ Function to lookup sorts by identifier
         -> Pattern Object Variable CommonKorePattern
         -- ^ Pattern to verify
-        -> Verifier ()
-    runPatternVerifier findSort =
-        \case
+        -> Verifier (Pattern Object Variable CommonKorePattern)
+    verifyPattern findSort pat =
+        case pat of
             DomainValuePattern dv@DomainValue { domainValueSort } ->
                 Kore.Error.withContext
-                    ("Verifying builtin sort '" ++ builtinSort ++ "'")
-                    (skipOtherSorts domainValueSort (validate dv))
-            _ -> return ()  -- no domain value to verify
+                    ("Verifying domain value in builtin sort '"
+                        ++ builtinSort ++ "'")
+                    (skipOtherSorts pat domainValueSort
+                        (DomainValuePattern <$> validate dv)
+                    )
+            _ -> return pat  -- no domain value to verify
       where
         -- | Run @next@ if @sort@ is hooked to @builtinSort@; do nothing
         -- otherwise.
         skipOtherSorts
-            :: Sort Object
+            :: a
+            -- ^ default value
+            -> Sort Object
             -- ^ Sort of pattern under verification
-            -> Verifier ()
+            -> Verifier a
             -- ^ Verifier run iff pattern sort is hooked to designated builtin
-            -> Verifier ()
-        skipOtherSorts sort next = do
+            -> Verifier a
+        skipOtherSorts a sort next = do
             decl <-
                 Except.catchError
                     (Just <$> verifySort findSort builtinSort sort)
                     (\_ -> return Nothing)
             case decl of
-              Nothing -> return ()
+              Nothing -> return a
               Just () -> next
 
 {- | Verify a literal string domain value.
 
-  If the given domain value is not a literal string, it is skipped.
+    It is an error if the domain value pattern is not a literal string, but if
+    the domain value has already been decoded into 'BuiltinDomain', it is
+    skipped.
 
-  See also: 'verifyDomainValue'
+    See also: 'verifyDomainValue'
 
  -}
 verifyStringLiteral
-    :: (String -> Verifier ())
+    :: (String -> Verifier (BuiltinDomain child))
     -- ^ validation function
-    -> DomainValueVerifier
-verifyStringLiteral validate DomainValue { domainValueChild } =
+    -> DomainValueVerifier (BuiltinDomain child)
+verifyStringLiteral validate dv@DomainValue { domainValueChild } =
     case domainValueChild of
-        BuiltinDomainPattern (StringLiteral_ lit) -> validate lit
-        _ -> return ()
+        BuiltinDomainPattern pat ->
+            case pat of
+                StringLiteral_ lit ->
+                    do
+                        builtin <- validate lit
+                        return dv { domainValueChild = builtin }
+                _ -> koreFail "Expected string literal"
+        _ -> return dv
 
 {- | Run a parser in a domain value pattern.
 
@@ -411,7 +425,7 @@ parseDomainValue
     parser
     DomainValue { domainValueChild }
   =
-    Kore.Error.withContext "While parsing domain value"
+    Kore.Error.withContext "Parsing domain value"
         (case domainValueChild of
             BuiltinDomainPattern (StringLiteral_ lit) ->
                 parseString parser lit
@@ -428,6 +442,33 @@ parseString
 parseString parser lit =
     let parsed = Parsec.parse (parser <* Parsec.eof) "<string literal>" lit
     in castParseError parsed
+  where
+    castParseError =
+        either (Kore.Error.koreFail . Parsec.parseErrorPretty) pure
+
+{- | Run a parser in a domain value pattern.
+
+  An error is thrown if the domain value does not contain a literal string.
+  The parsed value is returned.
+
+ -}
+parseStringLiteral
+    :: Parser a
+    -> String
+    -> Verifier a
+parseStringLiteral
+    parser
+    lit
+  =
+    Kore.Error.withContext "Parsing string literal"
+        (
+            let parsed =
+                    Parsec.parse
+                        (parser <* Parsec.eof)
+                        "<string literal>"
+                        lit
+            in castParseError parsed
+        )
   where
     castParseError =
         either (Kore.Error.koreFail . Parsec.parseErrorPretty) pure

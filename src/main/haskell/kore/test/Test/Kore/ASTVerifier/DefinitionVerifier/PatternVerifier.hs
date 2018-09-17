@@ -480,8 +480,8 @@ test_patternVerifier =
             \expecting '+', '-', or integer\n")
         (ErrorStack
             [ "\\dv (<test data>)"
-            , "Verifying builtin sort 'INT.Int'"
-            , "While parsing domain value"
+            , "Verifying domain value in builtin sort 'INT.Int'"
+            , "Parsing string literal"
             ]
         )
         (DomainValuePattern DomainValue
@@ -543,8 +543,8 @@ test_patternVerifier =
             \expecting \"false\" or \"true\"\n")
         (ErrorStack
             [ "\\dv (<test data>)"
-            , "Verifying builtin sort 'BOOL.Bool'"
-            , "While parsing domain value"
+            , "Verifying domain value in builtin sort 'BOOL.Bool'"
+            , "Parsing string literal"
             ]
         )
         (DomainValuePattern DomainValue

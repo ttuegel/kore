@@ -147,6 +147,8 @@ instance
             BuiltinDomainMap _ -> Builtin.notImplementedInternal
             BuiltinDomainList _ -> Builtin.notImplementedInternal
             BuiltinDomainSet _ -> Builtin.notImplementedInternal
+            BuiltinDomainInteger _ -> Builtin.notImplementedInternal
+            BuiltinDomainBool _ -> Builtin.notImplementedInternal
 
 instance Unparse child => Unparse (Equals level child) where
     unparse
