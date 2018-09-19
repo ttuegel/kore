@@ -24,14 +24,12 @@ import Data.Text.Prettyprint.Doc hiding
 import Data.Text.Prettyprint.Doc.Render.String
        ( renderString )
 
-import           Kore.AST.Common
-import           Kore.AST.Kore
-import           Kore.AST.MetaOrObject
-import           Kore.AST.Sentence
-import qualified Kore.Builtin.Bool as Builtin.Bool
-import qualified Kore.Builtin.Int as Builtin.Int
-import           Kore.Parser.CString
-                 ( escapeCString )
+import Kore.AST.Common
+import Kore.AST.Kore
+import Kore.AST.MetaOrObject
+import Kore.AST.Sentence
+import Kore.Parser.CString
+       ( escapeCString )
 
 {- | Class of types that can be rendered in concrete Kore syntax.
 
@@ -143,10 +141,15 @@ instance
         unparsedChild =
             case domainValueChild of
                 BuiltinDomainPattern child -> unparse child
+                BuiltinDomainMap _ ->
+                    error "Unparsing BuiltinDomainMap not implemented"
+    {-
+                    unparse (Builtin.Map.asPattern domainValueSort m)
                 BuiltinDomainInteger i ->
                     unparse (Builtin.Int.asPattern domainValueSort i)
                 BuiltinDomainBool b ->
                     unparse (Builtin.Bool.asPattern domainValueSort b)
+    -}
 
 instance Unparse child => Unparse (Equals level child) where
     unparse
