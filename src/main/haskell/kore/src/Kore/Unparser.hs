@@ -136,19 +136,23 @@ instance
     unparse DomainValue { domainValueSort, domainValueChild } =
         "\\dv"
         <> parameters [domainValueSort]
-        <> arguments' [unparsedChild]
+        <> arguments' [unparse domainValueChild]
       where
-        unparsedChild =
-            case domainValueChild of
-                BuiltinDomainPattern child -> unparse child
-                BuiltinDomainMap _ ->
-                    error "Unparsing BuiltinDomainMap not implemented"
+
+instance
+    Unparse child => Unparse (BuiltinDomain child)
+  where
+    unparse =
+        \case
+            BuiltinDomainPattern child -> unparse child
+            BuiltinDomainMap _ ->
+                error "Unparsing BuiltinDomainMap not implemented"
     {-
-                    unparse (Builtin.Map.asPattern domainValueSort m)
-                BuiltinDomainInteger i ->
-                    unparse (Builtin.Int.asPattern domainValueSort i)
-                BuiltinDomainBool b ->
-                    unparse (Builtin.Bool.asPattern domainValueSort b)
+                unparse (Builtin.Map.asPattern domainValueSort m)
+            BuiltinDomainInteger i ->
+                unparse (Builtin.Int.asPattern domainValueSort i)
+            BuiltinDomainBool b ->
+                unparse (Builtin.Bool.asPattern domainValueSort b)
     -}
 
 instance Unparse child => Unparse (Equals level child) where
