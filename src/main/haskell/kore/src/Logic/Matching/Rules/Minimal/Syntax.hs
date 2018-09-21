@@ -14,15 +14,10 @@ import Control.Monad
        ( void )
 import Data.Char
        ( isAlphaNum )
-import Data.Text
-       ( Text )
-import Data.Text.Prettyprint.Doc
-       ( Doc, Pretty (pretty), sep, tupled, (<>) )
 import Text.Megaparsec hiding
        ( some )
 import Text.Megaparsec.Char
 
-import Kore.Unparser
 import Logic.Matching.Rules.Minimal
 
 type Parser = Parsec String String
@@ -109,6 +104,7 @@ parseMLRule pLabel pVar pTerm pIx =
 
 -- | Displays proof rules in the documented concrete syntax,
 -- assuming pretty-printing instances for all the type parameters
+{-
 instance (Unparse label, Unparse var, Unparse term, Pretty hyp)
        => Pretty (MLRule label var term hyp) where
   pretty proofRule = let
@@ -128,3 +124,4 @@ instance (Unparse label, Unparse var, Unparse term, Pretty hyp)
     PropagateExists lbl pos x p -> rule "propagate-exists" [unparse lbl,pretty pos,unparse x,unparse p]
     Existence x -> rule "exists" [unparse x]
     Singvar v p path1 path2 -> rule "singvar" [unparse v,unparse p,sep (map pretty path1),sep (map pretty path2)]
+-}

@@ -525,7 +525,7 @@ data DomainValue level child = DomainValue
     { domainValueSort  :: !(Sort level)
     , domainValueChild :: !child
     }
-    deriving (Eq, Generic, Ord, Show)
+    deriving (Eq, Foldable, Functor, Generic, Ord, Show, Traversable)
 
 instance Hashable child => Hashable (DomainValue level child)
 
@@ -941,7 +941,7 @@ data Pattern level variable child where
 data BuiltinDomain child
     = BuiltinDomainPattern !child
     | BuiltinDomainMap !(Map (Fix (Pattern Object Variable)) (Fix (Pattern Object Variable)))
-    deriving (Generic)
+    deriving (Foldable, Functor, Generic, Traversable)
 
 instance Hashable child => Hashable (BuiltinDomain child) where
     hashWithSalt salt =

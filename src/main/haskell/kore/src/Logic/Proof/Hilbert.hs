@@ -14,10 +14,9 @@ module Logic.Proof.Hilbert
     , emptyProof
     , add
     , derive
-    , renderProof
+    -- , unparseProof
     ) where
 
-import           Data.Foldable
 import           Data.Map.Strict
                  ( Map )
 import qualified Data.Map.Strict as Map
@@ -27,7 +26,6 @@ import qualified Data.Sequence as Seq
 import           Data.Text.Prettyprint.Doc
 
 import Kore.Error
-import Kore.Unparser
 import Logic.Matching.Error
 
 data Proof ix rule formula =
@@ -56,17 +54,23 @@ add verifier proof ix formula = do
     , derivations = derivations proof
     }
 
-renderProof :: (Ord ix, Pretty ix, Pretty (rule ix), Unparse formula)
-            => Proof ix rule formula -> Doc ann
-renderProof proof = vcat
-    [ pretty ix <+> colon <+> unparse formula <> justification ix
-    | (ix,formula) <- toList (claims proof)
-    ]
+{-
+unparseProof :: (Ord ix, Pretty ix, Pretty (rule ix))
+            => Proof ix LargeRule (CommonPurePattern Meta) -> Unparser (Doc ann)
+unparseProof proof = do
+    vcat <$> traverse unparseLine (toList $ claims proof)
   where
+    unparseLine (ix, _formula) = do
+        _formula <- unparsePurePattern _formula
+        justify <- justification ix
+        return (pretty ix <+> colon <+> _formula <> justify)
     justification ix =
         case Map.lookup ix (derivations proof) of
-            Nothing   -> emptyDoc
-            Just rule -> emptyDoc <+> "by" <+> pretty rule
+            Nothing   -> return mempty
+            Just _rule -> do
+                _rule <- unparseLargeRule (pretty <$> _rule)
+                return (mempty <+> "by" <+> _rule)
+-}
 
 class (Traversable rule, Eq formula)
     => ProofSystem error rule formula | rule -> formula error

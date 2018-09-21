@@ -64,7 +64,6 @@ import           Kore.Parser.Lexeme
 import           Kore.Parser.ParserUtils
                  ( Parser )
 import qualified Kore.Parser.ParserUtils as ParserUtils
-import           Kore.Unparser
 
 {-|'sortVariableParser' parses either an @object-sort-variable@, or a
 @meta-sort-variable@.
@@ -657,8 +656,8 @@ unsupportedPatternType
     :: Show level => level -> MLPatternType -> Parser a
 unsupportedPatternType level patternType =
     fail
-        (  "Cannot have a "
-        ++ unparseToString patternType
+        (  "Cannot have a \\"
+        ++ patternString patternType
         ++ " " ++ show level ++ " pattern.")
 
 {-|'mlConstructorRemainderParser' represents a continuation parser for

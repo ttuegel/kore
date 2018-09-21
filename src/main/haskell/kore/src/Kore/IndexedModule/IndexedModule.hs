@@ -108,6 +108,7 @@ data IndexedModule sortParam pat variable atts =
         -- ^ map from builtin domain (symbol and sort) identifiers to the hooked
         -- identifiers
     }
+    deriving (Functor)
 
 -- |Convenient notation for retrieving a sentence from a
 -- @(attributes,sentence)@ pair format.

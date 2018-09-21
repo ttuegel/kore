@@ -9,73 +9,59 @@ Stability   : experimental
 Portability : portable
 -}
 
-{-# LANGUAGE AllowAmbiguousTypes       #-}
-{-# LANGUAGE ConstraintKinds           #-}
-{-# LANGUAGE DeriveFoldable            #-}
-{-# LANGUAGE DeriveFunctor             #-}
-{-# LANGUAGE DeriveGeneric             #-}
-{-# LANGUAGE DeriveTraversable         #-}
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE FunctionalDependencies    #-}
-{-# LANGUAGE LambdaCase                #-}
-{-# LANGUAGE MultiParamTypeClasses     #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE PatternSynonyms           #-}
-{-# LANGUAGE Rank2Types                #-}
-{-# LANGUAGE TypeApplications          #-}
-{-# LANGUAGE TypeFamilies              #-}
-{-# LANGUAGE TypeSynonymInstances      #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -Wno-unused-matches    #-}
 {-# OPTIONS_GHC -Wno-name-shadowing    #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns  #-}
 
 
 module Kore.Proof.Proof
-  ( PropF(..)
-  , Prop
-  , Term
-  , Var
-  , Path
-  , Proof
-  , pattern By
-  , useRule
-  , interpretRule
-  , impossible
-  , LargeRule(..)
-  , getConclusion
-  , getJustification
-  , getAssumptions
-  , getFreeVars
-  , assume
-  , varS
-  , symS
-  )
-where
+    ( PropF(..)
+    , Prop
+    , Term
+    , Var
+    , Path
+    , Proof
+    , pattern By
+    , unparseProp
+    , unparseTerm
+    , useRule
+    , interpretRule
+    , impossible
+    , LargeRule(..)
+    , getConclusion
+    , getJustification
+    , getAssumptions
+    , getFreeVars
+    , assume
+    , varS
+    , symS
+    ) where
 
 import           Control.Lens
+import           Control.Monad
+                 ( (>=>) )
 import           Data.Foldable
 import           Data.Functor.Foldable
+                 ( Fix (..) )
+import qualified Data.Functor.Foldable as Functor.Foldable
+import           Data.Hashable
 import           Data.Maybe
 import           Data.Reflection
 import qualified Data.Set as S
-import           Kore.AST.Common
-import           Kore.AST.MetaOrObject
-import           Kore.AST.PureML
-import           Kore.IndexedModule.MetadataTools
+import           Data.Text.Prettyprint.Doc as Pretty
+import           GHC.Generics
+                 ( Generic )
 
-import Data.Text.Prettyprint.Doc as P
-
-
+import Kore.AST.Common
+import Kore.AST.MetaOrObject
+import Kore.AST.PureML
 import Kore.ASTPrettyPrint
 import Kore.ASTUtils.SmartConstructors
 import Kore.ASTUtils.SmartPatterns
 import Kore.ASTUtils.Substitution
+import Kore.IndexedModule.MetadataTools
 import Kore.Unparser
-
-import Data.Hashable
-import GHC.Generics
-       ( Generic )
 
 
 -- A note about partial pattern matches:
@@ -122,6 +108,9 @@ data PropF formula rules assumption subproof
   deriving(Functor, Foldable, Traversable, Show, Generic)
 
 type Prop formula rules = Fix (PropF formula rules formula)
+
+unparseProp :: Prop Term LargeRule -> Unparser (Doc ann)
+unparseProp = Functor.Foldable.fold (sequence >=> unparsePropF)
 
 pattern By
     :: formula
@@ -221,79 +210,125 @@ data LargeRule subproof =
 
 instance Hashable subproof => Hashable (LargeRule subproof)
 
-instance Pretty a => Pretty (LargeRule a) where
-    pretty e = sep $ case e of
-        Assumption _
-            -> ["Assumption"]
-        Discharge a b
-            -> ["Discharge", unparse a, pretty b]
-        Abstract var a
-            -> ["Abstract", unparse var, pretty a]
-        ForallElim a b
-            -> ["ForallElim", unparse a, pretty b]
-        AndIntro a b
-            -> ["AndIntro", pretty a, pretty b]
-        AndElimR a
-            -> ["AndElimR", pretty a]
-        AndElimL a
-            -> ["AndElimL", pretty a]
-        OrIntroL a b
-            -> ["OrIntroL", pretty a, unparse b]
-        OrIntroR a b
-            -> ["OrIntroR", unparse a, pretty b]
-        OrElim a b c
-            -> ["OrElim", pretty a, pretty b, pretty c]
-        TopIntro
-            -> ["TopIntro"]
-        ExistsIntro var a b
-            -> ["ExistsIntro", unparse var, unparse a, pretty b]
-        ExistsElim a var b c
-            -> ["ExistsElim", pretty a, unparse var, unparse b, pretty c]
-        ModusPonens a b
-            -> ["ModusPonens", pretty a, pretty b]
-        FunctionalSubst var1 a var2 b
-            -> ["FunctionalSubst", unparse var1, unparse a, unparse var2, unparse b]
-        FunctionalVar var1 var2
-            -> ["FunctionalVar", unparse var1, unparse var2]
-        EqualityIntro a
-            -> ["EqualityIntro", unparse a]
-        EqualityElim a b c p
-            -> ["EqualityElim", unparse a, unparse b, unparse c, pretty p]
-        MembershipForall var a
-            -> ["MembershipForall", unparse var, unparse a]
-        MembershipEq var1 var2
-            -> ["MembershipEq", unparse var1, unparse var2]
-        MembershipNot var a
-            -> ["MembershipNot", unparse var, unparse a]
-        MembershipAnd var a b
-            -> ["MembershipAnd", unparse var, unparse a, unparse b]
-        MembershipExists var1 var2 a
-            -> ["MembershipExists", unparse var1, unparse var2, unparse a]
-        MembershipCong var1 var2 pos a
-            -> ["MembershipCong", unparse var1, unparse var2, pretty pos, unparse a]
+unparseTerm :: Term -> Unparser (Doc ann)
+unparseTerm = unparsePurePattern
 
-instance
-  ( Unparse formula
-  , Pretty (rules subproof)
-  , Pretty subproof
-  , Unparse assumption
-  ) => Pretty (PropF formula rules assumption subproof) where
-    pretty (ByF a b c) = "|- " <> unparse a <> P.line <> "By " <> pretty b
+unparseLargeRule :: LargeRule (Doc ann) -> Unparser (Doc ann)
+unparseLargeRule e = Pretty.sep <$> unparseLargeRule0
+  where
+    unparseLargeRule0 =
+        case e of
+            Assumption _ ->
+                return ["Assumption"]
+            Discharge _term sub -> do
+                _term <- unparseTerm _term
+                return ["Discharge", _term, sub]
+            Abstract var sub ->
+                return ["Abstract", unparseVariable var, sub]
+            ForallElim _term sub -> do
+                _term <- unparseTerm _term
+                return ["ForallElim", _term, sub]
+            AndIntro sub1 sub2 ->
+                return ["AndIntro", sub1, sub2]
+            AndElimR sub ->
+                return ["AndElimR", sub]
+            AndElimL sub ->
+                return ["AndElimL", sub]
+            OrIntroL sub _term -> do
+                _term <- unparseTerm _term
+                return ["OrIntroL", sub, _term]
+            OrIntroR _term sub -> do
+                _term <- unparseTerm _term
+                return ["OrIntroR", _term, sub]
+            OrElim sub1 sub2 sub3 ->
+                return ["OrElim", sub1, sub2, sub3]
+            TopIntro ->
+                return ["TopIntro"]
+            ExistsIntro var _term sub -> do
+                _term <- unparseTerm _term
+                return ["ExistsIntro", unparseVariable var, _term, sub]
+            ExistsElim sub1 var _term sub2 -> do
+                _term <- unparseTerm _term
+                return ["ExistsElim", sub1, unparseVariable var, _term, sub2]
+            ModusPonens sub1 sub2 ->
+                return ["ModusPonens", sub1, sub2]
+            FunctionalSubst var1 _term1 var2 _term2 -> do
+                _term1 <- unparseTerm _term1
+                _term2 <- unparseTerm _term2
+                return
+                    [ "FunctionalSubst"
+                    , unparseVariable var1, _term1
+                    , unparseVariable var2, _term2
+                    ]
+            FunctionalVar var1 var2 ->
+                return
+                    [ "FunctionalVar"
+                    , unparseVariable var1
+                    , unparseVariable var2
+                    ]
+            EqualityIntro _term -> do
+                _term <- unparseTerm _term
+                return ["EqualityIntro", _term]
+            EqualityElim _term1 _term2 _term3 path -> do
+                _term1 <- unparseTerm _term1
+                _term2 <- unparseTerm _term2
+                _term3 <- unparseTerm _term3
+                return ["EqualityElim", _term1, _term2, _term3, pretty path]
+            MembershipForall var _term -> do
+                _term <- unparseTerm _term
+                return ["MembershipForall", unparseVariable var, _term]
+            MembershipEq var1 var2 -> do
+                return
+                    [ "MembershipEq"
+                    , unparseVariable var1
+                    , unparseVariable var2
+                    ]
+            MembershipNot var _term -> do
+                _term <- unparseTerm _term
+                return ["MembershipNot", unparseVariable var, _term]
+            MembershipAnd var _term1 _term2 -> do
+                _term1 <- unparseTerm _term1
+                _term2 <- unparseTerm _term2
+                return ["MembershipAnd", unparseVariable var, _term1, _term2]
+            MembershipExists var1 var2 _term -> do
+                _term <- unparseTerm _term
+                return
+                    [ "MembershipExists"
+                    , unparseVariable var1
+                    , unparseVariable var2
+                    , _term
+                    ]
+            MembershipCong var1 var2 pos _term -> do
+                _term <- unparseTerm _term
+                return
+                    [ "MembershipCong"
+                    , unparseVariable var1
+                    , unparseVariable var2
+                    , pretty pos
+                    , _term
+                    ]
+
+unparsePropF :: PropF Term LargeRule Term (Doc ann) -> Unparser (Doc ann)
+unparsePropF ByF { conclusion = _term, justification = _rule }
+  = do
+    _term <- unparseTerm _term
+    _rule <- unparseLargeRule _rule
+    (return . Pretty.vsep) [ "|- " <> _term, "By " <> _rule ]
 
 getConclusion
     :: Proof
     -> Term
-getConclusion = conclusion . unfix
+getConclusion = conclusion . Functor.Foldable.unfix
 
 getJustification
     :: Proof
     -> LargeRule Proof
-getJustification = justification . unfix
+getJustification = justification . Functor.Foldable.unfix
 
 getAssumptions
     :: Proof
     -> S.Set  Term
-getAssumptions = assumptions . unfix
+getAssumptions = assumptions . Functor.Foldable.unfix
 
 -- | The set of all variables that appear free in the assumptions.
 getFreeVars :: Proof -> S.Set Var
@@ -344,7 +379,7 @@ useRule (Abstract var conclusion)
                   ++ "appears in assumptions"
                   ++ show assumptions
         | otherwise
-          = Fix $ (unfix prop) {
+          = Fix $ (Functor.Foldable.unfix prop) {
               conclusion = mkForall var conclusion
             }
 useRule (ExistsElim producer var property (Fix consumer)) =

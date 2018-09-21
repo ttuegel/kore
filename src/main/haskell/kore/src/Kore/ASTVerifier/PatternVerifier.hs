@@ -585,9 +585,9 @@ verifySameSort (UnifiedObject expectedSort) (UnifiedObject actualSort) = do
         [expectedSort, actualSort]
         ((renderString . Pretty.layoutCompact)
          ("Expecting sort"
-          <+> Pretty.squotes (unparse expectedSort)
+          <+> Pretty.squotes (unparseSort expectedSort)
           <+> "but got"
-          <+> Pretty.squotes (unparse actualSort)
+          <+> Pretty.squotes (unparseSort actualSort)
           <> Pretty.dot)
         )
     verifySuccess
@@ -597,9 +597,9 @@ verifySameSort (UnifiedMeta expectedSort) (UnifiedMeta actualSort) = do
         [expectedSort, actualSort]
         ((renderString . Pretty.layoutCompact)
          ("Expecting sort"
-          <+> Pretty.squotes (unparse expectedSort)
+          <+> Pretty.squotes (unparseSort expectedSort)
           <+> "but got"
-          <+> Pretty.squotes (unparse actualSort)
+          <+> Pretty.squotes (unparseSort actualSort)
           <> Pretty.dot)
         )
     verifySuccess
@@ -609,9 +609,9 @@ verifySameSort (UnifiedMeta expectedSort) (UnifiedObject actualSort) = do
         [asUnified expectedSort, asUnified actualSort]
         ((renderString . Pretty.layoutCompact)
          ("Expecting meta sort"
-          <+> Pretty.squotes (unparse expectedSort)
+          <+> Pretty.squotes (unparseSort expectedSort)
           <+> "but got object sort"
-          <+> Pretty.squotes (unparse actualSort)
+          <+> Pretty.squotes (unparseSort actualSort)
           <> Pretty.dot)
         )
     verifySuccess
@@ -621,9 +621,9 @@ verifySameSort (UnifiedObject expectedSort) (UnifiedMeta actualSort) = do
         [asUnified expectedSort, asUnified actualSort]
         ((renderString . Pretty.layoutCompact)
          ("Expecting object sort"
-          <+> Pretty.squotes (unparse expectedSort)
+          <+> Pretty.squotes (unparseSort expectedSort)
           <+> "but got meta sort"
-          <+> Pretty.squotes (unparse actualSort)
+          <+> Pretty.squotes (unparseSort actualSort)
           <> Pretty.dot)
         )
     verifySuccess
@@ -667,9 +667,9 @@ checkVariable var vars =
                 [v, var]
                 ( (renderString . Pretty.layoutCompact)
                   ("Inconsistent free variable usage:"
-                     <+> unparse v
+                     <+> unparseVariable v
                      <+> "and"
-                     <+> unparse var
+                     <+> unparseVariable var
                      <> Pretty.dot
                   )
                 )

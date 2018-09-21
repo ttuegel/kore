@@ -1,7 +1,9 @@
 {-| Description: Module for constructing, parsing, printing prover commands -}
 module Logic.Matching.Prover.Command
-  (Command(..), Parser, parseCommand,)
-where
+    ( Command(..)
+    , Parser
+    , parseCommand
+    ) where
 
 import Data.Text
        ( Text )
@@ -10,7 +12,10 @@ import Data.Text.Prettyprint.Doc
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
-import Kore.Unparser
+import           Kore.AST.MetaOrObject
+import           Kore.AST.PureML
+import           Kore.Unparser
+import qualified Logic.Matching.Rules.Kore as Kore
 
 -- | Prover command data type
 --   TODO: better way of expressing the inherent
@@ -75,6 +80,9 @@ parseCommand pIx pFormula pDerivation
 
 --------------
 -- Printing --
+
+prettyCommand :: Command String Kore.Rule (CommonPurePattern Meta)
+
 instance (Pretty ix, Unparse formula, Pretty (rule ix)) => Pretty (Command ix rule formula) where
 -- TODO (thomas.tuegel): Fix implementation of Pretty Command
   pretty (Add ix formula)              =  pretty(  "add"::Text)<+>pretty ix<+>colon<+>unparse formula

@@ -14,49 +14,29 @@ Portability : portable
 -- I mostly wrote it to get good pretty print output.
 -- A more sophisticated hash consing system will come when needed.
 
-{-# LANGUAGE AllowAmbiguousTypes       #-}
-{-# LANGUAGE BangPatterns              #-}
-{-# LANGUAGE ConstraintKinds           #-}
-{-# LANGUAGE DeriveFoldable            #-}
-{-# LANGUAGE DeriveFunctor             #-}
-{-# LANGUAGE DeriveGeneric             #-}
-{-# LANGUAGE DeriveTraversable         #-}
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE FunctionalDependencies    #-}
-{-# LANGUAGE LambdaCase                #-}
-{-# LANGUAGE MultiParamTypeClasses     #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE PatternSynonyms           #-}
-{-# LANGUAGE Rank2Types                #-}
-{-# LANGUAGE TypeApplications          #-}
-{-# LANGUAGE TypeFamilies              #-}
-{-# LANGUAGE TypeSynonymInstances      #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -Wno-unused-matches    #-}
 {-# OPTIONS_GHC -Wno-name-shadowing    #-}
 
 
 module Kore.Proof.LineBasedProof
-( toLineProof
-, printLineProof
-)
-where
+    ( toLineProof
+    , unparseLineBasedProof
+    ) where
 
-import Control.Lens
-import Control.Monad.State.Strict
-
+import           Control.Lens
+import           Control.Monad.State.Strict
 import           Data.Functor.Foldable
+import           Data.Hashable
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import           Data.Text.Prettyprint.Doc
 
-import Data.Hashable
-import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Util
 import Kore.Proof.Proof
 import Kore.Unparser
 
 data LineBasedProof = LineBasedProof
-    { unLineBasedProof :: M.Map Int (PropF Term LargeRule Int Int)}
+    { unLineBasedProof :: M.Map Int (PropF Term LargeRule Int Int) }
 
 toLineProof :: Proof -> LineBasedProof
 toLineProof proof =
@@ -96,22 +76,18 @@ isAssumption = \case
     Assumption _ -> True
     _ -> False
 
-instance Pretty LineBasedProof where
-    pretty proof = (vsep
-      $ map (\(n, ByF claim justification assumptions) ->
-          fill 60 (
-             fill 3 (pretty n)
-             <> " : "
-             <> encloseSep mempty mempty "," (map pretty $ S.toList assumptions)
-             <> " |- "
-             <> align (unparse claim)
-             <> space
-           )
-           <> line
-           <> indent 10 ("By " <> pretty justification)
-        )
-      $ M.toList
-      $ unLineBasedProof proof) <> line
-
-printLineProof :: Proof -> IO ()
-printLineProof = putDocW 100 . pretty . toLineProof
+unparseLineBasedProof :: LineBasedProof -> Unparser (Doc ann)
+unparseLineBasedProof proof =
+    (<> line) . vsep <$> traverse unparseLine (M.toList $ unLineBasedProof proof)
+  where
+    unparseLine (n, ByF _claim justification assumptions) = do
+        _claim <- unparseTerm _claim
+        (return . fill 60)
+            (
+                fill 3 (pretty n)
+                <> " : "
+                <> encloseSep mempty mempty "," (pretty <$> S.toList assumptions)
+                <> " |- "
+                <> align _claim
+                <> space
+            )
