@@ -42,6 +42,7 @@ module Kore.Builtin.Builtin
     , verifierBug
     , wrongArity
     , appliedFunction
+    , lookupSymbol
     ) where
 
 import           Control.Monad
@@ -64,7 +65,8 @@ import qualified Text.Megaparsec as Parsec
 import           Kore.AST.Common
                  ( Application (..), BuiltinDomain (..), DomainValue (..),
                  Id (..), Pattern (DomainValuePattern), Sort (..),
-                 SortActual (..), SortVariable (..), Variable )
+                 SortActual (..), SortVariable (..), SymbolOrAlias (..),
+                 Variable )
 import           Kore.AST.Kore
                  ( CommonKorePattern )
 import           Kore.AST.MetaOrObject
@@ -86,10 +88,11 @@ import           Kore.Error
                  ( Error )
 import qualified Kore.Error
 import           Kore.IndexedModule.IndexedModule
-                 ( SortDescription )
+                 ( KoreIndexedModule, SortDescription )
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools (..) )
 import qualified Kore.IndexedModule.MetadataTools as MetadataTools
+import qualified Kore.IndexedModule.Resolvers as IndexedModule
 import           Kore.Step.ExpandedPattern
                  ( CommonExpandedPattern )
 import           Kore.Step.Function.Data
@@ -564,3 +567,17 @@ runParser ctx result =
     case result of
         Left e -> verifierBug (ctx ++ ": " ++ Kore.Error.printError e)
         Right a -> a
+
+lookupSymbol
+    :: String
+    -- ^ builtin name
+    -> KoreIndexedModule attrs
+    -> Either (Error e) (SymbolOrAlias Object)
+lookupSymbol builtinName indexedModule
+  = do
+    symbolOrAliasConstructor <- IndexedModule.resolveHook indexedModule builtinName
+    _ <- IndexedModule.resolveSymbol indexedModule symbolOrAliasConstructor
+    return SymbolOrAlias
+        { symbolOrAliasConstructor
+        , symbolOrAliasParams = []
+        }
