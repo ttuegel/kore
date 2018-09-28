@@ -16,35 +16,33 @@ import Control.Error.Util
 import Control.Monad.Counter
        ( MonadCounter )
 import Control.Monad.Except
-       ( ExceptT(..)  )
+       ( ExceptT (..) )
 import Data.Functor.Foldable
 import Data.Reflection
        ( give )
 
 import           Kore.AST.Common
-                 ( SortedVariable )
+                 ( PureMLPattern, SortedVariable )
 import           Kore.AST.MetaOrObject
                  ( Meta, MetaOrObject, Object )
 import           Kore.AST.MLPatterns
                  ( getPatternResultSort )
-import           Kore.AST.PureML
-                 ( PureMLPattern )
-import qualified Kore.IndexedModule.MetadataTools as MetadataTools
-                 ( MetadataTools (..) )
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )
+import qualified Kore.IndexedModule.MetadataTools as MetadataTools
+                 ( MetadataTools (..) )
 import           Kore.Predicate.Predicate
                  ( makeAndPredicate )
-import qualified Kore.Step.Simplification.Ceil as Ceil
-                 ( makeEvaluateTerm )
+import           Kore.Step.ExpandedPattern
+                 ( PredicateSubstitution (..) )
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
                  ( ExpandedPattern (..) )
-import           Kore.Step.ExpandedPattern
-                 ( PredicateSubstitution(..) )
 import qualified Kore.Step.PredicateSubstitution as PredicateSubstitution
                  ( bottom )
 import           Kore.Step.Simplification.AndTerms
                  ( termUnification )
+import qualified Kore.Step.Simplification.Ceil as Ceil
+                 ( makeEvaluateTerm )
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 import           Kore.Substitution.Class
