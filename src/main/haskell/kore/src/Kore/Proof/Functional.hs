@@ -4,8 +4,10 @@ module Kore.Proof.Functional
     , TotalProof (..)
     ) where
 
+import Data.Void
+       ( Void )
+
 import Kore.AST.Common
-import Kore.AST.MetaOrObject
 
 -- |'FunctionalProof' is used for providing arguments that a pattern is
 -- functional.  Currently we only support arguments stating that a
@@ -19,8 +21,9 @@ data FunctionalProof level variable
     -- https://arxiv.org/pdf/1705.06312.pdf#subsection.5.4
     -- |= ∃y . x = y
     | FunctionalDomainValue
-        (DomainValue level (CommonPurePattern Meta))
-    -- ^Domain values are functional as ther represent one value in the model.
+        (DomainValue level (BuiltinDomain Void))
+    -- ^ Domain value pattern without children are functional: they represent
+    -- one value in the model.
     | FunctionalHead (SymbolOrAlias level)
     -- ^Head of a total function, conforming to Definition 5.21
     -- https://arxiv.org/pdf/1705.06312.pdf#subsection.5.4

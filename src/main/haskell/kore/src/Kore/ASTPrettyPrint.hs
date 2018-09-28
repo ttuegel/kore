@@ -11,6 +11,7 @@ import Data.String
        ( fromString )
 import Data.Text.Prettyprint.Doc as Doc
 import Data.Text.Prettyprint.Doc.Render.String
+import Data.Void ( Void )
 
 import           Data.Functor.Impredicative
 import           Kore.AST.Common
@@ -143,6 +144,9 @@ writeStructure name fields =
 
 printableList :: [Doc ann] -> [Doc ann]
 printableList = intersperse (Doc.line <> comma <> space)
+
+instance PrettyPrint Void where
+    prettyPrint _ = \case {}
 
 instance MetaOrObject level => PrettyPrint (Id level) where
     prettyPrint flags id'@(Id _ _) =
