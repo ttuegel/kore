@@ -39,8 +39,8 @@ import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
 import           Kore.Step.Simplification.Data
                  ( PureMLPatternSimplifier, SimplificationProof (..),
                  Simplifier )
-import {-# SOURCE #-} Kore.Step.Simplification.Equals
-       ( makeEvaluate )
+import           Kore.Step.Simplification.Equals
+                 ( makeEvaluate )
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 

@@ -1,4 +1,3 @@
-{-# LANGUAGE EmptyCase #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-|
 Module      : Kore.AST.PureML
