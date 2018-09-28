@@ -46,10 +46,14 @@ module Kore.Builtin.Builtin
     , runParser
     , appliedFunction
     , lookupSymbol
+    , expectConcretePurePattern
+    , getAttemptedFunction
     ) where
 
 import           Control.Monad
                  ( zipWithM_ )
+import           Control.Monad.Except
+                 ( ExceptT, MonadError, runExceptT )
 import qualified Control.Monad.Except as Except
 import qualified Data.Functor.Foldable as Functor.Foldable
 import           Data.HashMap.Strict
@@ -66,16 +70,17 @@ import           Text.Megaparsec
 import qualified Text.Megaparsec as Parsec
 
 import           Kore.AST.Common
-                 ( Application (..), BuiltinDomain (..), DomainValue (..),
-                 Id (..), Pattern (DomainValuePattern), Sort (..),
+                 ( Application (..), BuiltinDomain (..), CommonPurePattern,
+                 ConcretePurePattern, DomainValue (..), Id (..),
+                 Pattern (DomainValuePattern), PureMLPattern, Sort (..),
                  SortActual (..), SortVariable (..), SymbolOrAlias (..),
                  Variable )
 import           Kore.AST.Kore
                  ( CommonKorePattern )
 import           Kore.AST.MetaOrObject
-                 ( Meta, Object )
+                 ( Object )
 import           Kore.AST.PureML
-                 ( CommonPurePattern )
+                 ( asConcretePurePattern )
 import           Kore.AST.Sentence
                  ( KoreSentenceSort, KoreSentenceSymbol, SentenceSort (..),
                  SentenceSymbol (..) )
@@ -178,7 +183,7 @@ instance Monoid PatternVerifier where
     mappend = (<>)
 
 type DomainValueVerifier =
-    DomainValue Object (BuiltinDomain (CommonPurePattern Meta))
+    DomainValue Object (BuiltinDomain CommonKorePattern)
     -> Either (Error VerifyError) ()
 
 {- | Verify builtin sorts, symbols, and patterns.
@@ -406,7 +411,7 @@ verifyStringLiteral validate DomainValue { domainValueChild } =
  -}
 parseDomainValue
     :: Parser a
-    -> DomainValue Object (BuiltinDomain (CommonPurePattern Meta))
+    -> DomainValue Object (BuiltinDomain child)
     -> Either (Error VerifyError) a
 parseDomainValue
     parser
@@ -631,3 +636,15 @@ lookupSymbol builtinName indexedModule
         { symbolOrAliasConstructor
         , symbolOrAliasParams = []
         }
+
+expectConcretePurePattern
+    :: MonadError (AttemptedFunction Object Variable) m
+    => PureMLPattern level variable
+    -> m (ConcretePurePattern level)
+expectConcretePurePattern purePattern =
+    case asConcretePurePattern purePattern of
+        Nothing -> Except.throwError NotApplicable
+        Just concretePattern -> return concretePattern
+
+getAttemptedFunction :: Monad m => ExceptT r m r -> m r
+getAttemptedFunction = fmap (either id id) . runExceptT

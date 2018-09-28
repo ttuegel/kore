@@ -13,14 +13,12 @@ import Data.Reflection
 import           Kore.AST.Common
                  ( BuiltinDomain (..), DomainValue (..), Sort (..) )
 import           Kore.AST.MetaOrObject
-import           Kore.AST.PureML
-                 ( CommonPurePattern )
 import           Kore.ASTUtils.SmartConstructors
                  ( mkBottom, mkDomainValue, mkStringLiteral )
 import           Kore.ASTUtils.SmartPatterns
                  ( pattern Bottom_ )
 import           Kore.IndexedModule.MetadataTools
-                 ( SortTools )
+                 ( MetadataTools, SortTools )
 import           Kore.Predicate.Predicate
                  ( makeTruePredicate )
 import           Kore.Step.ExpandedPattern
@@ -33,8 +31,9 @@ import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
                  ( make )
 import           Kore.Step.Simplification.DomainValue
                  ( simplify )
+import           Kore.Step.StepperAttributes
+                 ( StepperAttributes )
 import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
-                 ( makeSortTools )
 
 import Test.Kore.Comparators ()
 import Test.Tasty.HUnit.Extensions
@@ -56,6 +55,7 @@ test_domainValueSimplification =
                 ]
             )
             (evaluate
+                mockMetadataTools
                 (DomainValue
                     testSort
                     (BuiltinDomainPattern (mkStringLiteral "a"))
@@ -64,9 +64,6 @@ test_domainValueSimplification =
         )
     ]
   where
-    mockSortTools =
-        Mock.makeSortTools []
-            :: SortTools Object
 
 testSort :: Sort Object
 testSort =
@@ -74,10 +71,17 @@ testSort =
         Bottom_ sort -> sort
         _ -> error "unexpected"
 
+mockSortTools :: SortTools Object
+mockSortTools = Mock.makeSortTools []
+
+mockMetadataTools :: MetadataTools Object StepperAttributes
+mockMetadataTools = Mock.makeMetadataTools mockSortTools [] []
+
 evaluate
-    ::  (MetaOrObject Object)
-    => DomainValue Object (BuiltinDomain (CommonPurePattern Meta))
+    :: (MetaOrObject Object)
+    => MetadataTools Object attrs
+    -> DomainValue Object (BuiltinDomain (CommonOrOfExpandedPattern Object))
     -> CommonOrOfExpandedPattern Object
-evaluate domainValue =
-    case simplify domainValue of
+evaluate tools domainValue =
+    case simplify tools domainValue of
         (result, _proof) -> result

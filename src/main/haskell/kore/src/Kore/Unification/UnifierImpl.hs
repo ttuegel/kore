@@ -17,9 +17,9 @@ import Control.Monad
 import Control.Monad.Counter
        ( MonadCounter )
 import Control.Monad.Except
-       ( ExceptT(..)  )
-import Control.Monad.Trans.Except
-       ( throwE )
+       ( ExceptT (..) )
+import Control.Monad.Except
+       ( throwError )
 import Data.Function
        ( on )
 import Data.Functor.Foldable
@@ -28,17 +28,16 @@ import Data.List
 
 import           Kore.AST.Common
 import           Kore.AST.MetaOrObject
-import           Kore.AST.PureML
 import           Kore.ASTUtils.SmartPatterns
 import           Kore.IndexedModule.MetadataTools
 import qualified Kore.Predicate.Predicate as Predicate
                  ( isFalse )
-import qualified Kore.Step.ExpandedPattern as ExpandedPattern
-                 ( ExpandedPattern (..), top, bottom )
-import qualified Kore.Step.ExpandedPattern as PredicateSubstitution
-                 ( PredicateSubstitution (..) )
 import           Kore.Step.ExpandedPattern
                  ( ExpandedPattern )
+import qualified Kore.Step.ExpandedPattern as ExpandedPattern
+                 ( ExpandedPattern (..), bottom, top )
+import qualified Kore.Step.ExpandedPattern as PredicateSubstitution
+                 ( PredicateSubstitution (..) )
 import           Kore.Step.StepperAttributes
 import           Kore.Substitution.Class
                  ( Hashable )
@@ -47,10 +46,10 @@ import           Kore.Unification.Error
 import           Kore.Variables.Fresh
                  ( FreshVariable )
 
-import {-# SOURCE #-} Kore.Step.Substitution
-                      ( mergePredicatesAndSubstitutions )
 import {-# SOURCE #-} Kore.Step.Simplification.AndTerms
-                      ( termUnification )
+       ( termUnification )
+import {-# SOURCE #-} Kore.Step.Substitution
+       ( mergePredicatesAndSubstitutions )
 
 {-# ANN simplifyUnificationProof ("HLint: ignore Use record patterns" :: String) #-}
 simplifyUnificationProof
@@ -111,7 +110,7 @@ simplifyAnds
         ( ExpandedPattern level variable
         , UnificationProof level variable
         )
-simplifyAnds _ [] = throwE UnsupportedPatterns
+simplifyAnds _ [] = throwError UnsupportedPatterns
 simplifyAnds tools patterns = do
      result <- foldM
         simplifyAnds'
@@ -178,7 +177,7 @@ solveGroupedSubstitution
         ( UnificationSubstitution level variable
         , UnificationProof level variable
         )
-solveGroupedSubstitution _ [] = throwE UnsupportedPatterns
+solveGroupedSubstitution _ [] = throwError UnsupportedPatterns
 -- TODO(Vladimir): We are dropping the predicate here. Most likely, this should
 -- return the ExpandedPattern instead.
 solveGroupedSubstitution tools ((x,p):subst) = do

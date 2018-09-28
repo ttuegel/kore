@@ -16,14 +16,13 @@ import           Data.Functor.Impredicative
 import           Kore.AST.Common
 import           Kore.AST.Kore
 import           Kore.AST.MetaOrObject
-import           Kore.AST.PureML
 import           Kore.AST.Sentence
 import qualified Kore.Builtin as Builtin
 import           Kore.Parser.CString
                  ( escapeCString )
 import           Kore.Predicate.Predicate
+import           Kore.Proof.Functional
 import           Kore.Step.ExpandedPattern
-import           Kore.Step.PatternAttributes
 import           Kore.Unification.Unifier
 
 {-# ANN module ("HLint: ignore Use record patterns" :: String) #-}

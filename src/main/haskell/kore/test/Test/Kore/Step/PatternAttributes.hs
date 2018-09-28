@@ -11,15 +11,14 @@ import Data.Reflection
        ( give )
 
 import Kore.AST.Common
-       ( BuiltinDomain (..), CharLiteral (..), DomainValue (..), Sort (..),
+       ( CharLiteral (..), CommonPurePattern, DomainValue (..), Sort (..),
        SortActual (..), StringLiteral (..) )
 import Kore.AST.MetaOrObject
-import Kore.AST.PureML
-       ( CommonPurePattern )
 import Kore.ASTUtils.SmartConstructors
        ( mkCharLiteral, mkOr, mkStringLiteral, mkVar )
 import Kore.IndexedModule.MetadataTools
        ( MetadataTools, SortTools )
+import Kore.Proof.Functional
 import Kore.Step.PatternAttributes
 import Kore.Step.PatternAttributesError
        ( FunctionError (..), FunctionalError (..) )
@@ -56,8 +55,7 @@ test_patternAttributes = give mockSortTools
             let
                 dv = DomainValue
                     { domainValueSort = testSort
-                    , domainValueChild =
-                        BuiltinDomainPattern (mkStringLiteral "10")
+                    , domainValueChild = mkStringLiteral "10"
                     }
             assertEqualWithExplanation "FunctionalDomainValue"
                 (FunctionalDomainValue dv)

@@ -34,10 +34,10 @@ import           Data.Reflection
 import qualified Data.Set as Set
 
 import           Kore.AST.Common
-                 ( SortedVariable, Variable )
+                 ( PureMLPattern, SortedVariable, Variable )
 import           Kore.AST.MetaOrObject
 import           Kore.AST.PureML
-                 ( PureMLPattern, mapPatternVariables )
+                 ( mapPatternVariables )
 import           Kore.ASTUtils.SmartConstructors
                  ( mkAnd, mkBottom, mkTop, mkVar )
 import           Kore.ASTUtils.SmartPatterns
@@ -49,9 +49,9 @@ import           Kore.Predicate.Predicate
                  makeAndPredicate, makeEqualsPredicate, makeFalsePredicate,
                  makeTruePredicate, unwrapPredicate )
 import qualified Kore.Predicate.Predicate as Predicate
-import           Kore.Unification.Data
 import           Kore.Step.PredicateSubstitution
                  ( CommonPredicateSubstitution, PredicateSubstitution (..) )
+import           Kore.Unification.Data
 import           Kore.Variables.Free
                  ( pureAllVariables )
 
