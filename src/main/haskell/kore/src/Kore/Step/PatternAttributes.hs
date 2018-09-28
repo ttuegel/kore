@@ -16,15 +16,17 @@ module Kore.Step.PatternAttributes
     , mapFunctionalProofVariables
     ) where
 
-import Control.Lens
-import Data.Either
-       ( isRight )
-import Data.Functor.Foldable
-       ( cata )
+import           Control.Lens
+                 ( Prism )
+import qualified Control.Lens as Lens
+import           Data.Either
+                 ( isRight )
+import           Data.Functor.Foldable
+                 ( cata )
 
 import           Kore.AST.Common
-                 ( Application (..), Pattern (..), PureMLPattern )
-import qualified Kore.Builtin as Builtin
+                 ( Application (..), BuiltinDomain (..), DomainValue (..),
+                 Pattern (..), PureMLPattern )
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )
 import qualified Kore.IndexedModule.MetadataTools as MetadataTools
@@ -41,7 +43,7 @@ functionalProofVars
          (FunctionalProof level variableTo)
          (variableFrom level)
          (variableTo level)
-functionalProofVars = prism FunctionalVariable isVar
+functionalProofVars = Lens.prism FunctionalVariable isVar
   where
     isVar (FunctionalVariable v) = Right v
     isVar (FunctionalDomainValue dv) = Left (FunctionalDomainValue dv)
@@ -56,7 +58,7 @@ mapFunctionalProofVariables
     :: (variableFrom level -> variableTo level)
     -> FunctionalProof level variableFrom
     -> FunctionalProof level variableTo
-mapFunctionalProofVariables mapper = functionalProofVars %~ mapper
+mapFunctionalProofVariables mapper = Lens.over functionalProofVars mapper
 
 {-| checks whether a pattern is functional or not and, if it is, returns a proof
     certifying that.
@@ -105,8 +107,23 @@ isPreconstructedPattern
     :: err
     -> Pattern level variable pat
     -> Either err (PartialPatternProof (FunctionalProof level variable))
-isPreconstructedPattern _ (DomainValuePattern dv) =
-    Right (DoNotDescend (FunctionalDomainValue (Builtin.asMetaPattern <$> dv)))
+isPreconstructedPattern
+    err
+    (DomainValuePattern dv@DomainValue { domainValueChild })
+  =
+    case domainValueChild of
+        BuiltinDomainPattern pat ->
+            (Right . DoNotDescend)
+                (FunctionalDomainValue dv
+                    { domainValueChild = BuiltinDomainPattern pat }
+                )
+        BuiltinDomainSet set ->
+            (Right . DoNotDescend)
+                (FunctionalDomainValue dv
+                    { domainValueChild = BuiltinDomainSet set }
+                )
+        _ ->
+            Left err
 isPreconstructedPattern _ (StringLiteralPattern str) =
     Right (DoNotDescend (FunctionalStringLiteral str))
 isPreconstructedPattern _ (CharLiteralPattern str) =
