@@ -638,6 +638,12 @@ lookupSymbol builtinName indexedModule
         , symbolOrAliasParams = []
         }
 
+{- | Ensure that a 'PureMLPattern' is a concrete, normalized term.
+
+    If the pattern is not concrete and normalized, the function is
+    'NotApplicable'.
+
+ -}
 expectNormalConcreteTerm
     :: MonadError (AttemptedFunction Object Variable) m
     => MetadataTools level StepperAttributes
@@ -648,9 +654,12 @@ expectNormalConcreteTerm tools purePattern =
         Nothing -> Except.throwError NotApplicable
         Just concretePattern -> return concretePattern
 
-getAttemptedFunction :: Monad m => ExceptT r m r -> m r
-getAttemptedFunction = fmap (either id id) . runExceptT
+{- | View a 'ConcretePurePattern' as a normalized term.
 
+    The pattern is considered normalized if it is a domain value or a
+    constructor applied only to normalized terms.
+
+ -}
 asNormalConcreteTerm
     :: MetadataTools level StepperAttributes
     -> ConcretePurePattern level
@@ -673,3 +682,11 @@ asNormalConcreteTerm tools =
                 DomainValuePattern <$> traverse sequence dvP
             _ -> Nothing
         )
+
+{- | Run a computation which can return early.
+
+    See also: 'expectNormalConcreteTerm'
+
+ -}
+getAttemptedFunction :: Monad m => ExceptT r m r -> m r
+getAttemptedFunction = fmap (either id id) . runExceptT
