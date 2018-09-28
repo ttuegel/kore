@@ -46,7 +46,7 @@ module Kore.Builtin.Builtin
     , runParser
     , appliedFunction
     , lookupSymbol
-    , expectConcretePurePattern
+    , expectNormalConcreteTerm
     , getAttemptedFunction
     ) where
 
@@ -59,6 +59,8 @@ import qualified Data.Functor.Foldable as Functor.Foldable
 import           Data.HashMap.Strict
                  ( HashMap )
 import qualified Data.HashMap.Strict as HashMap
+import           Data.Reflection
+                 ( give )
 import           Data.Semigroup
                  ( Semigroup (..) )
 import           Data.Void
@@ -71,10 +73,9 @@ import qualified Text.Megaparsec as Parsec
 
 import           Kore.AST.Common
                  ( Application (..), BuiltinDomain (..), CommonPurePattern,
-                 ConcretePurePattern, DomainValue (..), Id (..),
-                 Pattern (DomainValuePattern), PureMLPattern, Sort (..),
-                 SortActual (..), SortVariable (..), SymbolOrAlias (..),
-                 Variable )
+                 ConcretePurePattern, DomainValue (..), Id (..), Pattern (..),
+                 PureMLPattern, Sort (..), SortActual (..), SortVariable (..),
+                 SymbolOrAlias (..), Variable )
 import           Kore.AST.Kore
                  ( CommonKorePattern )
 import           Kore.AST.MetaOrObject
@@ -111,7 +112,7 @@ import           Kore.Step.Simplification.Data
                  ( CommonPureMLPatternSimplifier, SimplificationProof (..),
                  Simplifier )
 import           Kore.Step.StepperAttributes
-                 ( StepperAttributes )
+                 ( StepperAttributes, isConstructor_ )
 
 type Parser = Parsec Void String
 
@@ -637,14 +638,38 @@ lookupSymbol builtinName indexedModule
         , symbolOrAliasParams = []
         }
 
-expectConcretePurePattern
+expectNormalConcreteTerm
     :: MonadError (AttemptedFunction Object Variable) m
-    => PureMLPattern level variable
+    => MetadataTools level StepperAttributes
+    -> PureMLPattern level variable
     -> m (ConcretePurePattern level)
-expectConcretePurePattern purePattern =
-    case asConcretePurePattern purePattern of
+expectNormalConcreteTerm tools purePattern =
+    case asNormalConcreteTerm tools =<< asConcretePurePattern purePattern of
         Nothing -> Except.throwError NotApplicable
         Just concretePattern -> return concretePattern
 
 getAttemptedFunction :: Monad m => ExceptT r m r -> m r
 getAttemptedFunction = fmap (either id id) . runExceptT
+
+asNormalConcreteTerm
+    :: MetadataTools level StepperAttributes
+    -> ConcretePurePattern level
+    -> Maybe (ConcretePurePattern level)
+asNormalConcreteTerm tools =
+    Functor.Foldable.fold asNormalConcreteTerm0
+  where
+    asNormalConcreteTerm0 =
+        (fmap Functor.Foldable.embed .)
+        (\case
+            ApplicationPattern
+                appP@Application { applicationSymbolOrAlias }
+                    | give tools isConstructor_ applicationSymbolOrAlias ->
+                        ApplicationPattern <$> sequence appP
+            DomainValuePattern dvP ->
+                -- TODO (thomas.tuegel): Builtin domain parsers may violate the
+                -- assumption that domain values are concrete. We should remove
+                -- BuiltinDomainPattern and always run the stepper with internal
+                -- representations only.
+                DomainValuePattern <$> traverse sequence dvP
+            _ -> Nothing
+        )
