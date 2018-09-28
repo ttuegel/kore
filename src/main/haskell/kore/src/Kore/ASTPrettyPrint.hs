@@ -21,8 +21,8 @@ import qualified Kore.Builtin as Builtin
 import           Kore.Parser.CString
                  ( escapeCString )
 import           Kore.Predicate.Predicate
+import           Kore.Proof.Functional
 import           Kore.Step.ExpandedPattern
-import           Kore.Step.PatternAttributes
 import           Kore.Unification.Unifier
 
 {-# ANN module ("HLint: ignore Use record patterns" :: String) #-}
