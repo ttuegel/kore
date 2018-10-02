@@ -64,17 +64,6 @@ simplify MetadataTools { sortTools } DomainValue { domainValueSort, domainValueC
     ( give sortTools simplifyBuiltinDomain domainValueSort domainValueChild
     , SimplificationProof
     )
-{-
-    ( OrOfExpandedPattern.make
-        [ExpandedPattern
-            { term = asPurePattern (DomainValuePattern dv)
-            , predicate = makeTruePredicate
-            , substitution = []
-            }
-        ]
-    , SimplificationProof
-    )
--}
 
 simplifyBuiltinDomain
     :: ( Eq (variable Object), Show (variable Object)

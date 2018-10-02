@@ -41,7 +41,8 @@ import Kore.Unification.Error
        substitutionToUnifyOrSubError, unificationToUnifyOrSubError )
 import Kore.Unification.SubstitutionNormalization
        ( normalizeSubstitution )
-import Kore.Unification.UnifierImpl ( normalizeSubstitutionDuplication )
+import Kore.Unification.UnifierImpl
+       ( normalizeSubstitutionDuplication )
 import Kore.Variables.Fresh
 
 {-|'mergeSubstitutions' merges a list of substitutions into
@@ -53,10 +54,10 @@ the correct condition.
 mergeSubstitutions
     :: ( MetaOrObject level
        , Ord (variable level)
-       , Ord (variable Meta)
-       , Ord (variable Object)
-       , SortedVariable variable
        , Show (variable level)
+       , OrdMetaOrObject variable
+       , ShowMetaOrObject variable
+       , SortedVariable variable
        , Hashable variable
        , FreshVariable variable
        , MonadCounter m
@@ -81,9 +82,10 @@ mergeSubstitutions tools first second = do
 mergeAndNormalizeSubstitutions
     ::  ( MetaOrObject level
         , Ord (variable level)
-        , OrdMetaOrObject variable
-        , SortedVariable variable
         , Show (variable level)
+        , OrdMetaOrObject variable
+        , ShowMetaOrObject variable
+        , SortedVariable variable
         , FreshVariable variable
         , MonadCounter m
         , Hashable variable
@@ -103,9 +105,10 @@ mergeAndNormalizeSubstitutions tools first second =
 normalizeSubstitutionAfterMerge
     ::  ( MetaOrObject level
         , Ord (variable level)
-        , OrdMetaOrObject variable
-        , SortedVariable variable
         , Show (variable level)
+        , OrdMetaOrObject variable
+        , ShowMetaOrObject variable
+        , SortedVariable variable
         , FreshVariable variable
         , MonadCounter m
         , Hashable variable
@@ -149,8 +152,8 @@ mergePredicatesAndSubstitutions
        , SortedVariable variable
        , MetaOrObject level
        , Ord (variable level)
-       , Ord (variable Meta)
-       , Ord (variable Object)
+       , OrdMetaOrObject variable
+       , ShowMetaOrObject variable
        , FreshVariable variable
        , MonadCounter m
        , Hashable variable
@@ -201,11 +204,11 @@ mergePredicatesAndSubstitutions tools predicates substitutions = do
 
 mergeSubstitutionWithPredicate
     :: ( Ord (variable level)
-       , Ord (variable Meta)
-       , Ord (variable Object)
-       , SortedVariable variable
-       , MetaOrObject level
        , Show (variable level)
+       , OrdMetaOrObject variable
+       , ShowMetaOrObject variable
+       , MetaOrObject level
+       , SortedVariable variable
        , Hashable variable
        , FreshVariable variable
        , MonadCounter m

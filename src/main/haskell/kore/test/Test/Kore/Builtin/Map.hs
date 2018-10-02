@@ -1,8 +1,9 @@
 module Test.Kore.Builtin.Map where
 
 import Test.QuickCheck
-       ( Property, property, (.&&.), (===), (==>) )
+       ( Gen, Property, property, (.&&.), (===), (==>) )
 
+import qualified Data.Bifunctor as Bifunctor
 import           Data.Map
                  ( Map )
 import qualified Data.Map as Map
@@ -10,11 +11,15 @@ import           Data.Proxy
                  ( Proxy (..) )
 import           Data.Reflection
                  ( give )
+import           Data.Set
+                 ( Set )
 
 import           Kore.AST.Common
 import           Kore.AST.MetaOrObject
+import           Kore.AST.PureML
+                 ( asPurePattern )
 import           Kore.AST.Sentence
-import           Kore.ASTUtils.SmartConstructors
+import qualified Kore.ASTUtils.SmartConstructors as Kore
 import           Kore.ASTUtils.SmartPatterns
 import           Kore.ASTVerifier.DefinitionVerifier
 import           Kore.Attribute.Parser
@@ -34,7 +39,7 @@ import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 
 import           Test.Kore
-                 ( testId )
+                 ( idGen, testId )
 import qualified Test.Kore.Builtin.Bool as Test.Bool
 import           Test.Kore.Builtin.Builtin
 import qualified Test.Kore.Builtin.Int as Test.Int
@@ -47,7 +52,7 @@ import qualified Test.Kore.Builtin.Int as Test.Int
 prop_lookupUnit :: Integer -> Property
 prop_lookupUnit k =
     let patLookup = App_ symbolLookup [App_ symbolUnit [], Test.Int.asPattern k]
-        predicate = give testSortTools $ mkEquals mkBottom patLookup
+        predicate = mkEquals mkBottom patLookup
     in
         allProperties
             [ ExpandedPattern.bottom === evaluate patLookup
@@ -72,7 +77,7 @@ prop_lookupUpdate (key, value) map' =
             $ Map.map Test.Int.asPattern map'
         patKey = Test.Int.asPattern key
         patValue = Test.Int.asPattern value
-        predicate = give testSortTools $ mkEquals patLookup patValue
+        predicate = mkEquals patLookup patValue
     in
         allProperties
             [ Test.Int.asExpandedPattern value === evaluate patLookup
@@ -93,8 +98,8 @@ prop_concatUnit map' =
             asPattern
             $ Map.mapKeys Test.Int.asConcretePattern
             $ Map.map Test.Int.asPattern map'
-        predicate1 = give testSortTools $ mkEquals patMap patConcat1
-        predicate2 = give testSortTools $ mkEquals patMap patConcat2
+        predicate1 = mkEquals patMap patConcat1
+        predicate2 = mkEquals patMap patConcat2
     in
         allProperties
             [ evaluate patMap === evaluate patConcat1
@@ -141,14 +146,12 @@ prop_lookupConcatUniqueKeys (key1, value1) (key2, value2) =
         patLookup1 = App_ symbolLookup [ patConcat, patKey1 ]
         patLookup2 = App_ symbolLookup [ patConcat, patKey2 ]
         predicate =
-            give testSortTools
-            (mkImplies
+            mkImplies
                 (mkNot (mkEquals patKey1 patKey2))
                 (mkAnd
                     (mkEquals patLookup1 patValue1)
                     (mkEquals patLookup2 patValue2)
                 )
-            )
     in
         allProperties
             [ (key1 /= key2) ==> allProperties
@@ -171,7 +174,7 @@ prop_concatDuplicateKeys key value1 value2 =
         patMap1 = App_ symbolElement [ patKey, patValue1 ]
         patMap2 = App_ symbolElement [ patKey, patValue2 ]
         patConcat = App_ symbolConcat [ patMap1, patMap2 ]
-        predicate = give testSortTools (mkEquals mkBottom patConcat)
+        predicate = mkEquals mkBottom patConcat
     in
         allProperties
             [ ExpandedPattern.bottom === evaluate patConcat
@@ -195,7 +198,7 @@ prop_concatCommutes map1 map2 =
             asPattern
             $ Map.mapKeys Test.Int.asConcretePattern
             $ Map.map Test.Int.asPattern map2
-        predicate = give testSortTools (mkEquals patConcat1 patConcat2)
+        predicate = mkEquals patConcat1 patConcat2
     in
         allProperties
             [ evaluate patConcat1 === evaluate patConcat2
@@ -231,7 +234,7 @@ prop_concatAssociates map1 map2 map3 =
         patConcat23 = App_ symbolConcat [ patMap2, patMap3 ]
         patConcat12_3 = App_ symbolConcat [ patConcat12, patMap3 ]
         patConcat1_23 = App_ symbolConcat [ patMap1, patConcat23 ]
-        predicate = give testSortTools (mkEquals patConcat12_3 patConcat1_23)
+        predicate = mkEquals patConcat12_3 patConcat1_23
     in
         allProperties
             [ evaluate patConcat12_3 === evaluate patConcat1_23
@@ -248,8 +251,7 @@ prop_inKeysUnit key =
     let patKey = Test.Int.asPattern key
         patUnit = App_ symbolUnit []
         patInKeys = App_ symbolInKeys [ patKey, patUnit ]
-        predicate =
-            give testSortTools (mkEquals (Test.Bool.asPattern False) patInKeys)
+        predicate = mkEquals (Test.Bool.asPattern False) patInKeys
     in
         allProperties
             [ Test.Bool.asExpandedPattern False === evaluate patInKeys
@@ -267,14 +269,34 @@ prop_inKeysElement (key, value) =
         patValue = Test.Int.asPattern value
         patMap = App_ symbolElement [ patKey, patValue ]
         patInKeys = App_ symbolInKeys [ patKey, patMap ]
-        predicate =
-            give testSortTools
-                (mkEquals (Test.Bool.asPattern True) patInKeys)
+        predicate = mkEquals (Test.Bool.asPattern True) patInKeys
     in
         allProperties
             [ Test.Bool.asExpandedPattern True === evaluate patInKeys
             , ExpandedPattern.top === evaluate predicate
             ]
+
+{- | Unify two maps with concrete keys and variable values.
+ -}
+prop_unifyConcrete
+    :: Set Integer
+    -> Gen Property
+prop_unifyConcrete keys = do
+    map0 <- traverse (const variablesGen) (Map.fromSet (const ()) keys)
+    let map12 =
+            Map.mapKeys Test.Int.asConcretePattern
+            $ Map.map (Bifunctor.bimap asVariablePattern asVariablePattern) map0
+        map1 = fst <$> map12
+        map2 = snd <$> map12
+        patExpect = asPattern $ uncurry mkAnd <$> map12
+        patActual = mkAnd (asPattern map1) (asPattern map2)
+    (return . allProperties)
+        [ evaluate patExpect === evaluate patActual
+        , ExpandedPattern.top === evaluate (mkEquals patExpect patActual)
+        ]
+  where
+    asVariablePattern = asPurePattern . VariablePattern
+    variablesGen = (,) <$> variableGen <*> variableGen
 
 -- | Specialize 'Map.asPattern' to the builtin sort 'mapSort'.
 asPattern :: Map.Builtin -> CommonPurePattern Object
@@ -420,3 +442,32 @@ MetadataTools { sortTools = testSortTools } = extractMetadataTools indexedModule
 
 allProperties :: [Property] -> Property
 allProperties = foldr (.&&.) (property True)
+
+mkEquals
+    :: PureMLPattern Object Variable
+    -> PureMLPattern Object Variable
+    -> PureMLPattern Object Variable
+mkEquals = give testSortTools Kore.mkEquals
+
+mkBottom :: PureMLPattern Object var
+mkBottom = give testSortTools Kore.mkBottom
+
+mkImplies
+    :: PureMLPattern Object Variable
+    -> PureMLPattern Object Variable
+    -> PureMLPattern Object Variable
+mkImplies = give testSortTools Kore.mkImplies
+
+mkNot
+    :: PureMLPattern Object Variable
+    -> PureMLPattern Object Variable
+mkNot = give testSortTools Kore.mkNot
+
+mkAnd
+    :: PureMLPattern Object Variable
+    -> PureMLPattern Object Variable
+    -> PureMLPattern Object Variable
+mkAnd = give testSortTools Kore.mkAnd
+
+variableGen :: Gen (Variable Object)
+variableGen = Variable <$> idGen Object <*> pure Test.Int.intSort

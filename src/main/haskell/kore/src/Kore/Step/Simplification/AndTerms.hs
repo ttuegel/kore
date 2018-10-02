@@ -13,12 +13,15 @@ module Kore.Step.Simplification.AndTerms
     , termUnification
     ) where
 
-import Control.Exception
-       ( assert )
-import Data.Maybe
-       ( fromMaybe )
-import Data.Reflection
-       ( give )
+import           Control.Exception
+                 ( assert )
+import           Data.Foldable
+                 ( foldl' )
+import qualified Data.Map.Strict as Map
+import           Data.Maybe
+                 ( fromMaybe )
+import           Data.Reflection
+                 ( give )
 
 import           Kore.AST.Common
                  ( BuiltinDomain (..), PureMLPattern, Sort, SortedVariable,
@@ -35,8 +38,8 @@ import           Kore.IndexedModule.MetadataTools
 import qualified Kore.IndexedModule.MetadataTools as MetadataTools
                  ( MetadataTools (..) )
 import           Kore.Predicate.Predicate
-                 ( pattern PredicateTrue, makeEqualsPredicate,
-                 makeNotPredicate, makeTruePredicate )
+                 ( pattern PredicateTrue, makeAndPredicate,
+                 makeEqualsPredicate, makeNotPredicate, makeTruePredicate )
 import           Kore.Step.ExpandedPattern
                  ( ExpandedPattern (ExpandedPattern),
                  PredicateSubstitution (PredicateSubstitution) )
@@ -75,9 +78,9 @@ termEquals
         , Hashable variable
         , FreshVariable variable
         , Ord (variable level)
-        , Ord (variable Meta)
-        , Ord (variable Object)
         , Show (variable level)
+        , OrdMetaOrObject variable
+        , ShowMetaOrObject variable
         , SortedVariable variable
         , MonadCounter m
         )
@@ -101,9 +104,9 @@ termEqualsAnd
         , Hashable variable
         , FreshVariable variable
         , Ord (variable level)
-        , Ord (variable Meta)
-        , Ord (variable Object)
         , Show (variable level)
+        , OrdMetaOrObject variable
+        , ShowMetaOrObject variable
         , SortedVariable variable
         , MonadCounter m
         )
@@ -122,9 +125,9 @@ termEqualsAndChild
         , Hashable variable
         , FreshVariable variable
         , Ord (variable level)
-        , Ord (variable Meta)
-        , Ord (variable Object)
         , Show (variable level)
+        , OrdMetaOrObject variable
+        , ShowMetaOrObject variable
         , SortedVariable variable
         , MonadCounter m
         )
@@ -156,9 +159,9 @@ maybeTermEquals
         , Hashable variable
         , FreshVariable variable
         , Ord (variable level)
-        , Ord (variable Meta)
-        , Ord (variable Object)
         , Show (variable level)
+        , OrdMetaOrObject variable
+        , ShowMetaOrObject variable
         , SortedVariable variable
         , MonadCounter m
         )
@@ -207,9 +210,9 @@ termUnification
         , Hashable variable
         , FreshVariable variable
         , Ord (variable level)
-        , Ord (variable Meta)
-        , Ord (variable Object)
         , Show (variable level)
+        , OrdMetaOrObject variable
+        , ShowMetaOrObject variable
         , SortedVariable variable
         , MonadCounter m
         )
@@ -234,9 +237,9 @@ termAnd
         , Hashable variable
         , FreshVariable variable
         , Ord (variable level)
-        , Ord (variable Meta)
-        , Ord (variable Object)
         , Show (variable level)
+        , OrdMetaOrObject variable
+        , ShowMetaOrObject variable
         , SortedVariable variable
         , MonadCounter m
         )
@@ -271,9 +274,9 @@ maybeTermAnd
     ::  ( MetaOrObject level
         , Hashable variable
         , FreshVariable variable
+        , OrdMetaOrObject variable
+        , ShowMetaOrObject variable
         , Ord (variable level)
-        , Ord (variable Meta)
-        , Ord (variable Object)
         , Show (variable level)
         , SortedVariable variable
         , MonadCounter m
@@ -301,6 +304,7 @@ maybeTermAnd =
         , liftET domainValueAndEqualsAssumesDifferent
         , liftET stringLiteralAndEqualsAssumesDifferent
         , liftET charLiteralAndEqualsAssumesDifferent
+        , builtinMapAndEquals
         , lift functionAnd
         ]
   where
@@ -597,25 +601,13 @@ equalInjectiveHeadsAndEquals
         , Hashable variable
         , FreshVariable variable
         , Ord (variable level)
-        , Ord (variable Meta)
-        , Ord (variable Object)
         , Show (variable level)
+        , OrdMetaOrObject variable
+        , ShowMetaOrObject variable
         , SortedVariable variable
         , MonadCounter m
         )
-    => MetadataTools level StepperAttributes
-    -> TermSimplifier level variable m
-    -- ^ Used to simplify subterm "and".
-    -> PureMLPattern level variable
-    -> PureMLPattern level variable
-    -> FunctionResult
-        (Maybe
-            ( m
-                ( ExpandedPattern level variable
-                , SimplificationProof level
-                )
-            )
-        )
+    => TermTransformation level variable m
 equalInjectiveHeadsAndEquals
     tools
     termMerger
@@ -665,18 +657,7 @@ sortInjectionAndEqualsAssumesDifferentHeads
         , MetaOrObject level
         , MonadCounter m
         )
-    => MetadataTools level StepperAttributes
-    -> TermSimplifier level variable m
-    -> PureMLPattern level variable
-    -> PureMLPattern level variable
-    -> FunctionResult
-        (Maybe
-            ( m
-                ( ExpandedPattern level variable
-                , SimplificationProof level
-                )
-            )
-        )
+    => TermTransformation level variable m
 sortInjectionAndEqualsAssumesDifferentHeads
     tools
     termMerger
@@ -918,6 +899,54 @@ charLiteralAndEqualsAssumesDifferent
     assert (first /= second) $
         Handled (mkBottom, SimplificationProof)
 charLiteralAndEqualsAssumesDifferent _ _ = NotHandled
+
+{- | Simplify the conjunction of two concrete Map domain values.
+
+    The maps are assumed to have the same sort, but this is not checked. If
+    multiple sorts are hooked to the same builtin domain, the verifier should
+    reject the definition.
+
+ -}
+builtinMapAndEquals
+    :: ( Eq (variable Object), Show (variable Object)
+       , SortedVariable variable
+       , MonadCounter m
+       )
+    => TermTransformation level variable m
+builtinMapAndEquals
+    MetadataTools.MetadataTools { sortTools }
+    simplifyChild
+    (DV_ sort (BuiltinDomainMap map1))
+    (DV_ _    (BuiltinDomainMap map2))
+  = Handled $ do
+    let
+        -- The remainder of map1, i.e. the keys of map1 missing from map2
+        rem1 = Map.difference map1 map2
+        -- The remainder of map2, i.e. the keys of map2 missing from map1
+        rem2 = Map.difference map2 map1
+    _quot <- sequence (Map.intersectionWith simplifyChild map1 map2)
+    let
+        unify = do
+            _quot <- Map.map fst <$> sequence _quot
+            let
+                result =
+                    ExpandedPattern
+                    { term =
+                        DV_ sort
+                        $ BuiltinDomainMap
+                        $ ExpandedPattern.term <$> _quot
+                    , predicate = give sortTools $ foldl' (\p -> fst . makeAndPredicate p . ExpandedPattern.predicate) makeTruePredicate _quot
+                    , substitution = foldMap ExpandedPattern.substitution _quot
+                    }
+            return (result, SimplificationProof)
+    return
+        (if Map.null rem1 && Map.null rem2
+            then unify
+            else return bottom
+        )
+  where
+    bottom = (ExpandedPattern.fromPurePattern mkBottom, SimplificationProof)
+builtinMapAndEquals _ _ _ _ = NotHandled
 
 {-| And simplification for `function and function`.
 

@@ -94,11 +94,11 @@ simplifyAnds
      . ( MetaOrObject level
        , Eq level
        , Ord (variable level)
-       , Ord (variable Meta)
-       , Ord (variable Object)
-       , SortedVariable variable
        , Show (variable level)
+       , OrdMetaOrObject variable
+       , ShowMetaOrObject variable
        , Hashable variable
+       , SortedVariable variable
        , FreshVariable variable
        , MonadCounter m
        )
@@ -161,10 +161,10 @@ solveGroupedSubstitution
     :: ( MetaOrObject level
        , Eq level
        , Ord (variable level)
-       , Ord (variable Meta)
-       , Ord (variable Object)
-       , SortedVariable variable
        , Show (variable level)
+       , OrdMetaOrObject variable
+       , ShowMetaOrObject variable
+       , SortedVariable variable
        , Hashable variable
        , FreshVariable variable
        , MonadCounter m
@@ -197,10 +197,10 @@ normalizeSubstitutionDuplication
     :: ( MetaOrObject level
        , Eq level
        , Ord (variable level)
-       , Ord (variable Meta)
-       , Ord (variable Object)
-       , SortedVariable variable
        , Show (variable level)
+       , OrdMetaOrObject variable
+       , ShowMetaOrObject variable
+       , SortedVariable variable
        , Hashable variable
        , FreshVariable variable
        , MonadCounter m
