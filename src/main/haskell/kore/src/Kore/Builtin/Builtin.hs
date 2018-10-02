@@ -112,7 +112,7 @@ import           Kore.Step.Simplification.Data
                  ( CommonPureMLPatternSimplifier, SimplificationProof (..),
                  Simplifier )
 import           Kore.Step.StepperAttributes
-                 ( StepperAttributes, isConstructor_ )
+                 ( StepperAttributes, isConstructor_, isSortInjection_ )
 
 type Parser = Parsec Void String
 
@@ -661,18 +661,22 @@ expectNormalConcreteTerm tools purePattern =
 
  -}
 asNormalConcreteTerm
-    :: MetadataTools level StepperAttributes
+    :: forall level.
+       MetadataTools level StepperAttributes
     -> ConcretePurePattern level
     -> Maybe (ConcretePurePattern level)
 asNormalConcreteTerm tools =
     Functor.Foldable.fold asNormalConcreteTerm0
   where
+    isNormalHead :: SymbolOrAlias level -> Bool
+    isNormalHead symbolOrAlias =
+        give tools (isConstructor_ symbolOrAlias || isSortInjection_ symbolOrAlias)
     asNormalConcreteTerm0 =
         (fmap Functor.Foldable.embed .)
         (\case
             ApplicationPattern
                 appP@Application { applicationSymbolOrAlias }
-                    | give tools isConstructor_ applicationSymbolOrAlias ->
+                    | isNormalHead applicationSymbolOrAlias ->
                         ApplicationPattern <$> sequence appP
             DomainValuePattern dvP ->
                 -- TODO (thomas.tuegel): Builtin domain parsers may violate the
