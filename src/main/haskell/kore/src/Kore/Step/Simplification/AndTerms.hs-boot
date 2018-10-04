@@ -49,5 +49,4 @@ termUnification
     => MetadataTools level StepperAttributes
     -> PureMLPattern level variable
     -> PureMLPattern level variable
-    -> Maybe
-        (m (ExpandedPattern level variable, SimplificationProof level))
+    -> Maybe (m (ExpandedPattern level variable, SimplificationProof level))

@@ -18,7 +18,7 @@ import           Kore.ASTUtils.SmartConstructors
 import           Kore.ASTUtils.SmartPatterns
                  ( pattern Bottom_ )
 import           Kore.IndexedModule.MetadataTools
-                 ( MetadataTools, SortTools )
+                 ( MetadataTools, SymbolOrAliasSorts )
 import           Kore.Predicate.Predicate
                  ( makeTruePredicate )
 import           Kore.Step.ExpandedPattern
@@ -32,6 +32,8 @@ import           Kore.Step.Simplification.DomainValue
                  ( simplify )
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
+import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
+                 ( makeSymbolOrAliasSorts )
 
 import           Test.Kore.Comparators ()
 import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
@@ -44,7 +46,7 @@ test_domainValueSimplification =
             (OrOfExpandedPattern.make
                 [ ExpandedPattern
                     { term =
-                        give mockSortTools $
+                        give mockSymbolOrAliasSorts $
                             mkDomainValue
                                 testSort
                                 (BuiltinDomainPattern (mkStringLiteral "a"))
@@ -62,7 +64,6 @@ test_domainValueSimplification =
             )
         )
     ]
-  where
 
 testSort :: Sort Object
 testSort =
@@ -70,11 +71,11 @@ testSort =
         Bottom_ sort -> sort
         _ -> error "unexpected"
 
-mockSortTools :: SortTools Object
-mockSortTools = Mock.makeSortTools []
+mockSymbolOrAliasSorts :: SymbolOrAliasSorts Object
+mockSymbolOrAliasSorts = Mock.makeSymbolOrAliasSorts []
 
 mockMetadataTools :: MetadataTools Object StepperAttributes
-mockMetadataTools = Mock.makeMetadataTools mockSortTools [] []
+mockMetadataTools = Mock.makeMetadataTools mockSymbolOrAliasSorts [] []
 
 evaluate
     :: (MetaOrObject Object)

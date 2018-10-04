@@ -437,8 +437,8 @@ verify defn =
   where
     attrVerify = defaultAttributesVerification Proxy
 
-testSortTools :: SortTools Object
-MetadataTools { sortTools = testSortTools } = extractMetadataTools indexedModule
+testSymbolOrAliasSorts :: SymbolOrAliasSorts Object
+MetadataTools { symbolOrAliasSorts = testSymbolOrAliasSorts } = extractMetadataTools indexedModule
 
 allProperties :: [Property] -> Property
 allProperties = foldr (.&&.) (property True)
@@ -447,27 +447,27 @@ mkEquals
     :: PureMLPattern Object Variable
     -> PureMLPattern Object Variable
     -> PureMLPattern Object Variable
-mkEquals = give testSortTools Kore.mkEquals
+mkEquals = give testSymbolOrAliasSorts Kore.mkEquals
 
 mkBottom :: PureMLPattern Object var
-mkBottom = give testSortTools Kore.mkBottom
+mkBottom = give testSymbolOrAliasSorts Kore.mkBottom
 
 mkImplies
     :: PureMLPattern Object Variable
     -> PureMLPattern Object Variable
     -> PureMLPattern Object Variable
-mkImplies = give testSortTools Kore.mkImplies
+mkImplies = give testSymbolOrAliasSorts Kore.mkImplies
 
 mkNot
     :: PureMLPattern Object Variable
     -> PureMLPattern Object Variable
-mkNot = give testSortTools Kore.mkNot
+mkNot = give testSymbolOrAliasSorts Kore.mkNot
 
 mkAnd
     :: PureMLPattern Object Variable
     -> PureMLPattern Object Variable
     -> PureMLPattern Object Variable
-mkAnd = give testSortTools Kore.mkAnd
+mkAnd = give testSymbolOrAliasSorts Kore.mkAnd
 
 variableGen :: Gen (Variable Object)
 variableGen = Variable <$> idGen Object <*> pure Test.Int.intSort

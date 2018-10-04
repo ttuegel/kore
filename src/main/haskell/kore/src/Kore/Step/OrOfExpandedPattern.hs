@@ -45,7 +45,7 @@ import           Kore.ASTUtils.SmartConstructors
 import           Kore.ASTUtils.SmartPatterns
                  ( pattern Top_ )
 import           Kore.IndexedModule.MetadataTools
-                 ( SortTools )
+                 ( SymbolOrAliasSorts )
 import           Kore.Predicate.Predicate
                  ( pattern PredicateTrue, makeTruePredicate )
 import           Kore.Step.ExpandedPattern
@@ -371,7 +371,7 @@ an 'ExpandedPattern'.
 -}
 toExpandedPattern
     ::  ( MetaOrObject level
-        , Given (SortTools level)
+        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
         , Eq (variable level)
         , Show (variable level)

@@ -50,7 +50,7 @@ import qualified Test.Kore.Builtin.Int as Test.Int
 prop_getUnit :: Integer -> Property
 prop_getUnit k =
     let patGet = App_ symbolGet [App_ symbolUnit [], Test.Int.asPattern k]
-        predicate = give testSortTools $ mkEquals mkBottom patGet
+        predicate = give testSymbolOrAliasSorts $ mkEquals mkBottom patGet
     in
         allProperties
             [ ExpandedPattern.bottom === evaluate patGet
@@ -71,7 +71,7 @@ prop_getFirstElement values =
                 Seq.Empty -> Nothing
                 v Seq.:<| _ -> Just v
         patFirst = maybe mkBottom Test.Int.asPattern value
-        predicate = give testSortTools $ mkEquals patGet patFirst
+        predicate = give testSymbolOrAliasSorts $ mkEquals patGet patFirst
     in
         allProperties
             [ Test.Int.asPartialExpandedPattern value === evaluate patGet
@@ -92,7 +92,7 @@ prop_getLastElement values =
                 Seq.Empty -> Nothing
                 _ Seq.:|> v -> Just v
         patFirst = maybe mkBottom Test.Int.asPattern value
-        predicate = give testSortTools $ mkEquals patGet patFirst
+        predicate = give testSymbolOrAliasSorts $ mkEquals patGet patFirst
     in
         allProperties
             [ Test.Int.asPartialExpandedPattern value === evaluate patGet
@@ -110,8 +110,8 @@ prop_concatUnit values =
         patValues = asPattern (Test.Int.asPattern <$> values)
         patConcat1 = App_ symbolConcat [ patUnit, patValues ]
         patConcat2 = App_ symbolConcat [ patValues, patUnit ]
-        predicate1 = give testSortTools $ mkEquals patValues patConcat1
-        predicate2 = give testSortTools $ mkEquals patValues patConcat2
+        predicate1 = give testSymbolOrAliasSorts $ mkEquals patValues patConcat1
+        predicate2 = give testSymbolOrAliasSorts $ mkEquals patValues patConcat2
     in
         allProperties
             [ evaluate patValues === evaluate patConcat1
@@ -136,7 +136,7 @@ prop_concatAssociates values1 values2 values3 =
         patConcat23 = App_ symbolConcat [ patList2, patList3 ]
         patConcat12_3 = App_ symbolConcat [ patConcat12, patList3 ]
         patConcat1_23 = App_ symbolConcat [ patList1, patConcat23 ]
-        predicate = give testSortTools (mkEquals patConcat12_3 patConcat1_23)
+        predicate = give testSymbolOrAliasSorts (mkEquals patConcat12_3 patConcat1_23)
     in
         allProperties
             [ evaluate patConcat12_3 === evaluate patConcat1_23
@@ -261,8 +261,8 @@ verify defn =
   where
     attrVerify = defaultAttributesVerification Proxy
 
-testSortTools :: SortTools Object
-MetadataTools { sortTools = testSortTools } = extractMetadataTools indexedModule
+testSymbolOrAliasSorts :: SymbolOrAliasSorts Object
+MetadataTools { symbolOrAliasSorts = testSymbolOrAliasSorts } = extractMetadataTools indexedModule
 
 allProperties :: [Property] -> Property
 allProperties = foldr (.&&.) (property True)

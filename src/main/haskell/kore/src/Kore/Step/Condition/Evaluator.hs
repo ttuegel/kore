@@ -17,6 +17,7 @@ import           Kore.AST.Common
 import           Kore.AST.MetaOrObject
 import           Kore.ASTUtils.SmartPatterns
 import           Kore.IndexedModule.MetadataTools
+                 ( MetadataTools (..), SymbolOrAliasSorts )
 import           Kore.Predicate.Predicate
                  ( Predicate, makeAndPredicate, makeFalsePredicate,
                  unwrapPredicate, wrapPredicate )
@@ -34,16 +35,13 @@ import           Kore.Step.Simplification.Data
                  SimplificationProof (SimplificationProof), Simplifier )
 import           Kore.Step.StepperAttributes
 
-import Debug.Trace
-
 convertStepperToSMT
     :: MetadataTools level StepperAttributes
     -> MetadataTools level SMTAttributes
 convertStepperToSMT tools =
-    MetadataTools
+    tools
     { symAttributes  = convert . symAttributes  tools
     , sortAttributes = convert . sortAttributes tools
-    , sortTools = sortTools tools
     , isSubsortOf = const $ const False -- no subsort info needed by SMT
     }
     where convert (StepperAttributes _ _ _ _ _ hook) = SMTAttributes hook
@@ -58,7 +56,7 @@ nonTrivial _ = True
 evaluate
     ::  forall level variable .
         ( MetaOrObject level
-        , Given (SortTools level)
+        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
         , Eq (variable level)
         , Ord (variable level)
@@ -80,7 +78,7 @@ evaluate
     $ do
     let predicate' =
             if nonTrivial (unwrapPredicate predicate'')
-               && (traceShowId $ unsafeTryRefutePredicate predicate'')
+               && (unsafeTryRefutePredicate predicate'')
                    == Just False
             then makeFalsePredicate
             else predicate''
@@ -92,7 +90,7 @@ evaluate
 
 asPredicateSubstitution
     ::  ( MetaOrObject level
-        , Given (SortTools level)
+        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
         , Eq (variable level)
         , Show (variable level)

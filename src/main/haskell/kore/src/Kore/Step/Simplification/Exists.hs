@@ -25,7 +25,7 @@ import           Kore.AST.MetaOrObject
 import           Kore.ASTUtils.SmartConstructors
                  ( mkExists )
 import           Kore.IndexedModule.MetadataTools
-                 ( MetadataTools, SortTools )
+                 ( MetadataTools, SymbolOrAliasSorts )
 import           Kore.Predicate.Predicate
                  ( Predicate, makeExistsPredicate, makeTruePredicate,
                  unwrapPredicate )
@@ -76,7 +76,7 @@ The simplification of exists x . (pat and pred and subst) is equivalent to:
 simplify
     ::  ( MetaOrObject level
         , SortedVariable variable
-        , Given (SortTools level)
+        , Given (SymbolOrAliasSorts level)
         , Show (variable level)
         , Ord (variable level)
         , Show (variable Meta)
@@ -104,7 +104,7 @@ simplify
 simplifyEvaluated
     ::  ( MetaOrObject level
         , SortedVariable variable
-        , Given (SortTools level)
+        , Given (SymbolOrAliasSorts level)
         , Show (variable level)
         , Ord (variable level)
         , Show (variable Meta)
@@ -139,7 +139,7 @@ See 'simplify' for detailed documentation.
 makeEvaluate
     ::  ( MetaOrObject level
         , SortedVariable variable
-        , Given (SortTools level)
+        , Given (SymbolOrAliasSorts level)
         , Show (variable level)
         , Ord (variable level)
         , Show (variable Meta)
@@ -185,7 +185,7 @@ makeEvaluate
 makeEvaluateNoFreeVarInSubstitution
     ::  ( MetaOrObject level
         , SortedVariable variable
-        , Given (SortTools level)
+        , Given (SymbolOrAliasSorts level)
         , Show (variable level)
         , Ord (variable level)
         , Show (variable Meta)
@@ -248,7 +248,7 @@ makeEvaluateNoFreeVarInSubstitution
 substituteTermPredicate
     ::  ( MetaOrObject level
         , SortedVariable variable
-        , Given (SortTools level)
+        , Given (SymbolOrAliasSorts level)
         , Show (variable level)
         , Ord (variable level)
         , Show (variable Meta)

@@ -32,7 +32,7 @@ import           Kore.AST.MetaOrObject
 import           Kore.AST.PureML
                  ( asPurePattern )
 import           Kore.IndexedModule.MetadataTools
-                 ( MetadataTools (..), SortTools )
+                 ( MetadataTools (..), SymbolOrAliasSorts )
 import           Kore.Predicate.Predicate
                  ( Predicate )
 import qualified Kore.Predicate.Predicate as Predicate
@@ -60,14 +60,14 @@ simplify
     -> ( OrOfExpandedPattern Object variable
        , SimplificationProof Object
        )
-simplify MetadataTools { sortTools } DomainValue { domainValueSort, domainValueChild } =
-    ( give sortTools simplifyBuiltinDomain domainValueSort domainValueChild
+simplify MetadataTools { symbolOrAliasSorts } DomainValue { domainValueSort, domainValueChild } =
+    ( give symbolOrAliasSorts simplifyBuiltinDomain domainValueSort domainValueChild
     , SimplificationProof
     )
 
 simplifyBuiltinDomain
     :: ( Eq (variable Object), Show (variable Object)
-       , Given (SortTools Object)
+       , Given (SymbolOrAliasSorts Object)
        , SortedVariable variable
        )
     => Sort Object
@@ -124,7 +124,7 @@ simplifyBuiltinDomain domainValueSort =
 
 simplifyBuiltinDomainListElement
     :: ( Eq (variable Object), Show (variable Object)
-       , Given (SortTools Object)
+       , Given (SymbolOrAliasSorts Object)
        , SortedVariable variable
        )
     => MultiOr
@@ -148,7 +148,7 @@ simplifyBuiltinDomainListElement accum xs =
 
 simplifyBuiltinDomainMapElement
     :: ( Eq (variable Object), Show (variable Object)
-       , Given (SortTools Object)
+       , Given (SymbolOrAliasSorts Object)
        , SortedVariable variable
        )
     => MultiOr

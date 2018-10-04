@@ -19,9 +19,9 @@ import Kore.AST.MetaOrObject
 import Kore.ASTUtils.SmartConstructors
        ( mkVar )
 import Kore.Predicate.Predicate
-       ( makeFalsePredicate, makeTruePredicate )
-import Kore.Step.ExpandedPattern
-       ( PredicateSubstitution (..) )
+       ( makeEqualsPredicate, makeFalsePredicate, makeTruePredicate )
+import Kore.Step.PredicateSubstitution
+       ( PredicateSubstitution (PredicateSubstitution) )
 import Kore.Step.Substitution
        ( mergeAndNormalizeSubstitutions )
 import Kore.Unification.Error
@@ -29,11 +29,11 @@ import Kore.Unification.Unifier
        ( UnificationSubstitution )
 
 import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
-                 ( makeMetadataTools, makeSortTools )
+                 ( makeMetadataTools, makeSymbolOrAliasSorts )
 import qualified Test.Kore.Step.MockSymbols as Mock
 
 test_mergeAndNormalizeSubstitutions :: [TestTree]
-test_mergeAndNormalizeSubstitutions = give mockSortTools
+test_mergeAndNormalizeSubstitutions = give mockSymbolOrAliasSorts
     [ testCase "Constructor normalization"
         -- [x=constructor(a)] + [x=constructor(a)]  === [x=constructor(a)]
         (assertEqual ""
@@ -119,7 +119,7 @@ test_mergeAndNormalizeSubstitutions = give mockSortTools
         (assertEqual ""
             ( Right
                 ( PredicateSubstitution
-                    makeTruePredicate
+                    ( makeEqualsPredicate Mock.a (Mock.f Mock.a) )
                     [   ( Mock.x
                         , Mock.constr10 Mock.a
                         )
@@ -145,7 +145,10 @@ test_mergeAndNormalizeSubstitutions = give mockSortTools
         (assertEqual ""
             ( Right
                 ( PredicateSubstitution
-                    makeTruePredicate
+                    ( makeEqualsPredicate
+                        ( mkVar Mock.y )
+                        ( Mock.f (mkVar Mock.y) )
+                    )
                     [   ( Mock.x
                         , Mock.constr10 (Mock.f (mkVar Mock.y))
                         )
@@ -169,7 +172,10 @@ test_mergeAndNormalizeSubstitutions = give mockSortTools
         (assertEqual ""
             ( Right
                 ( PredicateSubstitution
-                    makeTruePredicate
+                    ( makeEqualsPredicate
+                          ( mkVar Mock.y )
+                          ( Mock.functional10 (mkVar Mock.y) )
+                    )
                     [   ( Mock.x
                         , Mock.constr10 (Mock.functional10 (mkVar Mock.y))
                         )
@@ -226,9 +232,9 @@ test_mergeAndNormalizeSubstitutions = give mockSortTools
     ]
 
   where
-    mockSortTools = Mock.makeSortTools Mock.sortToolsMapping
+    mockSymbolOrAliasSorts = Mock.makeSymbolOrAliasSorts Mock.symbolOrAliasSortsMapping
     mockMetadataTools =
-        Mock.makeMetadataTools mockSortTools Mock.attributesMapping []
+        Mock.makeMetadataTools mockSymbolOrAliasSorts Mock.attributesMapping []
     normalize
         :: UnificationSubstitution Object Variable
         -> UnificationSubstitution Object Variable
