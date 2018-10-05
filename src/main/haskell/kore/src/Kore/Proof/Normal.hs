@@ -1,3 +1,11 @@
+{- |
+Module      : Kore.Proof.Normal
+Description : Proof of normalization of term heads
+Copyright   : (c) Runtime Verification, 2018
+License     : NCSA
+Maintainer  : thomas.tuegel@runtimeverification.com
+ -}
+
 module Kore.Proof.Normal
     ( Normal (..)
     , fromConstructor
