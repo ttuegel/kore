@@ -17,8 +17,8 @@ import           Kore.Step.OrOfExpandedPattern
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
                  ( make )
 import           Kore.Step.Simplification.Data
-                 ( PureMLPatternSimplifier (..), SimplificationProof (..),
-                 Simplifier )
+                 ( PureMLPatternSimplifier (..), SimplificationProof (..) )
+import           Kore.Step.Simplifier
 
 mockSimplifier
     :: (MetaOrObject level, Eq level, Eq (variable level))

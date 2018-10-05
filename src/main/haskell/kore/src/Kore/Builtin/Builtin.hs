@@ -109,8 +109,8 @@ import           Kore.Step.Function.Data
                  AttemptedFunction (..) )
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
 import           Kore.Step.Simplification.Data
-                 ( CommonPureMLPatternSimplifier, SimplificationProof (..),
-                 Simplifier )
+                 ( CommonPureMLPatternSimplifier, SimplificationProof (..) )
+import           Kore.Step.Simplifier
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 

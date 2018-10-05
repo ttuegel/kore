@@ -39,11 +39,10 @@ import           Kore.Step.Function.Data
                  ( CommonApplicationFunctionEvaluator )
 import           Kore.Step.Function.Registry
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
-import           Kore.Step.Simplification.Data
-                 ( evalSimplifier )
 import qualified Kore.Step.Simplification.ExpandedPattern as ExpandedPattern
 import qualified Kore.Step.Simplification.Simplifier as Simplifier
                  ( create )
+import           Kore.Step.Simplifier
 import           Kore.Step.StepperAttributes
 
 import Test.Kore.ASTVerifier.DefinitionVerifier

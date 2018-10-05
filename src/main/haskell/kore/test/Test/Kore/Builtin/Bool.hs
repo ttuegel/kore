@@ -24,8 +24,8 @@ import qualified Kore.Error
 import           Kore.IndexedModule.IndexedModule
 import           Kore.IndexedModule.MetadataTools
 import           Kore.Step.ExpandedPattern
-import           Kore.Step.Simplification.Data
 import qualified Kore.Step.Simplification.Pattern as Pattern
+import           Kore.Step.Simplifier
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 

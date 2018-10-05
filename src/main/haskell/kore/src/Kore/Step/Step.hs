@@ -50,9 +50,10 @@ import           Kore.Step.ExpandedPattern
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
 import qualified Kore.Step.OrOfExpandedPattern as ExpandedPattern
 import           Kore.Step.Simplification.Data
-                 ( CommonPureMLPatternSimplifier, Simplifier )
+                 ( CommonPureMLPatternSimplifier )
 import qualified Kore.Step.Simplification.ExpandedPattern as ExpandedPattern
                  ( simplify )
+import           Kore.Step.Simplifier
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 import           Kore.Step.Strategy

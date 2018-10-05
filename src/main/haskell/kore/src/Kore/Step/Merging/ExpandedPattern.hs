@@ -30,7 +30,8 @@ import           Kore.Step.ExpandedPattern as PredicateSubstitution
                  ( PredicateSubstitution (..) )
 import           Kore.Step.Simplification.Data
                  ( PureMLPatternSimplifier,
-                 SimplificationProof (SimplificationProof), Simplifier )
+                 SimplificationProof (SimplificationProof) )
+import           Kore.Step.Simplifier
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes (..) )
 import           Kore.Step.Substitution

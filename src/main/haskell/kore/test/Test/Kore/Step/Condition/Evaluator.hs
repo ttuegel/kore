@@ -25,7 +25,7 @@ import           Kore.IndexedModule.MetadataTools
 import           Kore.Predicate.Predicate
 import qualified Kore.Step.Condition.Evaluator as Eval
 import           Kore.Step.ExpandedPattern
-import           Kore.Step.Simplification.Data
+import           Kore.Step.Simplifier
 import           Kore.Step.StepperAttributes
 import           Test.Kore.Step.Simplifier
 

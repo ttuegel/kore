@@ -46,7 +46,8 @@ import           Kore.Error
 import           Kore.IndexedModule.IndexedModule
                  ( KoreIndexedModule )
 import           Kore.IndexedModule.MetadataTools
-                 ( MetadataTools (..), SymbolOrAliasSorts, extractMetadataTools )
+                 ( MetadataTools (..), SymbolOrAliasSorts,
+                 extractMetadataTools )
 import           Kore.Parser.Parser
                  ( fromKore, fromKorePattern )
 import           Kore.Predicate.Predicate
@@ -59,11 +60,10 @@ import qualified Kore.Step.ExpandedPattern as ExpandedPattern
 import           Kore.Step.Function.Registry
                  ( extractEvaluators )
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
-import           Kore.Step.Simplification.Data
-                 ( evalSimplifier )
 import qualified Kore.Step.Simplification.ExpandedPattern as ExpandedPattern
 import qualified Kore.Step.Simplification.Simplifier as Simplifier
                  ( create )
+import           Kore.Step.Simplifier
 import           Kore.Step.Step
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes (..) )

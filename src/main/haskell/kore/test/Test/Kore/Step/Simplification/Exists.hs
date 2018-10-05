@@ -30,12 +30,11 @@ import           Kore.Step.OrOfExpandedPattern
                  ( CommonOrOfExpandedPattern, OrOfExpandedPattern )
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
                  ( make )
-import           Kore.Step.Simplification.Data
-                 ( evalSimplifier )
 import qualified Kore.Step.Simplification.Exists as Exists
                  ( makeEvaluate, simplify )
 import qualified Kore.Step.Simplification.Simplifier as Simplifier
                  ( create )
+import           Kore.Step.Simplifier
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 
@@ -309,4 +308,3 @@ makeEvaluate tools variable child =
             (Simplifier.create tools Map.empty)
             variable
             child
-

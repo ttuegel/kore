@@ -30,7 +30,8 @@ import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
                  ( toExpandedPattern )
 import           Kore.Step.Simplification.Data
                  ( PureMLPatternSimplifier (..),
-                 SimplificationProof (SimplificationProof), Simplifier )
+                 SimplificationProof (SimplificationProof) )
+import           Kore.Step.Simplifier
 import           Kore.Step.StepperAttributes
 
 convertStepperToSMT

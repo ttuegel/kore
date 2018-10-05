@@ -31,10 +31,11 @@ import           Kore.Predicate.Predicate
                  ( makeTruePredicate )
 import           Kore.Step.BaseStep
 import           Kore.Step.ExpandedPattern as ExpandedPattern
-                 ( CommonExpandedPattern, ExpandedPattern, Predicated(..) )
+                 ( CommonExpandedPattern, ExpandedPattern, Predicated (..) )
 import           Kore.Step.Simplification.Data
-                 ( SimplificationProof (..), evalSimplifier )
+                 ( SimplificationProof (..) )
 import qualified Kore.Step.Simplification.Simplifier as Simplifier
+import           Kore.Step.Simplifier
 import           Kore.Step.Step
 import           Kore.Step.StepperAttributes
 import           Kore.Unification.Unifier

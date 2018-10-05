@@ -42,11 +42,10 @@ import           Kore.Step.PredicateSubstitution
                  PredicateSubstitution (PredicateSubstitution) )
 import qualified Kore.Step.PredicateSubstitution as PredicateSubstitution
                  ( PredicateSubstitution (..), bottom, top )
-import           Kore.Step.Simplification.Data
-                 ( evalSimplifier )
 import           Kore.Step.Simplification.Equals
                  ( makeEvaluate, makeEvaluateTermsToPredicateSubstitution,
                  simplify )
+import           Kore.Step.Simplifier
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 

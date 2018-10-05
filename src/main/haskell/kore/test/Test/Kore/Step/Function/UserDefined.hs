@@ -47,8 +47,8 @@ import           Kore.Step.Function.UserDefined
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
                  ( make )
 import           Kore.Step.Simplification.Data
-                 ( CommonPureMLPatternSimplifier, SimplificationProof (..),
-                 evalSimplifier )
+                 ( CommonPureMLPatternSimplifier, SimplificationProof (..) )
+import           Kore.Step.Simplifier
 import           Kore.Step.StepperAttributes
 
 import Test.Kore.Comparators ()

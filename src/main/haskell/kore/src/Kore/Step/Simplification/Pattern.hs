@@ -44,8 +44,7 @@ import qualified Kore.Step.Simplification.Ceil as Ceil
 import qualified Kore.Step.Simplification.CharLiteral as CharLiteral
                  ( simplify )
 import           Kore.Step.Simplification.Data
-                 ( PureMLPatternSimplifier (..), SimplificationProof (..),
-                 Simplifier )
+                 ( PureMLPatternSimplifier (..), SimplificationProof (..) )
 import qualified Kore.Step.Simplification.DomainValue as DomainValue
                  ( simplify )
 import qualified Kore.Step.Simplification.Equals as Equals
@@ -76,6 +75,7 @@ import qualified Kore.Step.Simplification.Top as Top
                  ( simplify )
 import qualified Kore.Step.Simplification.Variable as Variable
                  ( simplify )
+import           Kore.Step.Simplifier
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes (..) )
 import           Kore.Substitution.Class

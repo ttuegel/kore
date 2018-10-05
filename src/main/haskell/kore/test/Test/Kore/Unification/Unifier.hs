@@ -44,16 +44,15 @@ import           Kore.Predicate.Predicate
 import qualified Kore.Predicate.Predicate as Predicate
                  ( makeEqualsPredicate )
 import           Kore.Step.ExpandedPattern
-                 ( ExpandedPattern, Predicated(..) )
+                 ( ExpandedPattern, Predicated (..) )
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
-                 ( Predicated(..), bottom )
+                 ( Predicated (..), bottom )
 import qualified Kore.Step.ExpandedPattern as PredicateSubstitution
                  ( PredicateSubstitution (..) )
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
-import           Kore.Step.Simplification.Data
-                 ( evalSimplifier )
 import qualified Kore.Step.Simplification.ExpandedPattern as ExpandedPattern
 import qualified Kore.Step.Simplification.Simplifier as Simplifier
+import           Kore.Step.Simplifier
 import           Kore.Step.StepperAttributes
 import           Kore.Unification.Data
 import           Kore.Unification.Error

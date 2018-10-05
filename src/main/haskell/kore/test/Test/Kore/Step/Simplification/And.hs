@@ -32,8 +32,7 @@ import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
                  ( make )
 import           Kore.Step.Simplification.And
                  ( makeEvaluate, simplify )
-import           Kore.Step.Simplification.Data
-                 ( evalSimplifier )
+import           Kore.Step.Simplifier
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 

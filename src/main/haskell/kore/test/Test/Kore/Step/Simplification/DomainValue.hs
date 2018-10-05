@@ -29,6 +29,7 @@ import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
                  ( make )
 import           Kore.Step.Simplification.DomainValue
                  ( simplify )
+import           Kore.Step.Simplifier
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
@@ -53,7 +54,6 @@ test_domainValueSimplification =
                 ]
             )
             (evaluate
-                mockMetadataTools
                 (DomainValue
                     testSort
                     (BuiltinDomainPattern (mkStringLiteral "a"))
@@ -76,9 +76,8 @@ mockMetadataTools = Mock.makeMetadataTools mockSymbolOrAliasSorts [] []
 
 evaluate
     :: (MetaOrObject Object)
-    => MetadataTools Object attrs
-    -> DomainValue Object (BuiltinDomain (CommonOrOfExpandedPattern Object))
+    => DomainValue Object (BuiltinDomain (CommonOrOfExpandedPattern Object))
     -> CommonOrOfExpandedPattern Object
-evaluate tools domainValue =
-    case simplify tools domainValue of
+evaluate domainValue =
+    case evalSimplifier $ simplify mockMetadataTools domainValue of
         (result, _proof) -> result

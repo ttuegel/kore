@@ -52,13 +52,14 @@ import qualified Kore.Step.Simplification.AndTerms as AndTerms
 import qualified Kore.Step.Simplification.Ceil as Ceil
                  ( makeEvaluate, makeEvaluateTerm )
 import           Kore.Step.Simplification.Data
-                 ( SimplificationProof (..), Simplifier )
+                 ( SimplificationProof (..) )
 import qualified Kore.Step.Simplification.Iff as Iff
                  ( makeEvaluate )
 import qualified Kore.Step.Simplification.Not as Not
                  ( simplifyEvaluated )
 import qualified Kore.Step.Simplification.Or as Or
                  ( simplifyEvaluated )
+import           Kore.Step.Simplifier
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 import           Kore.Substitution.Class
