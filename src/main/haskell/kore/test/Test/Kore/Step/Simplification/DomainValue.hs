@@ -22,8 +22,6 @@ import           Kore.IndexedModule.MetadataTools
 import           Kore.Predicate.Predicate
                  ( makeTruePredicate )
 import           Kore.Step.ExpandedPattern
-                 ( ExpandedPattern (ExpandedPattern) )
-import qualified Kore.Step.ExpandedPattern as ExpandedPattern
 import           Kore.Step.OrOfExpandedPattern
                  ( CommonOrOfExpandedPattern )
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
@@ -32,10 +30,10 @@ import           Kore.Step.Simplification.DomainValue
                  ( simplify )
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
-import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
-                 ( makeSymbolOrAliasSorts )
 
 import           Test.Kore.Comparators ()
+import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
+                 ( makeSymbolOrAliasSorts )
 import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
 import           Test.Tasty.HUnit.Extensions
 
@@ -44,7 +42,7 @@ test_domainValueSimplification =
     [ testCase "DomainValue evaluates to DomainValue"
         (assertEqualWithExplanation ""
             (OrOfExpandedPattern.make
-                [ ExpandedPattern
+                [ Predicated
                     { term =
                         give mockSymbolOrAliasSorts $
                             mkDomainValue

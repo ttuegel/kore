@@ -19,12 +19,11 @@ import           Kore.AST.MetaOrObject
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )
 import           Kore.Step.ExpandedPattern
-                 ( ExpandedPattern (ExpandedPattern),
-                 PredicateSubstitution (PredicateSubstitution) )
+                 ( ExpandedPattern, Predicated (..) )
 import qualified Kore.Step.ExpandedPattern as PredicateSubstitution
                  ( PredicateSubstitution (..) )
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
-                 ( ExpandedPattern (..), bottom, isBottom, isTop )
+                 ( bottom, isBottom, isTop )
 import           Kore.Step.OrOfExpandedPattern
                  ( OrOfExpandedPattern )
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
@@ -189,25 +188,25 @@ makeEvaluateNonBool
     -> Simplifier (ExpandedPattern level variable, SimplificationProof level)
 makeEvaluateNonBool
     tools
-    ExpandedPattern
+    Predicated
         { term = firstTerm
         , predicate = firstPredicate
         , substitution = firstSubstitution
         }
-    ExpandedPattern
+    Predicated
         { term = secondTerm
         , predicate = secondPredicate
         , substitution = secondSubstitution
         }
   = do -- IntCounter monad
-    ( ExpandedPattern
+    ( Predicated
             { term = termTerm
             , predicate = termPredicate
             , substitution = termSubstitution
             }
         , _proof
         ) <- makeTermAnd tools firstTerm secondTerm
-    (   PredicateSubstitution
+    (   PredicateSubstitution.PredicateSubstitution
             { predicate = mergedPredicate
             , substitution = mergedSubstitution
             }
@@ -217,7 +216,7 @@ makeEvaluateNonBool
             [firstPredicate, secondPredicate, termPredicate]
             [firstSubstitution, secondSubstitution, termSubstitution]
     return
-        ( ExpandedPattern
+        ( Predicated
             { term = termTerm
             , predicate = mergedPredicate
             , substitution = mergedSubstitution

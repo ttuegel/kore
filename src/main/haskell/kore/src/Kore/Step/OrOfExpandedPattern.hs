@@ -49,7 +49,7 @@ import           Kore.IndexedModule.MetadataTools
 import           Kore.Predicate.Predicate
                  ( pattern PredicateTrue, makeTruePredicate )
 import           Kore.Step.ExpandedPattern
-                 ( ExpandedPattern (ExpandedPattern) )
+                 ( ExpandedPattern, Predicated (..) )
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
 
 {-| 'MultiOr' is a Matching logic or of its children
@@ -131,7 +131,7 @@ Assumes that the pattern was filtered.
 isTrue :: OrOfExpandedPattern level variable -> Bool
 isTrue
     (MultiOr
-        [ ExpandedPattern
+        [ Predicated
             {term = Top_ _, predicate = PredicateTrue, substitution = []}
         ]
     )
@@ -383,7 +383,7 @@ toExpandedPattern (MultiOr patts) =
     case map ExpandedPattern.toMLPattern patts of
         [] -> error "Not expecting empty pattern list."
         (p : ps) ->
-            ExpandedPattern
+            Predicated
                 { term = foldl' mkOr p ps
                 , predicate = makeTruePredicate
                 , substitution = []

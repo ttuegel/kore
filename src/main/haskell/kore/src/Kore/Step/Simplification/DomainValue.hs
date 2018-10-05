@@ -37,8 +37,7 @@ import           Kore.Predicate.Predicate
                  ( Predicate )
 import qualified Kore.Predicate.Predicate as Predicate
 import           Kore.Step.ExpandedPattern
-                 ( ExpandedPattern (ExpandedPattern) )
-import qualified Kore.Step.ExpandedPattern as ExpandedPattern
+                 ( Predicated (..) )
 import           Kore.Step.OrOfExpandedPattern
                  ( MultiOr, OrOfExpandedPattern )
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
@@ -78,7 +77,7 @@ simplifyBuiltinDomain domainValueSort =
         BuiltinDomainPattern pat ->
             OrOfExpandedPattern.make
             [
-                (ExpandedPattern.fromPurePattern . asPurePattern)
+                (pure . asPurePattern)
                 (DomainValuePattern DomainValue
                     { domainValueSort
                     , domainValueChild = BuiltinDomainPattern pat
@@ -97,7 +96,7 @@ simplifyBuiltinDomain domainValueSort =
                         , domainValueChild = BuiltinDomainMap _map
                         }
             OrOfExpandedPattern.make
-                [ ExpandedPattern { term, predicate, substitution } ]
+                [ Predicated { term, predicate, substitution } ]
         BuiltinDomainList _list -> do
             (_list, predicate, substitution) <-
                 foldl' simplifyBuiltinDomainListElement
@@ -110,11 +109,11 @@ simplifyBuiltinDomain domainValueSort =
                         , domainValueChild = BuiltinDomainList _list
                         }
             OrOfExpandedPattern.make
-                [ ExpandedPattern { term, predicate, substitution } ]
+                [ Predicated { term, predicate, substitution } ]
         BuiltinDomainSet set ->
             OrOfExpandedPattern.make
             [
-                (ExpandedPattern.fromPurePattern . asPurePattern)
+                (pure . asPurePattern)
                 (DomainValuePattern DomainValue
                     { domainValueSort
                     , domainValueChild = BuiltinDomainSet set
@@ -141,7 +140,7 @@ simplifyBuiltinDomainListElement
 simplifyBuiltinDomainListElement accum xs =
     do
         (terms, pred, subst) <- accum
-        ExpandedPattern { term, predicate, substitution } <- xs
+        Predicated { term, predicate, substitution } <- xs
         let (pred', _) = Predicate.makeAndPredicate pred predicate
             subst' = subst <> substitution
         return (terms Seq.:|> term, pred', subst')
@@ -166,7 +165,7 @@ simplifyBuiltinDomainMapElement
 simplifyBuiltinDomainMapElement accum key xs =
     do
         (terms, pred, subst) <- accum
-        ExpandedPattern { term, predicate, substitution } <- xs
+        Predicated { term, predicate, substitution } <- xs
         let (pred', _) = Predicate.makeAndPredicate pred predicate
             subst' = subst <> substitution
         return (Map.insert key term terms, pred', subst')

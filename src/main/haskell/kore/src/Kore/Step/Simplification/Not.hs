@@ -28,9 +28,9 @@ import           Kore.IndexedModule.MetadataTools
 import           Kore.Predicate.Predicate
                  ( makeAndPredicate, makeNotPredicate, makeTruePredicate )
 import           Kore.Step.ExpandedPattern
-                 ( ExpandedPattern (ExpandedPattern), substitutionToPredicate )
+                 ( ExpandedPattern, Predicated (..), substitutionToPredicate )
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
-                 ( ExpandedPattern (..), toMLPattern, top )
+                 ( toMLPattern, top )
 import           Kore.Step.OrOfExpandedPattern
                  ( OrOfExpandedPattern, makeFromSinglePurePattern )
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
@@ -110,15 +110,15 @@ makeEvaluate
     => ExpandedPattern level variable
     -> (OrOfExpandedPattern level variable, SimplificationProof level)
 makeEvaluate
-    ExpandedPattern {term, predicate, substitution}
+    Predicated {term, predicate, substitution}
   =
     ( OrOfExpandedPattern.make
-        [ ExpandedPattern
+        [ Predicated
             { term = makeTermNot term
             , predicate = makeTruePredicate
             , substitution = []
             }
-        , ExpandedPattern
+        , Predicated
             -- TODO: Remove fst.
             { term = mkTop
             , predicate =

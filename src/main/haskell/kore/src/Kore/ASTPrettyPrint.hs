@@ -776,5 +776,5 @@ instance (MetaOrObject level, PrettyPrint (variable level))
 instance (MetaOrObject level, PrettyPrint (variable level))
     => PrettyPrint (ExpandedPattern level variable)
   where
-    prettyPrint flags (ExpandedPattern t p s) =
-        writeThreeFieldStruct flags "ExpandedPattern" t p s
+    prettyPrint flags (Predicated t p s) =
+        writeThreeFieldStruct flags "Predicated" t p s

@@ -44,9 +44,9 @@ import           Kore.Predicate.Predicate
 import qualified Kore.Predicate.Predicate as Predicate
                  ( makeEqualsPredicate )
 import           Kore.Step.ExpandedPattern
-                 ( ExpandedPattern (..) )
+                 ( ExpandedPattern, Predicated(..) )
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
-                 ( ExpandedPattern (..), bottom )
+                 ( Predicated(..), bottom )
 import qualified Kore.Step.ExpandedPattern as PredicateSubstitution
                  ( PredicateSubstitution (..) )
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
@@ -269,7 +269,7 @@ unificationResult
     -> Predicate Object Variable
     -> ExpandedPattern Object Variable
 unificationResult (UnificationResultTerm pat) sub predicate =
-    ExpandedPattern.ExpandedPattern
+    Predicated
         { term = extractPurePattern pat
         , predicate = predicate
         , substitution = unificationSubstitution sub
@@ -667,12 +667,9 @@ injUnificationTests =
     , andSimplifySuccess "unmatching nested injections"
         (simplifyPattern (UnificationTerm (applyInj s2 s4 (applyInj s1 s2 aA))))
         (simplifyPattern (UnificationTerm (applyInj s3 s4 (applyInj s2 s3 bA))))
-        (UnificationResultTerm (applyInj s1 s4 aA))
+        (UnificationResultTerm bottomPredicate)
         []
-        (makeEqualsPredicate
-            (applyInj s1 s4 aA)
-            (applyInj s2 s4 bA)
-        )
+        makeFalsePredicate
         EmptyUnificationProof
     , andSimplifySuccess "unmatching injections"
         -- TODO(traiansf): this should succeed if s1 < s2 < s3
@@ -708,7 +705,7 @@ simplifyPattern (UnificationTerm pStub) =
     in UnificationTerm (SortedPatternStub (SortedPattern pat resultSort))
   where
     functionRegistry = Map.empty
-    expandedPattern = ExpandedPattern
+    expandedPattern = Predicated
         { term = extractPurePattern pStub
         , predicate = makeTruePredicate
         , substitution = []
