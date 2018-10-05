@@ -11,9 +11,9 @@ Portability : portable
 -}
 module Kore.Step.ExpandedPattern
     ( CommonExpandedPattern
-    , PredicateSubstitution.CommonPredicateSubstitution  -- TODO(virgil): Stop exporting this.
+    , CommonPredicateSubstitution  -- TODO(virgil): Stop exporting this.
     , ExpandedPattern
-    , PredicateSubstitution.PredicateSubstitution (..)  -- TODO(virgil): Stop exporting this.
+    , PredicateSubstitution (..)  -- TODO(virgil): Stop exporting this.
     , allVariables
     , bottom
     , isBottom
@@ -24,14 +24,17 @@ module Kore.Step.ExpandedPattern
     , top
     , fromPurePattern
     , Predicated(..)
+    , normalizeSubstitution
     ) where
 
+import           Control.Monad.Except
+                 ( runExceptT )
 import           Data.List
                  ( foldl' )
 import           Data.Monoid
                  ( (<>) )
 import           Data.Reflection
-                 ( Given )
+                 ( Given, give )
 import qualified Data.Set as Set
 
 import           Kore.AST.Common
@@ -44,17 +47,23 @@ import           Kore.ASTUtils.SmartConstructors
 import           Kore.ASTUtils.SmartPatterns
                  ( pattern Bottom_, pattern Top_ )
 import           Kore.IndexedModule.MetadataTools
-                 ( SymbolOrAliasSorts )
+                 ( MetadataTools (..), SymbolOrAliasSorts )
 import           Kore.Predicate.Predicate
                  ( Predicate, pattern PredicateFalse, pattern PredicateTrue,
                  makeAndPredicate, makeEqualsPredicate, makeFalsePredicate,
                  makeTruePredicate, unwrapPredicate )
 import qualified Kore.Predicate.Predicate as Predicate
-import qualified Kore.Step.PredicateSubstitution as PredicateSubstitution
+import           Kore.Step.PredicateSubstitution
                  ( CommonPredicateSubstitution, PredicateSubstitution (..) )
+import           Kore.Step.Simplifier
+import           Kore.Step.StepperAttributes
+import           Kore.Substitution.Class
+                 ( Hashable )
 import           Kore.Unification.Data
+import qualified Kore.Unification.SubstitutionNormalization as Unification
 import           Kore.Variables.Free
                  ( pureAllVariables )
+import           Kore.Variables.Fresh
 
 {-|'ExpandedPattern' is a representation of a PureMLPattern that is easier
 to use when executing Kore. It consists of an "and" between a term, a
@@ -74,7 +83,7 @@ data Predicated level variable child = Predicated
 instance Functor (Predicated level variable) where
     fmap f (Predicated a p s) = Predicated (f a) p s
 
--- `<*>` does not do normalization for now. 
+-- `<*>` does not do normalization for now.
 -- Don't use it until we figure that out.
 
 instance
@@ -268,3 +277,39 @@ fromPurePattern term =
                 , predicate = makeTruePredicate
                 , substitution = []
                 }
+
+normalizeSubstitution
+    :: ( MetaOrObject level
+       , Ord (variable level)
+       , Ord (variable Meta)
+       , Ord (variable Object)
+       , Hashable variable
+       , FreshVariable variable
+       , Show (variable level)
+       , SortedVariable variable
+       )
+    => MetadataTools level StepperAttributes
+    -> Predicated level variable a
+    -> Simplifier (Predicated level variable a)
+normalizeSubstitution
+    tools@MetadataTools { symbolOrAliasSorts }
+    Predicated { term, predicate, substitution }
+  =
+    give symbolOrAliasSorts $ do
+        normalized <- runExceptT (Unification.normalizeSubstitution tools substitution)
+        case normalized of
+            Left _ ->
+                -- TODO (thomas.tuegel): Is this right?
+                return Predicated
+                    { term, predicate = makeFalsePredicate, substitution = [] }
+            Right
+                PredicateSubstitution
+                    { predicate = predicate'
+                    , substitution = substitution'
+                    }
+              ->
+                return Predicated
+                    { term
+                    , predicate = fst (makeAndPredicate predicate' predicate)
+                    , substitution = substitution'
+                    }
