@@ -30,8 +30,12 @@ module Kore.Builtin.Map
     , lookupSymbolConcat
     , lookupSymbolInKeys
     , isSymbolConcat
+    -- * Unification
+    , unify
     ) where
 
+import           Control.Applicative
+                 ( Alternative (..) )
 import qualified Control.Monad as Monad
 import           Control.Monad.Except
                  ( ExceptT )
@@ -40,13 +44,19 @@ import qualified Data.HashMap.Strict as HashMap
 import           Data.Map.Strict
                  ( Map )
 import qualified Data.Map.Strict as Map
+import           Data.Reflection
+                 ( give )
 import qualified Data.Set as Set
 
+import           Data.Result
+import           Kore.AST.Common
+                 ( BuiltinDomain (BuiltinDomainMap), PureMLPattern,
+                 SortedVariable )
 import qualified Kore.AST.Common as Kore
 import           Kore.AST.MetaOrObject
                  ( Object )
 import qualified Kore.AST.PureML as Kore
-import qualified Kore.ASTUtils.SmartPatterns as Kore
+import           Kore.ASTUtils.SmartPatterns as Kore
 import qualified Kore.Builtin.Bool as Bool
 import qualified Kore.Builtin.Builtin as Builtin
 import           Kore.Builtin.Hook
@@ -55,14 +65,19 @@ import qualified Kore.Error as Kore
 import           Kore.IndexedModule.IndexedModule
                  ( KoreIndexedModule )
 import           Kore.IndexedModule.MetadataTools
-                 ( MetadataTools )
+                 ( MetadataTools (..) )
 import           Kore.Step.ExpandedPattern
-                 ( CommonExpandedPattern )
+                 ( CommonExpandedPattern, ExpandedPattern )
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
 import           Kore.Step.Function.Data
                  ( AttemptedFunction (..) )
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
-
+import           Kore.Step.Simplification.Data
+                 ( SimplificationProof (..) )
+import           Kore.Step.StepperAttributes
+                 ( StepperAttributes )
+import qualified Kore.Step.StepperAttributes as StepperAttributes
+import           Kore.Variables.Fresh
 
 {- | Builtin name of the @Map@ sort.
  -}
@@ -359,3 +374,94 @@ lookupSymbolInKeys = Builtin.lookupSymbol "MAP.in_keys"
  -}
 isSymbolConcat :: MetadataTools Object Hook -> Kore.SymbolOrAlias Object -> Bool
 isSymbolConcat = Builtin.isSymbol "MAP.concat"
+
+{- | Simplify the conjunction of two concrete Map domain values.
+
+    The maps are assumed to have the same sort, but this is not checked. If
+    multiple sorts are hooked to the same builtin domain, the verifier should
+    reject the definition.
+
+ -}
+unify
+    :: ( Eq (variable Object), Show (variable Object)
+       , SortedVariable variable
+       , MonadCounter m
+       )
+    => MetadataTools level StepperAttributes
+    ->  (  PureMLPattern level variable
+        -> PureMLPattern level variable
+        -> Result
+            (m (ExpandedPattern level variable, SimplificationProof level))
+        )
+    -> PureMLPattern level variable
+    -> PureMLPattern level variable
+    -> Result (m (ExpandedPattern level variable , SimplificationProof level))
+unify
+    MetadataTools { symbolOrAliasSorts }
+    simplifyChild
+    (DV_ sort' (BuiltinDomainMap map1))
+    (DV_ _    (BuiltinDomainMap map2))
+  = do
+    let (rem1, rem2, _quot) = unifyWith simplifyChild map1 map2
+    _quot <- sequence _quot
+    let
+        unified = give symbolOrAliasSorts $ do
+            _quot <- Map.map fst <$> sequence _quot
+            let q = DV_ sort' . BuiltinDomainMap <$> sequenceA _quot
+            return (q, SimplificationProof)
+    return
+        (if Map.null rem1 && Map.null rem2
+            then unified
+            else return bottom
+        )
+  where
+    bottom = (ExpandedPattern.bottom, SimplificationProof)
+unify
+    tools@MetadataTools { symbolOrAliasSorts }
+    simplifyChild
+    (DV_ sort' (BuiltinDomainMap map1))
+    (App_ concat'
+        [ DV_ _ (BuiltinDomainMap map2)
+        , x@(Var_ _)
+        ]
+    )
+    | isSymbolConcat hookTools concat' =
+      do
+        let (rem1, rem2, _quot) = unifyWith simplifyChild map1 map2
+        _quot <- sequence _quot
+        -- Unify the elements missing from map2 with the framing variable
+        _rem <- simplifyChild x (mkDV rem1)
+        let
+            unified = give symbolOrAliasSorts $ do
+                _quot <- Map.map fst <$> sequence _quot
+                let q = mkDV <$> sequenceA _quot
+                (r, _) <- _rem
+                let result = App_ concat' <$> sequenceA [q, r]
+                return (result, SimplificationProof)
+        return
+            (if Map.null rem2
+                then unified
+                else return bottom
+            )
+  where
+    bottom = (ExpandedPattern.bottom, SimplificationProof)
+    hookTools = StepperAttributes.hook <$> tools
+    mkDV = DV_ sort' . BuiltinDomainMap
+unify _ _ _ _ = empty
+
+{- | Unify two maps with the given function.
+
+    Returns the remainder of each map (the key-value pairs not in the other map)
+    and the keys in common under the given function.
+ -}
+unifyWith
+    :: Ord k
+    => (a -> b -> c)
+    -> Map k a
+    -> Map k b
+    -> (Map k a, Map k b, Map k c)
+unifyWith f as bs =
+    ( Map.difference as bs
+    , Map.difference bs as
+    , Map.intersectionWith f as bs
+    )
