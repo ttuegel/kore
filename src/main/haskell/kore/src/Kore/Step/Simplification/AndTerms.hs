@@ -22,6 +22,8 @@ import           Data.Functor.Foldable
 import qualified Data.Map.Strict as Map
 import           Data.Reflection
                  ( give )
+import           Prelude hiding
+                 ( concat )
 
 import           Data.Result
 import           Kore.AST.Common
@@ -31,9 +33,7 @@ import           Kore.AST.MetaOrObject
 import           Kore.ASTUtils.SmartConstructors
                  ( mkAnd, mkApp, mkBottom, mkTop )
 import           Kore.ASTUtils.SmartPatterns
-                 ( pattern App_, pattern Bottom_, pattern CharLiteral_,
-                 pattern DV_, pattern StringLiteral_, pattern Top_,
-                 pattern Var_ )
+import qualified Kore.Builtin.Map as Builtin.Map
 import           Kore.IndexedModule.MetadataTools
 import qualified Kore.IndexedModule.MetadataTools as MetadataTools
                  ( MetadataTools (..) )
@@ -920,7 +920,43 @@ builtinMapAndEquals
             else return bottom
         )
   where
-    bottom = (ExpandedPattern.fromPurePattern mkBottom, SimplificationProof)
+    bottom = (ExpandedPattern.bottom, SimplificationProof)
+builtinMapAndEquals
+    tools@MetadataTools.MetadataTools { symbolOrAliasSorts }
+    simplifyChild
+    (DV_ sort (BuiltinDomainMap map1))
+    (App_ concat
+        [ DV_ _ (BuiltinDomainMap map2)
+        , x@(Var_ _)
+        ]
+    )
+    | Builtin.Map.isSymbolConcat hookTools concat =
+      do
+        let
+            -- The remainder of map1, i.e. the keys of map1 missing from map2
+            rem1 = Map.difference map1 map2
+            -- The remainder of map2, i.e. the keys of map2 missing from map1
+            rem2 = Map.difference map2 map1
+        -- Unify the common elements of map1 and map2
+        _quot <- sequence (Map.intersectionWith simplifyChild map1 map2)
+        -- Unify the elements missing from map2 with the framing variable
+        _rem <- simplifyChild x (mkDV rem1)
+        let
+            unified = give symbolOrAliasSorts $ do
+                _quot <- Map.map fst <$> sequence _quot
+                let q = mkDV <$> sequenceA _quot
+                (r, _) <- _rem
+                let result = App_ concat <$> sequenceA [q, r]
+                return (result, SimplificationProof)
+        return
+            (if Map.null rem2
+                then unified
+                else return bottom
+            )
+  where
+    bottom = (ExpandedPattern.bottom, SimplificationProof)
+    hookTools = StepperAttributes.hook <$> tools
+    mkDV = DV_ sort . BuiltinDomainMap
 builtinMapAndEquals _ _ _ _ = empty
 
 {-| And simplification for `function and function`.
