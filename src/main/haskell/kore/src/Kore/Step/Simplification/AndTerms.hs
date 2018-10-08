@@ -17,8 +17,6 @@ import           Control.Applicative
                  ( Alternative (..) )
 import           Control.Exception
                  ( assert )
-import           Data.Foldable
-                 ( foldl' )
 import           Data.Functor.Foldable
                  ( project )
 import qualified Data.Map.Strict as Map
@@ -40,8 +38,8 @@ import           Kore.IndexedModule.MetadataTools
 import qualified Kore.IndexedModule.MetadataTools as MetadataTools
                  ( MetadataTools (..) )
 import           Kore.Predicate.Predicate
-                 ( pattern PredicateTrue, makeAndPredicate,
-                 makeEqualsPredicate, makeNotPredicate, makeTruePredicate )
+                 ( pattern PredicateTrue, makeEqualsPredicate,
+                 makeNotPredicate, makeTruePredicate )
 import           Kore.Step.ExpandedPattern
                  ( ExpandedPattern, Predicated (..) )
 import           Kore.Step.ExpandedPattern as PredicateSubstitution
@@ -912,18 +910,9 @@ builtinMapAndEquals
         rem2 = Map.difference map2 map1
     _quot <- sequence (Map.intersectionWith simplifyChild map1 map2)
     let
-        unify = do
+        unify = give symbolOrAliasSorts $ do
             _quot <- Map.map fst <$> sequence _quot
-            let
-                result =
-                    Predicated
-                    { term =
-                        DV_ sort
-                        $ BuiltinDomainMap
-                        $ ExpandedPattern.term <$> _quot
-                    , predicate = give symbolOrAliasSorts $ foldl' (\p -> fst . makeAndPredicate p . ExpandedPattern.predicate) makeTruePredicate _quot
-                    , substitution = foldMap ExpandedPattern.substitution _quot
-                    }
+            let result = DV_ sort . BuiltinDomainMap <$> sequenceA _quot
             return (result, SimplificationProof)
     return
         (if Map.null rem1 && Map.null rem2
