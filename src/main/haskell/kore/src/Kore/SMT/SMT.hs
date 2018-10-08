@@ -37,10 +37,10 @@ import           Kore.Builtin.Hook
 import           Kore.IndexedModule.MetadataTools
 import qualified Kore.Predicate.Predicate as KorePredicate
 
-import           Data.Reflection
-import           Data.SBV
+import Data.Reflection
+import Data.SBV
 
-import           GHC.IO.Unsafe
+import GHC.IO.Unsafe
 
 
 data TranslatePredicateError
