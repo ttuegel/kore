@@ -111,7 +111,8 @@ symbolVerifiers =
     anySort :: Builtin.SortVerifier
     anySort = const $ const $ Right ()
 
-type Builtin = Map (Kore.ConcretePurePattern Object) (Kore.CommonPurePattern Object)
+type Builtin =
+    Map (Kore.ConcretePurePattern Object) (Kore.CommonPurePattern Object)
 
 {- | Abort function evaluation if the argument is not a Map domain value.
 

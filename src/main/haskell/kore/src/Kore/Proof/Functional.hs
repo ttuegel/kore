@@ -1,11 +1,16 @@
+{-|
+Module      : Kore.Proof.Functional
+Description : Proofs of functionality and totality of patterns
+Copyright   : (c) Runtime Verification, 2018
+License     : NCSA
+Maintainer  : thomas.tuegel@runtimeverification.com
+-}
+
 module Kore.Proof.Functional
     ( FunctionProof (..)
     , FunctionalProof (..)
     , TotalProof (..)
     ) where
-
-import Data.Void
-       ( Void )
 
 import Kore.AST.Common
 
@@ -20,8 +25,7 @@ data FunctionalProof level variable
     -- ^Variables are functional as per Corollary 5.19
     -- https://arxiv.org/pdf/1705.06312.pdf#subsection.5.4
     -- |= ∃y . x = y
-    | FunctionalDomainValue
-        (DomainValue level (BuiltinDomain Void))
+    | FunctionalDomainValue (DomainValue level (BuiltinDomain ()))
     -- ^ Domain value pattern without children are functional: they represent
     -- one value in the model.
     | FunctionalHead (SymbolOrAlias level)

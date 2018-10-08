@@ -30,12 +30,10 @@ import           Kore.Step.Simplification.DomainValue
                  ( simplify )
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
+import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
 
-import           Test.Kore.Comparators ()
-import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
-                 ( makeSymbolOrAliasSorts )
-import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
-import           Test.Tasty.HUnit.Extensions
+import Test.Kore.Comparators ()
+import Test.Tasty.HUnit.Extensions
 
 test_domainValueSimplification :: [TestTree]
 test_domainValueSimplification =

@@ -1,9 +1,9 @@
 module Test.Kore.Builtin.Map where
 
 import Test.QuickCheck
-       ( Gen, Property, property, (.&&.), (===), (==>) )
+       ( Property, property, (.&&.), (===), (==>) )
+import Test.Tasty.HUnit
 
-import qualified Data.Bifunctor as Bifunctor
 import           Data.Map
                  ( Map )
 import qualified Data.Map as Map
@@ -11,13 +11,9 @@ import           Data.Proxy
                  ( Proxy (..) )
 import           Data.Reflection
                  ( give )
-import           Data.Set
-                 ( Set )
 
 import           Kore.AST.Common
 import           Kore.AST.MetaOrObject
-import           Kore.AST.PureML
-                 ( asPurePattern )
 import           Kore.AST.Sentence
 import qualified Kore.ASTUtils.SmartConstructors as Kore
 import           Kore.ASTUtils.SmartPatterns
@@ -39,7 +35,7 @@ import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 
 import           Test.Kore
-                 ( idGen, testId )
+                 ( testId )
 import qualified Test.Kore.Builtin.Bool as Test.Bool
 import           Test.Kore.Builtin.Builtin
 import qualified Test.Kore.Builtin.Int as Test.Int
@@ -276,27 +272,50 @@ prop_inKeysElement (key, value) =
             , ExpandedPattern.top === evaluate predicate
             ]
 
-{- | Unify two maps with concrete keys and variable values.
- -}
-prop_unifyConcrete
-    :: Set Integer
-    -> Gen Property
-prop_unifyConcrete keys = do
-    map0 <- traverse (const variablesGen) (Map.fromSet (const ()) keys)
-    let map12 =
-            Map.mapKeys Test.Int.asConcretePattern
-            $ Map.map (Bifunctor.bimap asVariablePattern asVariablePattern) map0
-        map1 = fst <$> map12
-        map2 = snd <$> map12
-        patExpect = asPattern $ uncurry mkAnd <$> map12
-        patActual = mkAnd (asPattern map1) (asPattern map2)
-    (return . allProperties)
-        [ evaluate patExpect === evaluate patActual
-        , ExpandedPattern.top === evaluate (mkEquals patExpect patActual)
-        ]
+-- | Check that simplification is carried out on map elements.
+unit_simplify :: Assertion
+unit_simplify =
+    let
+        x =
+            mkVar Variable
+                { variableName = testId "x"
+                , variableSort = Test.Int.intSort
+                }
+        key = Test.Int.asConcretePattern 1
+        original =
+            mkDomainValue mapSort
+            $ BuiltinDomainMap
+            $ Map.fromList [(key, mkAnd x mkTop)]
+        expected =
+            ExpandedPattern.fromPurePattern
+            $ mkDomainValue mapSort
+            $ BuiltinDomainMap
+            $ Map.fromList [(key, x)]
+        actual = evaluate original
+    in
+        assertEqual "Expected simplified Map" expected actual
+
+-- | Maps with symbolic keys are not simplified.
+prop_symbolic :: Map String Integer -> Property
+prop_symbolic values =
+    let patMap =
+            asSymbolicPattern
+            $ Map.mapKeys (mkIntVar . testId)
+            $ Map.map Test.Int.asPattern values
+    in
+        not (Map.null values) ==>
+        (ExpandedPattern.fromPurePattern patMap === evaluate patMap)
+
+-- | Construct a pattern for a map which may have symbolic keys.
+asSymbolicPattern
+    :: Map (CommonPurePattern Object) (CommonPurePattern Object)
+    -> CommonPurePattern Object
+asSymbolicPattern result =
+    foldr applyConcat applyUnit (applyElement <$> Map.toAscList result)
   where
-    asVariablePattern = asPurePattern . VariablePattern
-    variablesGen = (,) <$> variableGen <*> variableGen
+    applyUnit = mkDomainValue mapSort $ BuiltinDomainMap Map.empty
+    applyElement (key, value) = App_ symbolElement [key, value]
+    applyConcat map1 map2 = App_ symbolConcat [map1, map2]
 
 -- | Specialize 'Map.asPattern' to the builtin sort 'mapSort'.
 asPattern :: Map.Builtin -> CommonPurePattern Object
@@ -443,31 +462,44 @@ MetadataTools { symbolOrAliasSorts = testSymbolOrAliasSorts } = extractMetadataT
 allProperties :: [Property] -> Property
 allProperties = foldr (.&&.) (property True)
 
+-- * Constructors
+
+mkBottom :: CommonPurePattern Object
+mkBottom = Kore.mkBottom
+
 mkEquals
-    :: PureMLPattern Object Variable
-    -> PureMLPattern Object Variable
-    -> PureMLPattern Object Variable
+    :: CommonPurePattern Object
+    -> CommonPurePattern Object
+    -> CommonPurePattern Object
 mkEquals = give testSymbolOrAliasSorts Kore.mkEquals
 
-mkBottom :: PureMLPattern Object var
-mkBottom = give testSymbolOrAliasSorts Kore.mkBottom
-
-mkImplies
-    :: PureMLPattern Object Variable
-    -> PureMLPattern Object Variable
-    -> PureMLPattern Object Variable
-mkImplies = give testSymbolOrAliasSorts Kore.mkImplies
-
-mkNot
-    :: PureMLPattern Object Variable
-    -> PureMLPattern Object Variable
-mkNot = give testSymbolOrAliasSorts Kore.mkNot
-
 mkAnd
-    :: PureMLPattern Object Variable
-    -> PureMLPattern Object Variable
-    -> PureMLPattern Object Variable
+    :: CommonPurePattern Object
+    -> CommonPurePattern Object
+    -> CommonPurePattern Object
 mkAnd = give testSymbolOrAliasSorts Kore.mkAnd
 
-variableGen :: Gen (Variable Object)
-variableGen = Variable <$> idGen Object <*> pure Test.Int.intSort
+mkTop :: CommonPurePattern Object
+mkTop = Kore.mkTop
+
+mkVar :: Variable Object -> CommonPurePattern Object
+mkVar = give testSymbolOrAliasSorts Kore.mkVar
+
+mkDomainValue
+    :: Sort Object
+    -> BuiltinDomain (CommonPurePattern Object)
+    -> CommonPurePattern Object
+mkDomainValue = give testSymbolOrAliasSorts Kore.mkDomainValue
+
+mkImplies
+    :: CommonPurePattern Object
+    -> CommonPurePattern Object
+    -> CommonPurePattern Object
+mkImplies = give testSymbolOrAliasSorts Kore.mkImplies
+
+mkNot :: CommonPurePattern Object -> CommonPurePattern Object
+mkNot = give testSymbolOrAliasSorts Kore.mkNot
+
+mkIntVar :: Id Object -> CommonPurePattern Object
+mkIntVar variableName =
+    mkVar Variable { variableName, variableSort = Test.Int.intSort }

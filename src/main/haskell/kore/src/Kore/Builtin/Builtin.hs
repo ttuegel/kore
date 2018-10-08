@@ -59,8 +59,6 @@ import qualified Data.Functor.Foldable as Functor.Foldable
 import           Data.HashMap.Strict
                  ( HashMap )
 import qualified Data.HashMap.Strict as HashMap
-import           Data.Reflection
-                 ( give )
 import           Data.Semigroup
                  ( Semigroup (..) )
 import           Data.Void
@@ -102,6 +100,7 @@ import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools (..) )
 import qualified Kore.IndexedModule.MetadataTools as MetadataTools
 import qualified Kore.IndexedModule.Resolvers as IndexedModule
+import qualified Kore.Proof.Value as Value
 import           Kore.Step.ExpandedPattern
                  ( CommonExpandedPattern )
 import           Kore.Step.Function.Data
@@ -112,7 +111,7 @@ import           Kore.Step.Simplification.Data
                  ( CommonPureMLPatternSimplifier, SimplificationProof (..),
                  Simplifier )
 import           Kore.Step.StepperAttributes
-                 ( StepperAttributes, isConstructor_, isSortInjection_ )
+                 ( StepperAttributes )
 
 type Parser = Parsec Void String
 
@@ -650,42 +649,12 @@ expectNormalConcreteTerm
     -> PureMLPattern level variable
     -> m (ConcretePurePattern level)
 expectNormalConcreteTerm tools purePattern =
-    case asNormalConcreteTerm tools =<< asConcretePurePattern purePattern of
-        Nothing -> Except.throwError NotApplicable
-        Just concretePattern -> return concretePattern
-
-{- | View a 'ConcretePurePattern' as a normalized term.
-
-    The pattern is considered normalized if it is a domain value or a
-    constructor applied only to normalized terms.
-
- -}
-asNormalConcreteTerm
-    :: forall level.
-       MetadataTools level StepperAttributes
-    -> ConcretePurePattern level
-    -> Maybe (ConcretePurePattern level)
-asNormalConcreteTerm tools =
-    Functor.Foldable.fold asNormalConcreteTerm0
-  where
-    isNormalHead :: SymbolOrAlias level -> Bool
-    isNormalHead symbolOrAlias =
-        give tools (isConstructor_ symbolOrAlias || isSortInjection_ symbolOrAlias)
-    asNormalConcreteTerm0 =
-        (fmap Functor.Foldable.embed .)
-        (\case
-            ApplicationPattern
-                appP@Application { applicationSymbolOrAlias }
-                    | isNormalHead applicationSymbolOrAlias ->
-                        ApplicationPattern <$> sequence appP
-            DomainValuePattern dvP ->
-                -- TODO (thomas.tuegel): Builtin domain parsers may violate the
-                -- assumption that domain values are concrete. We should remove
-                -- BuiltinDomainPattern and always run the stepper with internal
-                -- representations only.
-                DomainValuePattern <$> traverse sequence dvP
-            _ -> Nothing
-        )
+    maybe (Except.throwError NotApplicable) return $ do
+        p <- asConcretePurePattern purePattern
+        -- TODO (thomas.tuegel): Use the return value as the term. Will require
+        -- factoring BuiltinDomain out of Kore.AST.Common.
+        _ <- Value.fromConcretePurePattern tools p
+        return p
 
 {- | Run a computation which can return early.
 

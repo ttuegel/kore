@@ -19,7 +19,9 @@ import Control.Monad
 import Control.Monad.Counter
        ( MonadCounter )
 import Control.Monad.Except
-       ( ExceptT (..), throwError )
+       ( ExceptT (..) )
+import Control.Monad.Except
+       ( throwError )
 import Data.Function
        ( on )
 import Data.Functor.Foldable

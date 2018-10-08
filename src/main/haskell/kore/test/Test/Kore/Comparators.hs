@@ -11,7 +11,6 @@ Portability : portable
 -}
 module Test.Kore.Comparators where
 
-
 import           Kore.AST.Common
 import           Kore.Predicate.Predicate
 import           Kore.Proof.Functional
