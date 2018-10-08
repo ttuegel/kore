@@ -46,6 +46,7 @@ module Kore.Builtin.Builtin
     , runParser
     , appliedFunction
     , lookupSymbol
+    , isSymbol
     , expectNormalConcreteTerm
     , getAttemptedFunction
     ) where
@@ -636,6 +637,16 @@ lookupSymbol builtinName indexedModule
         { symbolOrAliasConstructor
         , symbolOrAliasParams = []
         }
+
+isSymbol
+    :: String
+    -> MetadataTools Object Hook
+    -> SymbolOrAlias Object
+    -> Bool
+isSymbol builtinName MetadataTools { symAttributes } sym =
+    case getHook (symAttributes sym) of
+        Just hook -> hook == builtinName
+        Nothing -> False
 
 {- | Ensure that a 'PureMLPattern' is a concrete, normalized term.
 
