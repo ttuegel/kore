@@ -493,10 +493,56 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
                 (Mock.functionalConstr20 plain1OfA plain1OfB)
             )
         )
+    , testCase "builtin Map domain"
+        (do
+            assertEqualWithExplanation "concrete Map, same keys"
+                (Just Predicated
+                    { term = Mock.builtinMap [(Mock.aConcrete, Mock.b)]
+                    , predicate = makeTruePredicate
+                    , substitution = [(Mock.x, Mock.b)]
+                    }
+                )
+                (unify
+                    mockMetadataTools
+                    (Mock.builtinMap [(Mock.aConcrete, Mock.b)])
+                    (Mock.builtinMap [(Mock.aConcrete, mkVar Mock.x)])
+                )
+            assertEqualWithExplanation "concrete Map, different keys"
+                (Just ExpandedPattern.bottom)
+                (unify
+                    mockMetadataTools
+                    (Mock.builtinMap [(Mock.aConcrete, Mock.b)])
+                    (Mock.builtinMap [(Mock.bConcrete, mkVar Mock.x)])
+                )
+            assertEqualWithExplanation "concrete Map with framing variable"
+                (Just Predicated
+                    { term =
+                        Mock.concatMap
+                            (Mock.builtinMap [(Mock.aConcrete, fOfA)])
+                            (Mock.builtinMap [(Mock.bConcrete, fOfB)])
+                    , predicate = makeTruePredicate
+                    , substitution =
+                        [ (Mock.x, fOfA)
+                        , (Mock.m, Mock.builtinMap [(Mock.bConcrete, fOfB)])
+                        ]
+                    }
+                )
+                (unify
+                    mockMetadataTools
+                    (Mock.builtinMap [(Mock.aConcrete, fOfA), (Mock.bConcrete, fOfB)])
+                    (Mock.concatMap
+                        (Mock.builtinMap [(Mock.aConcrete, mkVar Mock.x)])
+                        (mkVar Mock.m)
+                    )
+                )
+        )
     ]
 
 fOfA :: CommonPurePattern Object
 fOfA = give mockSymbolOrAliasSorts $ Mock.f Mock.a
+
+fOfB :: CommonPurePattern Object
+fOfB = give mockSymbolOrAliasSorts $ Mock.f Mock.b
 
 gOfA :: CommonPurePattern Object
 gOfA = give mockSymbolOrAliasSorts $ Mock.g Mock.a
