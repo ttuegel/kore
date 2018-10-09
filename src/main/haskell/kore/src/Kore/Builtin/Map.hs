@@ -402,8 +402,7 @@ unify
     (DV_ sort' (BuiltinDomainMap map1))
     (DV_ _    (BuiltinDomainMap map2))
   = do
-    let (rem1, rem2, _quot) = unifyWith simplifyChild map1 map2
-    _quot <- sequence _quot
+    (rem1, rem2, _quot) <- unifyWith simplifyChild map1 map2
     let
         unified = give symbolOrAliasSorts $ do
             _quot <- Map.map fst <$> sequence _quot
@@ -427,8 +426,7 @@ unify
     )
     | isSymbolConcat hookTools concat' =
       do
-        let (rem1, rem2, _quot) = unifyWith simplifyChild map1 map2
-        _quot <- sequence _quot
+        (rem1, rem2, _quot) <- unifyWith simplifyChild map1 map2
         -- Unify the elements missing from map2 with the framing variable
         _rem <- simplifyChild x (mkDV rem1)
         let
@@ -456,12 +454,13 @@ unify _ _ _ _ = empty
  -}
 unifyWith
     :: Ord k
-    => (a -> b -> c)
+    => (a -> b -> Result c)
     -> Map k a
     -> Map k b
-    -> (Map k a, Map k b, Map k c)
-unifyWith f as bs =
-    ( Map.difference as bs
-    , Map.difference bs as
-    , Map.intersectionWith f as bs
-    )
+    -> Result (Map k a, Map k b, Map k c)
+unifyWith unifyChild as bs =
+    do
+        let as' = Map.difference as bs
+            bs' = Map.difference bs as
+        cs <- sequence (Map.intersectionWith unifyChild as bs)
+        return (as', bs', cs)
