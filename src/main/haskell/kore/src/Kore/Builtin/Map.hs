@@ -384,10 +384,30 @@ isSymbolConcat = Builtin.isSymbol "MAP.concat"
 
 {- | Simplify the conjunction of two concrete Map domain values.
 
-    The maps are assumed to have the same sort, but this is not checked. If
-    multiple sorts are hooked to the same builtin domain, the verifier should
-    reject the definition.
+The maps are assumed to have the same sort, but this is not checked. If
+multiple sorts are hooked to the same builtin domain, the verifier should
+reject the definition.
 
+The most general form of the unification problem is
+@
+(m₁ + x₁) ∧ (m₂ + x₂)
+@
+where @+@ represents @concat@ and @m₁@, @m₂@ are concrete maps.
+The solution is to introduce @qᵢ@ and @rᵢ@ such that
+@
+m₁ = q₁ + r₁
+m₂ = q₂ + r₂
+keys(q₁) = keys(q₂)
+keys(r₁) ∧ keys(r₂) = ⊥
+@
+so that
+@
+(m₁ + x₁) ∧ (m₂ + x₂) = (q₁ ∧ q₂) + (r₁ + x₁) ∧ (r₂ + x₂).
+@
+When both @x₁@ and @x₂@ are present, we should check that @q₁ ∧ q₂@ is not
+empty, otherwise this equation is just a trivial shuffling and does not actually
+make progress toward simplification. We introduce special cases when @x₁@ and/or
+@x₂@ is missing.
  -}
 unify
     :: forall level variable m p expanded proof.
