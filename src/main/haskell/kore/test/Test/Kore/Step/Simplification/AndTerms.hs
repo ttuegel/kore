@@ -514,7 +514,7 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
                     (Mock.builtinMap [(Mock.aConcrete, Mock.b)])
                     (Mock.builtinMap [(Mock.bConcrete, mkVar Mock.x)])
                 )
-            assertEqualWithExplanation "concrete Map with framing variable"
+            assertEqualWithExplanation "concrete Map with framed Map"
                 (Just Predicated
                     { term =
                         Mock.concatMap
@@ -534,6 +534,27 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
                         (Mock.builtinMap [(Mock.aConcrete, mkVar Mock.x)])
                         (mkVar Mock.m)
                     )
+                )
+            assertEqualWithExplanation "framed Map with concrete Map"
+                (Just Predicated
+                    { term =
+                        Mock.concatMap
+                            (Mock.builtinMap [(Mock.aConcrete, fOfA)])
+                            (Mock.builtinMap [(Mock.bConcrete, fOfB)])
+                    , predicate = makeTruePredicate
+                    , substitution =
+                        [ (Mock.x, fOfA)
+                        , (Mock.m, Mock.builtinMap [(Mock.bConcrete, fOfB)])
+                        ]
+                    }
+                )
+                (unify
+                    mockMetadataTools
+                    (Mock.concatMap
+                        (Mock.builtinMap [(Mock.aConcrete, mkVar Mock.x)])
+                        (mkVar Mock.m)
+                    )
+                    (Mock.builtinMap [(Mock.aConcrete, fOfA), (Mock.bConcrete, fOfB)])
                 )
         )
     ]

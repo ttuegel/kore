@@ -54,7 +54,7 @@ import           Kore.AST.Common
                  SortedVariable )
 import qualified Kore.AST.Common as Kore
 import           Kore.AST.MetaOrObject
-                 ( Object )
+                 ( MetaOrObject, Object )
 import qualified Kore.AST.PureML as Kore
 import           Kore.ASTUtils.SmartPatterns as Kore
 import qualified Kore.Builtin.Bool as Bool
@@ -390,83 +390,74 @@ isSymbolConcat = Builtin.isSymbol "MAP.concat"
 
  -}
 unify
-    :: ( Eq (variable Object), Show (variable Object)
+    :: forall level variable m p expanded proof.
+       ( Eq (variable Object), Show (variable Object)
        , SortedVariable variable
        , MonadCounter m
+       , MetaOrObject level
+       , p ~ PureMLPattern level variable
+       , expanded ~ ExpandedPattern level variable
+       , proof ~ SimplificationProof level
        )
     => MetadataTools level StepperAttributes
-    ->  (  PureMLPattern level variable
-        -> PureMLPattern level variable
-        -> Result
-            (m (ExpandedPattern level variable, SimplificationProof level))
-        )
-    -> PureMLPattern level variable
-    -> PureMLPattern level variable
-    -> Result (m (ExpandedPattern level variable , SimplificationProof level))
-unify
-    MetadataTools { symbolOrAliasSorts }
-    simplifyChild
-    (DV_ sort' (BuiltinDomainMap map1))
-    (DV_ _    (BuiltinDomainMap map2))
-  = do
-    (rem1, rem2, _quot) <- unifyWith simplifyChild map1 map2
-    let
-        unified = give symbolOrAliasSorts $ do
-            _quot <- Map.map fst <$> sequence _quot
-            let q = asBuiltinDomainValue sort' <$> sequenceA _quot
-            return (q, SimplificationProof)
-    return
-        (if Map.null rem1 && Map.null rem2
-            then unified
-            else return bottom
-        )
-  where
-    bottom = (ExpandedPattern.bottom, SimplificationProof)
+    -> (p -> p -> Result (m (expanded, proof)))
+    -> (p -> p -> Result (m (expanded, proof)))
 unify
     tools@MetadataTools { symbolOrAliasSorts }
     simplifyChild
-    (DV_ sort' (BuiltinDomainMap map1))
-    (App_ concat'
-        [ DV_ _ (BuiltinDomainMap map2)
-        , x@(Var_ _)
-        ]
-    )
-    | isSymbolConcat hookTools concat' =
-      do
+  =
+    unify0
+  where
+    bottom :: (expanded, proof)
+    bottom = (ExpandedPattern.bottom, SimplificationProof)
+
+    hookTools = StepperAttributes.hook <$> tools
+
+    unifyWith unifyChild as bs =
+        do
+            let as' = Map.difference as bs
+                bs' = Map.difference bs as
+            cs <- sequence (Map.intersectionWith unifyChild as bs)
+            return (as', bs', cs)
+
+    unify0
+        (DV_ sort' (BuiltinDomainMap map1))
+        (DV_ _     (BuiltinDomainMap map2))
+      = do
         (rem1, rem2, _quot) <- unifyWith simplifyChild map1 map2
-        -- Unify the elements missing from map2 with the framing variable
-        _rem <- simplifyChild x (asBuiltinDomainValue sort' rem1)
         let
             unified = give symbolOrAliasSorts $ do
                 _quot <- Map.map fst <$> sequence _quot
                 let q = asBuiltinDomainValue sort' <$> sequenceA _quot
-                (r, _) <- _rem
-                let result = App_ concat' <$> sequenceA [q, r]
-                return (result, SimplificationProof)
+                return (q, SimplificationProof)
         return
-            (if Map.null rem2
+            (if Map.null rem1 && Map.null rem2
                 then unified
                 else return bottom
             )
-  where
-    bottom = (ExpandedPattern.bottom, SimplificationProof)
-    hookTools = StepperAttributes.hook <$> tools
-unify _ _ _ _ = empty
-
-{- | Unify two maps with the given function.
-
-    Returns the remainder of each map (the key-value pairs not in the other map)
-    and the keys in common under the given function.
- -}
-unifyWith
-    :: Ord k
-    => (a -> b -> Result c)
-    -> Map k a
-    -> Map k b
-    -> Result (Map k a, Map k b, Map k c)
-unifyWith unifyChild as bs =
-    do
-        let as' = Map.difference as bs
-            bs' = Map.difference bs as
-        cs <- sequence (Map.intersectionWith unifyChild as bs)
-        return (as', bs', cs)
+    unify0
+        (DV_ sort' (BuiltinDomainMap map1))
+        (App_ concat'
+            [ DV_ _ (BuiltinDomainMap map2)
+            , x@(Var_ _)
+            ]
+        )
+        | isSymbolConcat hookTools concat' =
+            do
+                (rem1, rem2, _quot) <- unifyWith simplifyChild map1 map2
+                -- Unify the elements missing from map2 with the framing variable
+                _rem <- simplifyChild x (asBuiltinDomainValue sort' rem1)
+                let
+                    unified = give symbolOrAliasSorts $ do
+                        _quot <- Map.map fst <$> sequence _quot
+                        let q = asBuiltinDomainValue sort' <$> sequenceA _quot
+                        (r, _) <- _rem
+                        let result = App_ concat' <$> sequenceA [q, r]
+                        return (result, SimplificationProof)
+                return
+                    (if Map.null rem2
+                        then unified
+                        else return bottom
+                    )
+    unify0 app_@(App_ _ _) dv_@(DV_ _ _) = unify0 dv_ app_
+    unify0 _ _ = empty
