@@ -166,8 +166,7 @@ returnMap
 returnMap resultSort map' =
     Builtin.appliedFunction
         $ ExpandedPattern.fromPurePattern
-        $ Kore.DV_ resultSort
-        $ Kore.BuiltinDomainMap map'
+        $ asBuiltinDomainValue resultSort map'
 
 evalLookup :: Builtin.Function
 evalLookup =
@@ -328,6 +327,14 @@ asExpandedPattern symbols resultSort =
     asExpandedPattern0 = \asPattern0 builtin ->
         ExpandedPattern.fromPurePattern $ asPattern0 builtin
 
+{- | Embed a 'Map' in a builtin domain value pattern.
+ -}
+asBuiltinDomainValue
+    :: Kore.Sort Object
+    -> Map (Kore.ConcretePurePattern Object) (Kore.PureMLPattern Object variable)
+    -> Kore.PureMLPattern Object variable
+asBuiltinDomainValue resultSort map' = DV_ resultSort (BuiltinDomainMap map')
+
 {- | Find the symbol hooked to @MAP.unit@ in an indexed module.
  -}
 lookupSymbolUnit
@@ -406,7 +413,7 @@ unify
     let
         unified = give symbolOrAliasSorts $ do
             _quot <- Map.map fst <$> sequence _quot
-            let q = DV_ sort' . BuiltinDomainMap <$> sequenceA _quot
+            let q = asBuiltinDomainValue sort' <$> sequenceA _quot
             return (q, SimplificationProof)
     return
         (if Map.null rem1 && Map.null rem2
@@ -428,11 +435,11 @@ unify
       do
         (rem1, rem2, _quot) <- unifyWith simplifyChild map1 map2
         -- Unify the elements missing from map2 with the framing variable
-        _rem <- simplifyChild x (mkDV rem1)
+        _rem <- simplifyChild x (asBuiltinDomainValue sort' rem1)
         let
             unified = give symbolOrAliasSorts $ do
                 _quot <- Map.map fst <$> sequence _quot
-                let q = mkDV <$> sequenceA _quot
+                let q = asBuiltinDomainValue sort' <$> sequenceA _quot
                 (r, _) <- _rem
                 let result = App_ concat' <$> sequenceA [q, r]
                 return (result, SimplificationProof)
@@ -444,7 +451,6 @@ unify
   where
     bottom = (ExpandedPattern.bottom, SimplificationProof)
     hookTools = StepperAttributes.hook <$> tools
-    mkDV = DV_ sort' . BuiltinDomainMap
 unify _ _ _ _ = empty
 
 {- | Unify two maps with the given function.
