@@ -110,23 +110,9 @@ definedNamesForObjectSentence
 {-|'verifySentences' verifies the welformedness of a list of Kore 'Sentence's.
 -}
 verifySentences
-    :: KoreIndexedModule atts
-    -- ^ The module containing all definitions which are visible in this
-    -- pattern.
-    -> AttributesVerification atts
-    -> Builtin.Verifiers
-    -> [KoreSentence]
-    -> Verifier ()
-verifySentences
-    indexedModule attributesVerification builtinVerifiers sentences
-  =
-    mapM_
-        (verifySentence
-            builtinVerifiers
-            indexedModule
-            attributesVerification
-        )
-        sentences
+    :: [KoreSentence]
+    -> Verifier attrs ()
+verifySentences = mapM_ verifySentence
 
 verifySentence
     :: Builtin.Verifiers

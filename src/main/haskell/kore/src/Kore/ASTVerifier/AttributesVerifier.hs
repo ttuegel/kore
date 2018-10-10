@@ -35,12 +35,6 @@ import Kore.IndexedModule.IndexedModule
 import Kore.IndexedModule.Resolvers
        ( resolveHook )
 
-{-| Whether we should verify attributes and, when verifying, the module with
-declarations visible in these atributes. -}
-data AttributesVerification atts
-    = VerifyAttributes (Proxy atts)
-    | DoNotVerifyAttributes
-
 {- | Verify that the given attributes are well-formed.
  -}
 verifyAttributes
