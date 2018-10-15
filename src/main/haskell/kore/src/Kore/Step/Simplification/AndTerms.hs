@@ -88,7 +88,9 @@ termEquals
     -> Maybe
         (m (PredicateSubstitution level variable, SimplificationProof level))
 termEquals tools first second =
-    fromResult Nothing (Just <$> termEquals0)
+    case termEquals0 of
+        Success r -> Just r
+        _ -> Nothing
   where
     termEquals0 = do  -- Result monad
         result <- termEqualsAnd tools first second
@@ -137,9 +139,10 @@ termEqualsAndChild
     -> PureMLPattern level variable
     -> m (ExpandedPattern level variable, SimplificationProof level)
 termEqualsAndChild tools first second =
-    fromResult
-        (give (MetadataTools.symbolOrAliasSorts tools) $
-            return
+    let result = maybeTermEquals tools simplifier first second
+        simplifier = \p1 p2 -> Success (termEqualsAndChild tools p1 p2)
+        unknown =
+            give (MetadataTools.symbolOrAliasSorts tools)
                 ( Predicated
                     { term = mkTop
                     , predicate = makeEqualsPredicate first second
@@ -147,13 +150,11 @@ termEqualsAndChild tools first second =
                     }
                 , SimplificationProof
                 )
-        )
-        (maybeTermEquals
-            tools
-            (\p1 p2 -> Success $ termEqualsAndChild tools p1 p2)
-            first
-            second
-        )
+    in
+        case result of
+            Success r -> r
+            Unknown -> return unknown
+            Failure -> return (ExpandedPattern.bottom, SimplificationProof)
 
 maybeTermEquals
     ::  ( MetaOrObject level
@@ -222,11 +223,13 @@ termUnification
     -> PureMLPattern level variable
     -> Maybe
         (m (ExpandedPattern level variable, SimplificationProof level))
-termUnification tools pat1 pat2 =
-    fromResult Nothing (Just <$> termUnification0 pat1 pat2)
-  where
-    termUnification0 p1 p2 =
-        definite (maybeTermAnd tools termUnification0 p1 p2)
+termUnification tools first second =
+    let simplifier = \p1 p2 -> definite (maybeTermAnd tools simplifier p1 p2)
+        result = maybeTermAnd tools simplifier first second
+    in
+        case result of
+            Success r -> Just r
+            _ -> Nothing
 
 {-| "and" simplification for two terms. The comment for
 'Kore.Step.Simplification.And.simplify' describes all the special cases
@@ -235,7 +238,8 @@ handled by this.
 hs-boot: Please remember to update the hs-boot file when changing the signature.
 -}
 termAnd
-    ::  ( MetaOrObject level
+    ::  forall level variable m.
+        ( MetaOrObject level
         , Hashable variable
         , FreshVariable variable
         , Ord (variable level)
@@ -249,15 +253,27 @@ termAnd
     -> PureMLPattern level variable
     -> PureMLPattern level variable
     -> m (ExpandedPattern level variable, SimplificationProof level)
-termAnd tools first second =
-    fromResult
-        (give (MetadataTools.symbolOrAliasSorts tools) $
-            return
-                ( ExpandedPattern.fromPurePattern (mkAnd first second)
+termAnd tools@MetadataTools { symbolOrAliasSorts } first second =
+    let simplifier :: TermSimplifier level variable m
+        simplifier = \p1 p2 ->
+            -- Do not propagate Unknown results upward out of children.
+            case maybeTermAnd tools simplifier p1 p2 of
+                Unknown -> Success (unknown p1 p2)
+                r -> r
+        result :: Result (m (ExpandedPattern level variable, SimplificationProof level))
+        result = simplifier first second
+        unknown = \p1 p2 ->
+            -- Return conjunction of children for unknown results.
+            return $ give symbolOrAliasSorts
+                ( ExpandedPattern.fromPurePattern (mkAnd p1 p2)
                 , SimplificationProof
                 )
-        )
-        (maybeTermAnd tools (\p1 p2 -> Success $ termAnd tools p1 p2) first second)
+        failure = (ExpandedPattern.bottom, SimplificationProof)
+    in
+        case result of
+            Success r -> r
+            Unknown -> unknown first second
+            Failure -> return failure
 
 type TermSimplifier level variable m =
     (  PureMLPattern level variable
