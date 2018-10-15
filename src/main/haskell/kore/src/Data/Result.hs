@@ -7,7 +7,6 @@ Maintainer  : thomas.tuegel@runtimeverification.com
 module Data.Result
     ( Result (..)
     , definite
-    , fromResult
     ) where
 
 import           Control.Applicative
@@ -24,16 +23,6 @@ data Result a
     | Failure  -- ^ unsuccessful result
     | Unknown  -- ^ indeterminate result
     deriving (Eq, Ord, Foldable, Functor, Read, Show, Traversable)
-
--- | Return the result, or the default value if not successful.
-fromResult
-    :: a  -- ^ default value
-    -> Result a  -- ^ result
-    -> a
-fromResult a =
-    \case
-        Success a' -> a'
-        _ -> a
 
 -- | Make the @Result@ definite, i.e. convert 'Unknown' to 'Failure'.
 definite :: Result a -> Result a
