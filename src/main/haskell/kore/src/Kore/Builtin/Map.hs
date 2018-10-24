@@ -432,6 +432,11 @@ lookupSymbolInKeys = Builtin.lookupSymbol "MAP.in_keys"
 isSymbolConcat :: MetadataTools Object Hook -> Kore.SymbolOrAlias Object -> Bool
 isSymbolConcat = Builtin.isSymbol "MAP.concat"
 
+{- | Check if the given symbol is hooked to @MAP.element@.
+ -}
+isSymbolElement :: MetadataTools Object Hook -> Kore.SymbolOrAlias Object -> Bool
+isSymbolElement = Builtin.isSymbol "MAP.element"
+
 {- | Simplify the conjunction of two concrete Map domain values.
 
 The maps are assumed to have the same sort, but this is not checked. If
@@ -525,8 +530,18 @@ unify
                             unifyFramed1 resultSort map1 symbol2 map2 x
                         [ x@(Var_ _), DV_ _ (BuiltinDomainMap map2) ] ->
                             unifyFramed1 resultSort map1 symbol2 map2 x
-                        _ ->
+                        [ _, _ ] ->
                             unsolved dv1 app
+                        _ ->
+                            Builtin.wrongArity "MAP.concat"
+                | isSymbolElement hookTools symbol2 ->
+                    case args2 of
+                        [ key2, value2 ] ->
+                            -- The key is not concrete yet, or MAP.element would
+                            -- have evaluated to a domain value.
+                            unifyElement map1 symbol2 key2 value2
+                        _ ->
+                            Builtin.wrongArity "MAP.element"
                 | otherwise ->
                     empty
             _ ->
@@ -613,6 +628,32 @@ unify
         return (normalized, SimplificationProof)
       where
         asBuiltinMap = asBuiltinDomainValue resultSort
+
+    unifyElement
+        :: forall k . (level ~ Object, k ~ ConcretePurePattern Object)
+        => Map k p  -- ^ concrete map
+        -> SymbolOrAlias level  -- ^ 'element' symbol
+        -> p  -- ^ key
+        -> p  -- ^ value
+        -> MaybeT m (expanded, proof)
+    unifyElement map1 element' key2 value2 =
+        case Map.toList map1 of
+            [] ->
+                -- Cannot unify an empty map1 with a one-element map2.
+                return (ExpandedPattern.bottom, SimplificationProof)
+            [(Kore.fromConcretePurePattern -> key1, value1)] ->
+                Monad.Trans.lift $ give symbolOrAliasSorts $ do
+                    (key, _) <- unifyChildren key1 key2
+                    (value, _) <- unifyChildren value1 value2
+                    let result =
+                            App_ element' <$> args
+                          where
+                            args = propagatePredicates [key, value]
+                    return (result, SimplificationProof)
+            _ ->
+                -- TODO (thomas.tuegel): Return a disjunction when map1 is not a
+                -- singleton map.
+                empty
 
     -- | Return an unsolved predicate
     unsolved
