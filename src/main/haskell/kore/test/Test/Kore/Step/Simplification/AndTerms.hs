@@ -3,12 +3,15 @@ module Test.Kore.Step.Simplification.AndTerms
     ) where
 
 import Test.Tasty
-       ( TestTree )
+       ( TestTree, testGroup )
 import Test.Tasty.HUnit
        ( testCase )
 
-import Data.Reflection
-       ( give )
+import           Control.Error
+                 ( MaybeT (..) )
+import qualified Control.Error as Error
+import           Data.Reflection
+                 ( give )
 
 import           Kore.AST.Common
                  ( BuiltinDomain (..), CommonPurePattern )
@@ -27,7 +30,7 @@ import qualified Kore.Step.ExpandedPattern as ExpandedPattern
 import           Kore.Step.Simplification.AndTerms
                  ( termAnd, termUnification )
 import           Kore.Step.Simplification.Data
-                 ( evalSimplifier )
+                 ( evalSimplifier, liftPredicateSubstitutionSimplifier )
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 
@@ -506,168 +509,175 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
                 (Mock.functionalConstr20 plain1OfA plain1OfB)
             )
         )
-    , testCase "builtin Map domain"
-        (do
-            assertEqualWithExplanation "concrete Map, same keys"
-                (Just Predicated
-                    { term = Mock.builtinMap [(Mock.aConcrete, Mock.b)]
-                    , predicate = makeTruePredicate
-                    , substitution = [(Mock.x, Mock.b)]
-                    }
+    , testGroup "builtin Map domain"
+        [ testCase "concrete Map, same keys"
+          $ assertEqualWithExplanation ""
+            (Just Predicated
+                { term = Mock.builtinMap [(Mock.aConcrete, Mock.b)]
+                , predicate = makeTruePredicate
+                , substitution = [(Mock.x, Mock.b)]
+                }
+            )
+            (unify
+                mockMetadataTools
+                (Mock.builtinMap [(Mock.aConcrete, Mock.b)])
+                (Mock.builtinMap [(Mock.aConcrete, mkVar Mock.x)])
+            )
+        , testCase "concrete Map, different keys"
+          $ assertEqualWithExplanation ""
+            (Just ExpandedPattern.bottom)
+            (unify
+                mockMetadataTools
+                (Mock.builtinMap [(Mock.aConcrete, Mock.b)])
+                (Mock.builtinMap [(Mock.bConcrete, mkVar Mock.x)])
+            )
+        , testCase "concrete Map with framed Map"
+          $ assertEqualWithExplanation ""
+            (Just Predicated
+                { term =
+                    Mock.concatMap
+                        (Mock.builtinMap [(Mock.aConcrete, fOfA)])
+                        (Mock.builtinMap [(Mock.bConcrete, fOfB)])
+                , predicate = makeTruePredicate
+                , substitution =
+                    [ (Mock.m, Mock.builtinMap [(Mock.bConcrete, fOfB)])
+                    , (Mock.x, fOfA)
+                    ]
+                }
+            )
+            (unify
+                mockMetadataTools
+                (Mock.builtinMap [(Mock.aConcrete, fOfA), (Mock.bConcrete, fOfB)])
+                (Mock.concatMap
+                    (Mock.builtinMap [(Mock.aConcrete, mkVar Mock.x)])
+                    (mkVar Mock.m)
                 )
-                (unify
-                    mockMetadataTools
-                    (Mock.builtinMap [(Mock.aConcrete, Mock.b)])
+            )
+        , testCase "concrete Map with framed Map"
+          $ assertEqualWithExplanation ""
+            (Just Predicated
+                { term =
+                    Mock.concatMap
+                        (Mock.builtinMap [(Mock.aConcrete, fOfA)])
+                        (Mock.builtinMap [(Mock.bConcrete, fOfB)])
+                , predicate = makeTruePredicate
+                , substitution =
+                    [ (Mock.m, Mock.builtinMap [(Mock.bConcrete, fOfB)])
+                    , (Mock.x, fOfA)
+                    ]
+                }
+            )
+            (unify
+                mockMetadataTools
+                (Mock.builtinMap [(Mock.aConcrete, fOfA), (Mock.bConcrete, fOfB)])
+                (Mock.concatMap
+                    (mkVar Mock.m)
                     (Mock.builtinMap [(Mock.aConcrete, mkVar Mock.x)])
                 )
-            assertEqualWithExplanation "concrete Map, different keys"
-                (Just ExpandedPattern.bottom)
-                (unify
-                    mockMetadataTools
-                    (Mock.builtinMap [(Mock.aConcrete, Mock.b)])
-                    (Mock.builtinMap [(Mock.bConcrete, mkVar Mock.x)])
+            )
+        , testCase "framed Map with concrete Map"
+          $ assertEqualWithExplanation ""
+            (Just Predicated
+                { term =
+                    Mock.concatMap
+                        (Mock.builtinMap [(Mock.aConcrete, fOfA)])
+                        (Mock.builtinMap [(Mock.bConcrete, fOfB)])
+                , predicate = makeTruePredicate
+                , substitution =
+                    [ (Mock.m, Mock.builtinMap [(Mock.bConcrete, fOfB)])
+                    , (Mock.x, fOfA)
+                    ]
+                }
+            )
+            (unify
+                mockMetadataTools
+                (Mock.concatMap
+                    (Mock.builtinMap [(Mock.aConcrete, mkVar Mock.x)])
+                    (mkVar Mock.m)
                 )
-            assertEqualWithExplanation "concrete Map with framed Map"
-                (Just Predicated
-                    { term =
-                        Mock.concatMap
-                            (Mock.builtinMap [(Mock.aConcrete, fOfA)])
-                            (Mock.builtinMap [(Mock.bConcrete, fOfB)])
-                    , predicate = makeTruePredicate
-                    , substitution =
-                        [ (Mock.m, Mock.builtinMap [(Mock.bConcrete, fOfB)])
-                        , (Mock.x, fOfA)
-                        ]
-                    }
+                (Mock.builtinMap [(Mock.aConcrete, fOfA), (Mock.bConcrete, fOfB)])
+            )
+        , testCase "framed Map with concrete Map" $ assertEqualWithExplanation ""
+            (Just Predicated
+                { term =
+                    Mock.concatMap
+                        (Mock.builtinMap [(Mock.aConcrete, fOfA)])
+                        (Mock.builtinMap [(Mock.bConcrete, fOfB)])
+                , predicate = makeTruePredicate
+                , substitution =
+                    [ (Mock.m, Mock.builtinMap [(Mock.bConcrete, fOfB)])
+                    , (Mock.x, fOfA)
+                    ]
+                }
+            )
+            (unify
+                mockMetadataTools
+                (Mock.concatMap
+                    (mkVar Mock.m)
+                    (Mock.builtinMap [(Mock.aConcrete, mkVar Mock.x)])
                 )
-                (unify
-                    mockMetadataTools
-                    (Mock.builtinMap [(Mock.aConcrete, fOfA), (Mock.bConcrete, fOfB)])
-                    (Mock.concatMap
-                        (Mock.builtinMap [(Mock.aConcrete, mkVar Mock.x)])
-                        (mkVar Mock.m)
-                    )
-                )
-            assertEqualWithExplanation "concrete Map with framed Map"
-                (Just Predicated
-                    { term =
-                        Mock.concatMap
-                            (Mock.builtinMap [(Mock.aConcrete, fOfA)])
-                            (Mock.builtinMap [(Mock.bConcrete, fOfB)])
-                    , predicate = makeTruePredicate
-                    , substitution =
-                        [ (Mock.m, Mock.builtinMap [(Mock.bConcrete, fOfB)])
-                        , (Mock.x, fOfA)
-                        ]
-                    }
-                )
-                (unify
-                    mockMetadataTools
-                    (Mock.builtinMap [(Mock.aConcrete, fOfA), (Mock.bConcrete, fOfB)])
-                    (Mock.concatMap
-                        (mkVar Mock.m)
-                        (Mock.builtinMap [(Mock.aConcrete, mkVar Mock.x)])
-                    )
-                )
-            assertEqualWithExplanation "framed Map with concrete Map"
-                (Just Predicated
-                    { term =
-                        Mock.concatMap
-                            (Mock.builtinMap [(Mock.aConcrete, fOfA)])
-                            (Mock.builtinMap [(Mock.bConcrete, fOfB)])
-                    , predicate = makeTruePredicate
-                    , substitution =
-                        [ (Mock.m, Mock.builtinMap [(Mock.bConcrete, fOfB)])
-                        , (Mock.x, fOfA)
-                        ]
-                    }
-                )
-                (unify
-                    mockMetadataTools
-                    (Mock.concatMap
-                        (Mock.builtinMap [(Mock.aConcrete, mkVar Mock.x)])
-                        (mkVar Mock.m)
-                    )
-                    (Mock.builtinMap [(Mock.aConcrete, fOfA), (Mock.bConcrete, fOfB)])
-                )
-            assertEqualWithExplanation "framed Map with concrete Map"
-                (Just Predicated
-                    { term =
-                        Mock.concatMap
-                            (Mock.builtinMap [(Mock.aConcrete, fOfA)])
-                            (Mock.builtinMap [(Mock.bConcrete, fOfB)])
-                    , predicate = makeTruePredicate
-                    , substitution =
-                        [ (Mock.m, Mock.builtinMap [(Mock.bConcrete, fOfB)])
-                        , (Mock.x, fOfA)
-                        ]
-                    }
-                )
-                (unify
-                    mockMetadataTools
-                    (Mock.concatMap
-                        (mkVar Mock.m)
-                        (Mock.builtinMap [(Mock.aConcrete, mkVar Mock.x)])
-                    )
-                    (Mock.builtinMap [(Mock.aConcrete, fOfA), (Mock.bConcrete, fOfB)])
-                )
-        )
-    , testCase "builtin List domain"
-        (do
+                (Mock.builtinMap [(Mock.aConcrete, fOfA), (Mock.bConcrete, fOfB)])
+            )
+        ]
+    , testGroup "builtin List domain"
+        [
             let term1 = Mock.builtinList
                             [Mock.constr10 Mock.cf, Mock.constr11 Mock.cf]
-            assertEqualWithExplanation "[same head, same head]"
-                ( Just $ Predicated
-                        { term = term1
-                        , predicate = makeTruePredicate
-                        , substitution = []
-                        }
-                )
-                ( unify
-                    mockMetadataTools
-                        term1
-                        term1
-                )
-            let term3 = Mock.builtinList $
-                            [Mock.a, Mock.a]
-            let term4 = Mock.builtinList $
-                            [Mock.a, Mock.b]
-            assertEqualWithExplanation "[same head, different head]"
-                ( Just $ ExpandedPattern.bottom
-                )
-                ( unify
-                    mockMetadataTools
-                    term3
-                    term4
-                )
+            in
+                testCase "[same head, same head]"
+                $ assertEqualWithExplanation ""
+                    ( Just $ Predicated
+                            { term = term1
+                            , predicate = makeTruePredicate
+                            , substitution = []
+                            }
+                    )
+                    ( unify
+                        mockMetadataTools
+                            term1
+                            term1
+                    )
+        ,
+            let term3 = Mock.builtinList [Mock.a, Mock.a]
+                term4 = Mock.builtinList [Mock.a, Mock.b]
+                unified34 =
+                    let unifiedElements = [pure Mock.a, ExpandedPattern.bottom]
+                    in Mock.builtinList <$> sequenceA unifiedElements
+            in
+                testCase "[same head, different head]"
+                $ assertEqualWithExplanation ""
+                    (Just unified34)
+                    (unify mockMetadataTools term3 term4)
+        ,
             let term5 = Mock.concatList
-                        (Mock.builtinList [Mock.constr10 Mock.cf])
+                        (Mock.builtinList [Mock.a])
                         (mkVar Mock.x)
-            let term6 = Mock.builtinList $ [Mock.constr10 Mock.cf, Mock.constr11 Mock.cf]
-            assertEqualWithExplanation "[a] `concat` x /\\ [a, b] "
-                ( Just $ Predicated
-                        { term = Mock.builtinList[Mock.constr10 Mock.cf, Mock.constr11 Mock.cf]
-                        , predicate = makeTruePredicate
-                        , substitution = [(Mock.x, Mock.builtinList [Mock.constr11 Mock.cf])]
-                        }
-                )
-                ( unify
-                    mockMetadataTools
-                    term5
-                    term6
-                )
+                term6 = Mock.builtinList $ [Mock.a, Mock.b]
+            in
+                testCase "[a] `concat` x /\\ [a, b] "
+                $ assertEqualWithExplanation ""
+                    ( Just $ Predicated
+                            { term =
+                                -- The unit test does not use the simplifier, so
+                                -- concatList will not be evaluated.
+                                Mock.concatList
+                                    (Mock.builtinList [Mock.a])
+                                    (Mock.builtinList [Mock.b])
+                            , predicate = makeTruePredicate
+                            , substitution = [(Mock.x, Mock.builtinList [Mock.b])]
+                            }
+                    )
+                    (unify mockMetadataTools term5 term6)
+        ,
             let term7 = Mock.builtinList [Mock.a, Mock.a]
-            let term8 = Mock.builtinList [Mock.a]
-            assertEqualWithExplanation "different lengths"
-                ( Just ExpandedPattern.bottom
-                )
-                ( unify
-                    mockMetadataTools
-                    term7
-                    term8
-                )
+                term8 = Mock.builtinList [Mock.a]
+            in
+                testCase "different lengths"
+                $ assertEqualWithExplanation ""
+                    (Just ExpandedPattern.bottom)
+                    (unify mockMetadataTools term7 term8)
 
-        )
+        ]
     ]
 
 fOfA :: CommonPurePattern Object
@@ -734,12 +744,16 @@ unify
     -> CommonPurePattern level
     -> Maybe (CommonExpandedPattern level)
 unify tools first second =
-    case unification of
-        Nothing -> Nothing
-        Just result -> Just $ fst $ evalSimplifier result
+    fst <$> evalSimplifier (runMaybeT $ unification)
   where
+    substitutionSimplifier =
+        liftPredicateSubstitutionSimplifier
+            (Mock.substitutionSimplifier tools)
     unification =
-        termUnification tools (Mock.substitutionSimplifier tools) first second
+        -- The unification error is discarded because, for testing purposes, we
+        -- are not interested in the /reason/ unification failed. For the tests,
+        -- the failure is almost always due to unsupported patterns anyway.
+        Error.hushT $ termUnification tools substitutionSimplifier first second
 
 simplify
     :: MetaOrObject level
