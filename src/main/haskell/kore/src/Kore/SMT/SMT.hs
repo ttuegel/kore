@@ -140,11 +140,12 @@ unsafeTryRefutePattern
     -> PureMLPattern Object variable
     -> Maybe Bool
 unsafeTryRefutePattern (SMTTimeOut timeout) p = unsafePerformIO $ do
-  let smtPredicate = setTimeOut timeout >> patternToSMT True p -- 20ms
-        >>= (\case {
-               Right p' -> return $ bnot p' ;
-               Left _ -> sBool "TranslationFailed"
-          })
+  let smtPredicate = do
+          setTimeOut timeout
+          smt <- patternToSMT True p
+          case smt of
+              Right p' -> return $ bnot p'
+              Left _ -> sBool "TranslationFailed"
   res <- proveWith config smtPredicate
   return $ case res of
     ThmResult (Satisfiable   _ _) -> Nothing
@@ -193,17 +194,33 @@ patternToSMT sloppy p =
                 "BOOL.Bool" -> goBinaryOp (<=>) goBoolean x1 x2
                 "INT.Int"   -> goBinaryOp (.==) goInteger x1 x2
                 other -> throwError $ UnknownHookedSort s
-        goBoolean pat@(App_ h [x1, x2]) =
-          case getHookString $ getSymbolHook h of
-                "INT.le" -> goBinaryOp (.<=) goInteger x1 x2
-                "INT.ge" -> goBinaryOp (.>=) goInteger x1 x2
-                "INT.gt" -> goBinaryOp (.>)  goInteger x1 x2
-                "INT.lt" -> goBinaryOp (.<)  goInteger x1 x2
-                "INT.eq" -> goBinaryOp (.==) goInteger x1 x2
-                other ->
-                  if sloppy
-                    then getBoolVar (Right pat)
-                    else throwError $ UnknownHookedSymbol h
+        goBoolean pat@(App_ h args) =
+            case args of
+                [x1, x2] ->
+                    case getHookString $ getSymbolHook h of
+                        "INT.le" -> goBinaryOp (.<=) goInteger x1 x2
+                        "INT.ge" -> goBinaryOp (.>=) goInteger x1 x2
+                        "INT.gt" -> goBinaryOp (.>)  goInteger x1 x2
+                        "INT.lt" -> goBinaryOp (.<)  goInteger x1 x2
+                        "INT.eq" -> goBinaryOp (.==) goInteger x1 x2
+                        "BOOL.or" -> goBinaryOp (|||) goBoolean x1 x2
+                        "BOOL.and" -> goBinaryOp (&&&) goBoolean x1 x2
+                        "BOOL.xor" -> goBinaryOp (<+>) goBoolean x1 x2
+                        "BOOL.ne" -> goBinaryOp (<+>) goBoolean x1 x2
+                        "BOOL.eq" -> goBinaryOp (<=>) goBoolean x1 x2
+                        "BOOL.implies" -> goBinaryOp (==>) goBoolean x1 x2
+                        other
+                          | sloppy -> getBoolVar (Right pat)
+                          | otherwise -> throwError $ UnknownHookedSymbol h
+                [x] ->
+                    case getHookString $ getSymbolHook h of
+                        "BOOL.not" -> goUnaryOp bnot goBoolean x
+                        other
+                          | sloppy -> getBoolVar (Right pat)
+                          | otherwise -> throwError $ UnknownHookedSymbol h
+                _
+                  | sloppy -> getBoolVar (Right pat)
+                  | otherwise -> throwError $ UnknownHookedSymbol h
         goBoolean (V v) = getBoolVar (Left $ variableName v)
         goBoolean pat@(DV_ _ _) = goBoolLiteral pat "BOOL.Bool"
         goBoolean (Top_ _)    = return true
