@@ -68,8 +68,9 @@ test_conditionEvaluator =
                             (mkAnd a (mkNot a) :: CommonPurePattern Object)
                         )
                 )
-                PredicateSubstitution
-                    { predicate = makeFalsePredicate :: CommonPredicate Object
+                Predicated
+                    { term = ()
+                    , predicate = makeFalsePredicate :: CommonPredicate Object
                     , substitution = []
                     }
             )

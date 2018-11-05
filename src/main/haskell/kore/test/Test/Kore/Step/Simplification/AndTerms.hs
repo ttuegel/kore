@@ -523,14 +523,19 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
                 (Mock.builtinMap [(Mock.aConcrete, Mock.b)])
                 (Mock.builtinMap [(Mock.aConcrete, mkVar Mock.x)])
             )
-        , testCase "concrete Map, different keys"
-          $ assertEqualWithExplanation ""
-            (Just ExpandedPattern.bottom)
-            (unify
-                mockMetadataTools
-                (Mock.builtinMap [(Mock.aConcrete, Mock.b)])
-                (Mock.builtinMap [(Mock.bConcrete, mkVar Mock.x)])
-            )
+        ,   let
+                map1 = Mock.builtinMap [(Mock.aConcrete, Mock.b)]
+                map2 = Mock.builtinMap [(Mock.bConcrete, mkVar Mock.x)]
+                expected =
+                    Predicated
+                        { term = map1
+                        , predicate = makeFalsePredicate
+                        , substitution = []
+                        }
+                actual = unify mockMetadataTools map1 map2
+            in
+                testCase "concrete Map, different keys"
+                $ assertEqualWithExplanation "" (Just expected) actual
         , testCase "concrete Map with framed Map"
           $ assertEqualWithExplanation ""
             (Just Predicated

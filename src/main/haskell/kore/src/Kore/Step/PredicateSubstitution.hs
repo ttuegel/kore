@@ -14,31 +14,20 @@ module Kore.Step.PredicateSubstitution
     , PredicateSubstitution (..)
     , bottom
     , top
-    , toPredicate
-    , freeVariables
     ) where
 
-import           Control.DeepSeq
-                 ( NFData )
-import           Data.Reflection
-                 ( Given )
-import qualified Data.Set as Set
-import           GHC.Generics
-                 ( Generic )
+import Control.DeepSeq
+       ( NFData )
+import GHC.Generics
+       ( Generic )
 
-import           Kore.AST.Common
-                 ( SortedVariable, Variable )
-import           Kore.AST.MetaOrObject
-import           Kore.IndexedModule.MetadataTools
-                 ( SymbolOrAliasSorts )
-import           Kore.Predicate.Predicate
-                 ( Predicate, makeFalsePredicate, makeTruePredicate )
-import           Kore.Predicate.Predicate
-                 ( makeAndPredicate, substitutionToPredicate )
-import qualified Kore.Predicate.Predicate as Predicate
-                 ( freeVariables )
-import           Kore.Unification.Data
-                 ( UnificationSubstitution )
+import Kore.AST.Common
+       ( Variable )
+import Kore.AST.MetaOrObject
+import Kore.Predicate.Predicate
+       ( Predicate, makeFalsePredicate, makeTruePredicate )
+import Kore.Unification.Data
+       ( UnificationSubstitution )
 
 {-|'PredicateSubstitution' is a representation of a specific type of
 PureMLPattern that occurs in certain cases when executing Kore.
@@ -78,38 +67,3 @@ top =
         { predicate = makeTruePredicate
         , substitution = []
         }
-
-{-|'toPredicate' transforms a predicate & substitution into a predicate.
-
-    See also: 'substitutionToPredicate'.
-
--}
-toPredicate
-    :: ( MetaOrObject level
-       , Given (SymbolOrAliasSorts level)
-       , SortedVariable variable
-       , Eq (variable level)
-       , Show (variable level)
-       )
-    => PredicateSubstitution level variable
-    -> Predicate level variable
-toPredicate PredicateSubstitution { predicate, substitution } =
-    fst $ makeAndPredicate
-        predicate
-        (substitutionToPredicate substitution)
-
-{- | Extract the set of free variables from a predicate and substitution.
-
-    See also: 'Predicate.freeVariables'.
--}
-
-freeVariables
-    :: ( MetaOrObject level
-       , Ord (variable level)
-       , Show (variable level)
-       , Given (SymbolOrAliasSorts level)
-       , SortedVariable variable
-       )
-    => PredicateSubstitution level variable
-    -> Set.Set (variable level)
-freeVariables = Predicate.freeVariables . toPredicate
