@@ -19,6 +19,10 @@ $(DEFINITION): imp.k $(K)
 %.search.final.output: %.imp $(DEFINITION) $(K) $(KORE_EXEC)
 	$(KRUN) $(KRUN_OPTS) $< --output-file $@ --search-final
 
+%.search.impossible.output : %.imp $(DEFINITION) $(K) $(KORE_EXEC)
+	$(KRUN) $(KRUN_OPTS) $< --output-file $@ --search-final \
+		--pattern '<state> ... r |-> 1 ... </state>'
+
 %.test: %.output
 	diff -u $<.golden $<
 
