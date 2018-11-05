@@ -564,7 +564,7 @@ unify
             dv2@(DV_ _ builtin2) ->
                 case builtin2 of
                     BuiltinDomainMap map2 ->
-                        Monad.Trans.lift $ unifyConcrete resultSort map1 map2
+                        Monad.Trans.lift $ unifyConcrete dv1 map1 map2
                     _ ->
                         (error . unlines)
                             [ "Cannot unify a builtin Map domain value:"
@@ -578,9 +578,9 @@ unify
                     -- Accept the arguments of MAP.concat in either order.
                     Monad.Trans.lift $ case args2 of
                         [ DV_ _ (BuiltinDomainMap map2), x@(Var_ _) ] ->
-                            unifyFramed1 resultSort dv1 map2 x
+                            unifyFramed1 dv1 resultSort map1 map2 x
                         [ x@(Var_ _), DV_ _ (BuiltinDomainMap map2) ] ->
-                            unifyFramed1 resultSort dv1 map2 x
+                            unifyFramed1 dv1 resultSort map1 map2 x
                         [ _, _ ] ->
                             give symbolOrAliasSorts
                                 (Builtin.unifyUnsolved dv1 app)
@@ -608,45 +608,45 @@ unify
     unifyConcrete
         ::  forall k.
             (level ~ Object, k ~ ConcretePurePattern Object)
-        => Sort level  -- ^ result sort
+        => PureMLPattern level variable  -- ^ result pattern
         -> Map k (PureMLPattern level variable)
         -> Map k (PureMLPattern level variable)
         -> m (expanded, proof)
-    unifyConcrete resultSort map1 map2 = do
+    unifyConcrete result map1 map2 = do
         intersect <- sequence (Map.intersectionWith unifyChildren map1 map2)
         let
-            result
+            unified
               | not (Map.null remainder1) =
                 -- There is nothing with which to unify the
                 -- remainder of map1.
-                ExpandedPattern.bottom
+                () <$ ExpandedPattern.bottom
               | not (Map.null remainder2) =
                 -- There is nothing with which to unify the
                 -- remainder of map2.
-                ExpandedPattern.bottom
+                () <$ ExpandedPattern.bottom
               | otherwise =
-                asBuiltinMap <$> (propagatePredicates . discardProofs) intersect
+                () <$ (propagatePredicates . discardProofs) intersect
               where
                 -- Elements of map1 missing from map2
                 remainder1 = Map.difference map1 map2
                 -- Elements of map2 missing from map1
                 remainder2 = Map.difference map2 map1
 
-        return (result, SimplificationProof)
-      where
-        asBuiltinMap = asBuiltinDomainValue resultSort
+        return (result <$ unified, SimplificationProof)
 
     -- | Unify one concrete map with one framed concrete map.
     unifyFramed1
         :: forall k . (level ~ Object, k ~ ConcretePurePattern Object)
-        => Sort level  -- ^ Sort of result
-        -> p  -- ^ concrete map
-        -> Map k p  -- ^ framed concrete map
+        => PureMLPattern level variable  -- ^ result pattern
+        -> Sort level -- ^ result sort
+        -> Map k (PureMLPattern level variable)  -- ^ concrete map
+        -> Map k (PureMLPattern level variable)  -- ^ framed concrete map
         -> p  -- ^ framing variable
         -> m (expanded, proof)
     unifyFramed1
+        dv1
         resultSort
-        dv1@(DV_ _ (BuiltinDomainMap map1))
+        map1
         map2
         x = do
         intersect <- sequence (Map.intersectionWith unifyChildren map1 map2)
@@ -656,18 +656,15 @@ unify
         (frame, _) <- unifyChildren x (asBuiltinMap remainder1)
         let
             -- The concrete part of the unification result.
-            concrete :: ExpandedPattern level variable
             concrete =
-                asBuiltinMap <$> (propagatePredicates . discardProofs) intersect
+                () <$ (propagatePredicates . discardProofs) intersect
 
             result
               | not (Map.null remainder2) =
                 -- There is nothing with which to unify the remainder of map2.
                 ExpandedPattern.bottom
-              | otherwise = give symbolOrAliasSorts $
-                    pure dv1 -- (DV_ resultSort (BuiltinDomainMap map1))
-                    <* concrete
-                    <* frame
+              | otherwise =
+                give symbolOrAliasSorts (dv1 <$ concrete <* frame)
               where
                 -- Elements of map2 missing from map1
                 remainder2 = Map.difference map2 map1
@@ -677,15 +674,12 @@ unify
       where
         asBuiltinMap = asBuiltinDomainValue resultSort
 
-    unifyFramed1 _ _ _ _ = error "The impossible happened"
-
-
     unifyElement
         :: forall k . (level ~ Object, k ~ ConcretePurePattern Object)
-        => Map k p  -- ^ concrete map
+        => Map k (PureMLPattern level variable)  -- ^ concrete map
         -> SymbolOrAlias level  -- ^ 'element' symbol
-        -> p  -- ^ key
-        -> p  -- ^ value
+        -> PureMLPattern level variable  -- ^ key
+        -> PureMLPattern level variable  -- ^ value
         -> m (expanded, proof)
     unifyElement map1 element' key2 value2 =
         case Map.toList map1 of

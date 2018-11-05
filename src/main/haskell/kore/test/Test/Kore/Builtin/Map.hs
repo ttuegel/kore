@@ -400,11 +400,18 @@ prop_unifyConcrete keys = do
             $ Map.map (Bifunctor.bimap asVariablePattern asVariablePattern) map0
         map1 = fst <$> map12
         map2 = snd <$> map12
-        patExpect = asPattern $ uncurry mkAnd <$> map12
+        patExpect =
+            Predicated
+                { term = asPattern map1
+                , predicate = Predicate.makeTruePredicate
+                , substitution =
+                    ExpandedPattern.substitution $ evaluate $ asPattern
+                    $ uncurry mkAnd <$> map12
+                }
         patActual = mkAnd (asPattern map1) (asPattern map2)
     (return . allProperties)
-        [ evaluate patExpect === evaluate patActual
-        , ExpandedPattern.top === evaluate (mkEquals patExpect patActual)
+        [ patExpect === evaluate patActual
+        , ExpandedPattern.top === evaluate (mkEquals (asPattern map1) patActual)
         ]
   where
     asVariablePattern = asPurePattern . VariablePattern
