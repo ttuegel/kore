@@ -1,8 +1,9 @@
 pipeline {
-    agent any
+    agent {
+        dockerfile true
+    }
     stages {
         stage('Build - Java') {
-            agent { docker { image 'maven:3-jdk-8' } }
             steps {
                 sh '''
                     mvn clean
@@ -11,7 +12,6 @@ pipeline {
             }
         }
         stage('Build - Haskell') {
-            agent { docker { image 'haskell:8.4' } }
             environment {
                 STACK_ROOT = '/tmp/stack_root'
             }
