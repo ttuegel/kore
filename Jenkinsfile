@@ -6,6 +6,7 @@ pipeline {
             steps {
                 sh '''
                     env
+                    ls -la /root/.m2
                     mvn clean
                     mvn verify
                 '''
