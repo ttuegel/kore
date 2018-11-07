@@ -11,7 +11,7 @@ pipeline {
             }
         }
         stage('Build - Haskell') {
-            agent { docker { image 'haskell:8.4' } }
+            agent { docker { image 'samdoshi/haskell-stack' } }
             steps {
                 sh '''
                     make STACK_OPTS="--test --bench --coverage" test-kore
@@ -19,7 +19,7 @@ pipeline {
             }
         }
         stage('Build - Haddock') {
-            agent { docker { image 'haskell:8.4' } }
+            agent { docker { image 'samdoshi/haskell-stack' } }
             steps {
                 sh '''
                     make haddock
