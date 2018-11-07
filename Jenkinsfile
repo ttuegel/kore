@@ -11,7 +11,7 @@ pipeline {
             }
         }
         stage('Build - Haskell') {
-            agent { docker { image 'nixos/nix' } }
+            agent { docker { image 'nixorg/nix:latest' } }
             steps {
                 sh '''
                     export STACK_OPTS='--test --bench --coverage'
