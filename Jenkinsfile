@@ -14,11 +14,9 @@ pipeline {
             agent { docker { image 'nixos/nix' } }
             steps {
                 sh '''
-                    export HOME=/tmp
-                    nix-channel --add https://nixos.org/channels/nixpkgs-unstable nixpkgs
-                    nix-channel --update
                     export STACK_OPTS='--test --bench --coverage'
-                    nix run nixpkgs.stack -c make test-kore
+                    nix run -f channel:nixos-18.09 nixpkgs.stack \
+                        -c make test-kore
                 '''
             }
         }
