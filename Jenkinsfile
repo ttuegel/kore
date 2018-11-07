@@ -15,7 +15,7 @@ pipeline {
             agent { docker { image 'nixos/nix' } }
             steps {
                 sh '''
-                    env
+                    export HOME=/root
                     nix-channel --add https://nixos.org/channels/nixpkgs-unstable nixpkgs
                     nix-channel --update
                     export STACK_OPTS='--test --bench --coverage'
