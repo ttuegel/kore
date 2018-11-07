@@ -15,6 +15,7 @@ pipeline {
             }
             steps {
                 sh '''
+                    locale -a
                     mkdir -p "$STACK_ROOT"
                     stack setup --verbose
                     export STACK_OPTS='--test --bench --coverage'
