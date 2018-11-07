@@ -5,6 +5,7 @@ pipeline {
             agent { docker { image 'maven:3-jdk-8' } }
             steps {
                 sh '''
+                    env
                     mvn clean
                     mvn verify
                 '''
@@ -14,6 +15,7 @@ pipeline {
             agent { docker { image 'nixos/nix' } }
             steps {
                 sh '''
+                    env
                     nix-channel --add https://nixos.org/channels/nixpkgs-unstable nixpkgs
                     nix-channel --update
                     export STACK_OPTS='--test --bench --coverage'
