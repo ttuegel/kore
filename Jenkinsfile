@@ -1,17 +1,18 @@
 pipeline {
     agent any
+    environment { HOME = '/home/ttuegel' }
     stages {
         stage('Build - Java') {
             agent {
                 docker {
                     image 'maven:3-jdk-8'
-                    args '-v $HOME/.m2:/root/.m2'
+                    args '-v $HOME/.m2:$HOME/.m2'
                 }
             }
             steps {
                 sh '''
                     env
-                    ls -la /root/.m2
+                    ls -la $HOME/.m2
                     mvn clean
                     mvn verify
                 '''
