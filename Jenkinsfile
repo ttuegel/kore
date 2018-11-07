@@ -17,8 +17,8 @@ pipeline {
                 sh '''
                     mkdir -p "$STACK_ROOT"
                     stack setup --verbose
-                    export STACK_OPTS='--nix --test --bench --coverage'
-                    nix run -f channel:nixos-18.09 stack -c make test-kore
+                    export STACK_OPTS='--test --bench --coverage'
+                    make test-kore
                 '''
             }
         }
