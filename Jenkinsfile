@@ -2,17 +2,9 @@ pipeline {
     agent any
     stages {
         stage('Build - Java') {
-            agent {
-                docker {
-                    image 'maven:3-jdk-8'
-                    args '-v $HOME/.m2:$HOME/.m2'
-                }
-            }
-            environment { HOME = '/home/ttuegel' }
+            agent { docker { image 'maven:3-jdk-8' } }
             steps {
                 sh '''
-                    env
-                    ls -la $HOME/.m2
                     mvn clean
                     mvn verify
                 '''
@@ -22,8 +14,7 @@ pipeline {
             agent { docker { image 'nixos/nix' } }
             steps {
                 sh '''
-                    export HOME=/root
-                    ls -la
+                    export HOME=/tmp
                     nix-channel --add https://nixos.org/channels/nixpkgs-unstable nixpkgs
                     nix-channel --update
                     export STACK_OPTS='--test --bench --coverage'
