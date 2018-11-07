@@ -1,9 +1,12 @@
 pipeline {
-    agent { docker { image 'maven:3' } }
     stages {
         stage('Build - Java') {
+            agent { docker { image 'maven:3' } }
             steps {
-                sh 'mvn --version'
+                sh '''
+                    mvn clean
+                    mvn verify
+                '''
             }
         }
     }
