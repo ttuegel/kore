@@ -11,12 +11,14 @@ pipeline {
             }
         }
         stage('Build - Haskell') {
-            agent { docker { image 'nixorg/nix:latest' } }
+            agent { docker { image 'haskell:8.4' } }
+            environment {
+                STACK_ROOT = '/tmp/stack_root'
+            }
             steps {
                 sh '''
                     export STACK_OPTS='--test --bench --coverage'
-                    nix run -f channel:nixos-18.09 nixpkgs.stack \
-                        -c make test-kore
+                    make test-kore
                 '''
             }
         }
