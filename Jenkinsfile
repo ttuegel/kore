@@ -18,6 +18,8 @@ pipeline {
             steps {
                 sh '''
                     mkdir -p "$STACK_ROOT"
+                    stack setup --verbose
+
                     export STACK_OPTS='--test --bench --coverage'
                     make test-kore
                 '''
