@@ -1,6 +1,5 @@
 pipeline {
     agent any
-    environment { HOME = '/home/ttuegel' }
     stages {
         stage('Build - Java') {
             agent {
@@ -9,6 +8,7 @@ pipeline {
                     args '-v $HOME/.m2:$HOME/.m2'
                 }
             }
+            environment { HOME = '/home/ttuegel' }
             steps {
                 sh '''
                     env
