@@ -11,18 +11,13 @@ pipeline {
             }
         }
         stage('Build - Haskell') {
-            agent { docker { image 'samdoshi/haskell-stack' } }
+            agent { docker { image 'nixos/nix' } }
             steps {
                 sh '''
-                    make STACK_OPTS="--test --bench --coverage" test-kore
-                '''
-            }
-        }
-        stage('Build - Haddock') {
-            agent { docker { image 'samdoshi/haskell-stack' } }
-            steps {
-                sh '''
-                    make haddock
+                    nix-channel --add https://nixos.org/channels/nixpkgs-unstable nixpkgs
+                    nix-channel --update
+                    export STACK_OPTS='--test --bench --coverage'
+                    nix run nixpkgs.stack -c make test-kore
                 '''
             }
         }
