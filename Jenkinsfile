@@ -14,7 +14,7 @@ node {
             sh 'nix run -f channel:nixos-18.09 maven jdk8 -c mvn clean verify'
         }
         stage('Build - Haskell') {
-            sh 'nix run -f channel:nixos-18.09 stack -c stack --nix build --pedantic'
+            sh 'nix run -f channel:nixos-18.09 stack -c stack --nix --allow-different-user build --pedantic'
         }
     }
 }
