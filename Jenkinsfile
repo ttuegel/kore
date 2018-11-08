@@ -5,6 +5,8 @@ node {
             sh '''
                 id
                 env
+                export LANG='en_US.UTF-8'
+                nix run -f channel:nixos-18.09 bash -c locale -a
             '''
         }
         stage('Hello') {
