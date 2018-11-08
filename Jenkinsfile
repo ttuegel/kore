@@ -7,5 +7,8 @@ node {
                 id
             '''
         }
+        stage('Hello') {
+            sh 'nix run -f channel:nixos-18.09 hello -c hello'
+        }
     }
 }
