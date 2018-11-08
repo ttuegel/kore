@@ -5,8 +5,8 @@ node {
             sh '''
                 id
                 env
-                export LANG='en_US.UTF-8'
-                nix run -f channel:nixos-18.09 bash -c locale -a
+                export LANG='en_US.utf8'
+                nix run -f channel:nixos-18.09 glibc.bin -c locale
             '''
         }
         stage('Hello') {
@@ -17,7 +17,7 @@ node {
         }
         stage('Build - Haskell') {
             sh '''
-                export LANG='en_US.UTF-8'
+                export LANG='en_US.utf8'
                 export STACK_OPTS='--allow-different-user --nix --pedantic'
                 nix run -f channel:nixos-18.09 git stack gnumake -c make test-kore
             '''
