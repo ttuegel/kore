@@ -3,8 +3,9 @@ node {
     image.inside('-u 0:0') {
         stage('Debug') {
             sh '''
-                env
                 id
+                env
+                locale -a
             '''
         }
         stage('Hello') {
