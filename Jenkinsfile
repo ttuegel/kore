@@ -8,6 +8,7 @@ node {
                 export LANG='en_US.utf8'
                 nix run -f channel:nixos-18.09 glibc.bin -c locale
                 nix run -f channel:nixos-18.09 glibc.bin -c env
+                exit 1
             '''
         }
         stage('Hello') {
