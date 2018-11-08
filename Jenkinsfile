@@ -1,6 +1,6 @@
 node {
     def image = docker.image('nixos/nix')
-    image.inside {
+    image.inside('-u 0:0') {
         stage('Debug') {
             sh '''
                 env
