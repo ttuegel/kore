@@ -33,44 +33,39 @@ module Kore.Predicate.Predicate
     , makeTruePredicate
     , allVariables
     , freeVariables
-    , mapVariables
+    , Kore.Predicate.Predicate.mapVariables
     , stringFromPredicate
     , substitutionToPredicate
     , unwrapPredicate
     , wrapPredicate
     ) where
 
-import Control.DeepSeq
-       ( NFData )
-import Data.Functor.Foldable
-       ( elgot, project )
-import Data.List
-       ( foldl', nub )
-import Data.Reflection
-       ( Given )
-import Data.Set
-       ( Set )
-import GHC.Generics
-       ( Generic )
+import qualified Control.Comonad.Trans.Cofree as Cofree
+import           Control.DeepSeq
+                 ( NFData )
+import qualified Data.Functor.Foldable as Recursive
+import           Data.List
+                 ( foldl', nub )
+import           Data.Reflection
+                 ( Given )
+import           Data.Set
+                 ( Set )
+import           GHC.Generics
+                 ( Generic )
 
-import           Kore.AST.Common
-import           Kore.AST.MetaOrObject
-import           Kore.AST.PureML
-                 ( mapPatternVariables )
-import           Kore.ASTUtils.SmartConstructors
-import           Kore.ASTUtils.SmartPatterns
-                 ( pattern Bottom_, pattern Ceil_, pattern Equals_,
-                 pattern Floor_, pattern In_, pattern Top_ )
-import           Kore.Error
-                 ( Error, koreFail )
-import           Kore.IndexedModule.MetadataTools
-                 ( SymbolOrAliasSorts )
-import           Kore.Step.Pattern
-import           Kore.Unification.Substitution
-                 ( Substitution )
-import qualified Kore.Unification.Substitution as Substitution
-import           Kore.Variables.Free
-                 ( freePureVariables, pureAllVariables )
+import Kore.AST.Pure as Pure
+import Kore.ASTUtils.SmartConstructors
+import Kore.ASTUtils.SmartPatterns
+       ( pattern Bottom_, pattern Ceil_, pattern Equals_, pattern Floor_,
+       pattern In_, pattern Top_ )
+import Kore.Error
+       ( Error, koreFail )
+import Kore.IndexedModule.MetadataTools
+       ( SymbolOrAliasSorts )
+import Kore.Step.Pattern
+import Kore.Unification.Substitution as Substitution
+import Kore.Variables.Free
+       ( freePureVariables, pureAllVariables )
 
 {-| 'GenericPredicate' is a wrapper for predicates used for type safety.
 Should not be exported, and should be treated as an opaque entity which
@@ -375,7 +370,7 @@ makePredicate
         )
     => StepPattern level variable
     -> Either (Error e) (Predicate level variable)
-makePredicate = elgot makePredicateBottomUp makePredicateTopDown
+makePredicate = Recursive.elgot makePredicateBottomUp makePredicateTopDown
   where
     makePredicateBottomUp
         :: StepPatternHead level variable
@@ -413,13 +408,13 @@ makePredicate = elgot makePredicateBottomUp makePredicateTopDown
                 Left (pure (makeEqualsPredicate p1 p2))
             In_ _ _ p1 p2 ->
                 Left (pure (makeInPredicate p1 p2))
-            p -> Right (project p)
+            p -> Right (Cofree.tailF $ Recursive.project p)
 
 {- | Replace all variables in a @Predicate@ using the provided mapping.
 -}
 mapVariables
     :: (from level -> to level) -> Predicate level from -> Predicate level to
-mapVariables f = fmap (mapPatternVariables f)
+mapVariables f = fmap (Pure.mapVariables f)
 
 {- | Extract the set of all (free and bound) variables from a @Predicate@.
 -}
