@@ -68,7 +68,7 @@ import           Kore.Step.StepperAttributes
 import           Kore.Step.Strategy
                  ( Tree )
 import           Kore.Substitution.Class
-                 ( Hashable, substitute )
+                 ( substitute )
 import qualified Kore.Substitution.List as ListSubstitution
 import qualified Kore.Unification.Substitution as Substitution
 import           Kore.Variables.Fresh
@@ -262,7 +262,6 @@ makeAxiomsAndSimplifiers indexedModule tools =
                     , Show (variable Meta)
                     , Show (variable Object)
                     , FreshVariable variable
-                    , Hashable variable
                     )
                 => StepPatternSimplifier Object variable
             simplifier = Simplifier.create tools functionRegistry
@@ -286,7 +285,6 @@ makeAxiomsAndSimplifiers indexedModule tools =
             , Show (variable Meta)
             , Show (variable Object)
             , FreshVariable variable
-            , Hashable variable
             )
         => StepPatternSimplifier Object variable
     emptySimplifier = Simplifier.create tools Map.empty

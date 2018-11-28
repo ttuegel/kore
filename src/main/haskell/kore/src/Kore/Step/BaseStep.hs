@@ -70,7 +70,7 @@ import           Kore.Step.StepperAttributes
 import           Kore.Step.Substitution
                  ( mergePredicatesAndSubstitutionsExcept )
 import           Kore.Substitution.Class
-                 ( Hashable (..), substitute )
+                 ( substitute )
 import qualified Kore.Substitution.List as ListSubstitution
 import           Kore.Unification.Data
                  ( UnificationProof (..) )
@@ -161,17 +161,6 @@ instance
         sortedVariableSort variable
 
 instance
-    Hashable variable
-    => Hashable (StepperVariable variable)
-  where
-    -- TODO(virgil): For performance reasons, this should generate different
-    -- hashes for axiom and configuration variables.
-    getVariableHash (ConfigurationVariable variable) =
-        getVariableHash variable
-    getVariableHash (AxiomVariable variable) =
-        getVariableHash variable
-
-instance
     FreshVariable variable
     => FreshVariable (StepperVariable variable)
   where
@@ -212,7 +201,6 @@ newtype UnificationProcedure level =
             , OrdMetaOrObject variable
             , ShowMetaOrObject variable
             , MetaOrObject level
-            , Hashable variable
             , FreshVariable variable
             , MonadCounter m
             )
@@ -240,7 +228,6 @@ newtype UnificationProcedure level =
 stepWithRuleForUnifier
     :: forall level variable .
         ( FreshVariable variable
-        , Hashable variable
         , MetaOrObject level
         , Ord (variable level)
         , OrdMetaOrObject variable
@@ -551,7 +538,6 @@ stepWithRuleForUnifier
 
 stepWithRule
     ::  ( FreshVariable variable
-        , Hashable variable
         , MetaOrObject level
         , Ord (variable level)
         , OrdMetaOrObject variable
