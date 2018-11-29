@@ -210,8 +210,7 @@ newtype KorePattern
     deriving (Foldable, Functor, Generic, Traversable)
 
 instance
-    ( Eq ann
-    , EqMetaOrObject var
+    (  EqMetaOrObject var
     , Eq1 dom, Functor dom
     ) =>
     Eq (KorePattern dom var ann)
@@ -219,14 +218,13 @@ instance
     (==) = eqWorker
       where
         eqWorker
-            (Recursive.project -> ann1 :< pat1)
-            (Recursive.project -> ann2 :< pat2)
+            (Recursive.project -> _ :< pat1)
+            (Recursive.project -> _ :< pat2)
           =
-            ann1 == ann2 && liftEq eqWorker pat1 pat2
+            liftEq eqWorker pat1 pat2
 
 instance
-    ( Ord ann
-    , OrdMetaOrObject var
+    ( OrdMetaOrObject var
     , Ord1 dom, Functor dom
     ) =>
     Ord (KorePattern dom var ann)
@@ -234,10 +232,10 @@ instance
     compare = compareWorker
       where
         compareWorker
-            (Recursive.project -> ann1 :< pat1)
-            (Recursive.project -> ann2 :< pat2)
+            (Recursive.project -> _ :< pat1)
+            (Recursive.project -> _ :< pat2)
           =
-            compare ann1 ann2 <> liftCompare compareWorker pat1 pat2
+            liftCompare compareWorker pat1 pat2
 
 deriving instance
     ( Show ann
@@ -249,7 +247,6 @@ deriving instance
 
 instance
     ( Functor dom
-    , Hashable ann
     , Hashable (var Meta)
     , Hashable (var Object)
     , Hashable (dom child)
@@ -257,8 +254,7 @@ instance
     ) =>
     Hashable (KorePattern dom var ann)
   where
-    hashWithSalt salt (Recursive.project -> ann :< pat) =
-        salt `hashWithSalt` ann `hashWithSalt` pat
+    hashWithSalt salt (Recursive.project -> _ :< pat) = hashWithSalt salt pat
 
 instance
     ( Functor dom
