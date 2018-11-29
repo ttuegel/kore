@@ -210,9 +210,7 @@ newtype KorePattern
     deriving (Foldable, Functor, Generic, Traversable)
 
 instance
-    (  EqMetaOrObject var
-    , Eq1 dom, Functor dom
-    ) =>
+    (EqMetaOrObject var, Eq1 dom, Functor dom) =>
     Eq (KorePattern dom var ann)
   where
     (==) = eqWorker
@@ -224,9 +222,7 @@ instance
             liftEq eqWorker pat1 pat2
 
 instance
-    ( OrdMetaOrObject var
-    , Ord1 dom, Functor dom
-    ) =>
+    (OrdMetaOrObject var, Ord1 dom, Functor dom) =>
     Ord (KorePattern dom var ann)
   where
     compare = compareWorker
@@ -238,11 +234,7 @@ instance
             liftCompare compareWorker pat1 pat2
 
 deriving instance
-    ( Show ann
-    , ShowMetaOrObject var
-    , Show (dom child)
-    , child ~ Cofree (UnifiedPattern dom var) ann
-    ) =>
+    (Show ann, ShowMetaOrObject var, Show1 dom) =>
     Show (KorePattern dom var ann)
 
 instance

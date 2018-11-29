@@ -134,7 +134,7 @@ getIndexedSentence = snd
 
 deriving instance
     ( Show1 (pat dom var)
-    , Show (dom child)
+    , Show1 dom
     , Show (pat dom var ())
     , Show sortParam
     , ShowMetaOrObject var

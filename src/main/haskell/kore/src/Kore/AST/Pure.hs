@@ -113,8 +113,7 @@ instance
 deriving instance
     ( Show ann
     , Show (var lvl)
-    , Show (dom child)
-    , child ~ Cofree (Pattern lvl dom var) ann
+    , Show1 dom
     ) =>
     Show (PurePattern lvl dom var ann)
 
