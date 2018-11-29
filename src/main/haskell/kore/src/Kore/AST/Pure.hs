@@ -81,8 +81,7 @@ newtype PurePattern
     deriving (Foldable, Functor, Generic, Traversable)
 
 instance
-    ( Eq ann
-    , Eq lvl
+    ( Eq lvl
     , Eq (var lvl)
     , Eq1 dom, Functor dom
     ) =>
@@ -91,14 +90,13 @@ instance
     (==) = eqWorker
       where
         eqWorker
-            (Recursive.project -> ann1 :< pat1)
-            (Recursive.project -> ann2 :< pat2)
+            (Recursive.project -> _ :< pat1)
+            (Recursive.project -> _ :< pat2)
           =
-            ann1 == ann2 && liftEq eqWorker pat1 pat2
+            liftEq eqWorker pat1 pat2
 
 instance
-    ( Ord ann
-    , Ord lvl
+    ( Ord lvl
     , Ord (var lvl)
     , Ord1 dom, Functor dom
     ) =>
@@ -107,10 +105,10 @@ instance
     compare = compareWorker
       where
         compareWorker
-            (Recursive.project -> ann1 :< pat1)
-            (Recursive.project -> ann2 :< pat2)
+            (Recursive.project -> _ :< pat1)
+            (Recursive.project -> _ :< pat2)
           =
-            compare ann1 ann2 <> liftCompare compareWorker pat1 pat2
+            liftCompare compareWorker pat1 pat2
 
 deriving instance
     ( Show ann
@@ -122,15 +120,13 @@ deriving instance
 
 instance
     ( Functor dom
-    , Hashable ann
     , Hashable (var lvl)
     , Hashable (dom child)
     , child ~ PurePattern lvl dom var ann
     ) =>
     Hashable (PurePattern lvl dom var ann)
   where
-    hashWithSalt salt (Recursive.project -> ann :< pat) =
-        salt `hashWithSalt` ann `hashWithSalt` pat
+    hashWithSalt salt (Recursive.project -> _ :< pat) = hashWithSalt salt pat
 
 instance
     ( Functor dom
