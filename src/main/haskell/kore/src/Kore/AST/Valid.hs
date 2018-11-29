@@ -7,6 +7,13 @@ Maintainer  : thomas.tuegel@runtimeverification.com
 -}
 module Kore.AST.Valid where
 
+import Control.DeepSeq
+       ( NFData )
+import Data.Hashable
+       ( Hashable )
+import GHC.Generics
+       ( Generic )
+
 import Kore.AST.Common
        ( Sort )
 
@@ -17,4 +24,8 @@ data Valid level =
         { patternSort :: !(Sort level)
             -- ^ The sort determined by the verifier.
         }
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Generic, Ord, Show)
+
+instance NFData (Valid level)
+
+instance Hashable (Valid level)
