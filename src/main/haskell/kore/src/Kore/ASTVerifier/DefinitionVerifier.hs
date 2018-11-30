@@ -24,7 +24,7 @@ import           Data.Proxy
 import           Data.Text
                  ( Text )
 
-import           Kore.AST.Common
+import           Kore.AST.Kore
 import           Kore.AST.Sentence
 import           Kore.ASTVerifier.AttributesVerifier
 import           Kore.ASTVerifier.Error
