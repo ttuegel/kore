@@ -1,11 +1,11 @@
 {-|
-Module      : Kore.AST.Valid
+Module      : Kore.Annotation.Valid
 Description : Annotations collected during verification
 Copyright   : (c) Runtime Verification, 2018
 License     : NCSA
 Maintainer  : thomas.tuegel@runtimeverification.com
 -}
-module Kore.AST.Valid where
+module Kore.Annotation.Valid where
 
 import Control.DeepSeq
        ( NFData )

@@ -37,7 +37,7 @@ module Kore.AST.Kore
     , Base, CofreeF (..)
     , module Kore.AST.Common
     , module Kore.AST.MetaOrObject
-    , module Kore.AST.Valid
+    , module Kore.Annotation.Valid
     ) where
 
 import           Control.Comonad
@@ -60,11 +60,11 @@ import           Data.Hashable
 import           GHC.Generics
                  ( Generic )
 
+import           Kore.Annotation.Valid
 import           Kore.AST.Common hiding
                  ( castMetaDomainValues, castVoidDomainValues, mapDomainValues,
                  mapVariables, traverseVariables )
 import           Kore.AST.MetaOrObject
-import           Kore.AST.Valid
 import qualified Kore.Domain.Builtin as Domain
 
 {-|'UnifiedPattern' is joining the 'Meta' and 'Object' versions of 'Pattern', to
