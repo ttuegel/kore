@@ -9,8 +9,6 @@ Stability   : experimental
 Portability : portable
 -}
 
--- {-# OPTIONS_GHC -Wno-name-shadowing #-}
-
 module Kore.ASTUtils.SmartConstructors
     ( -- * Utility functions for dealing with sorts
       getSort
@@ -49,6 +47,8 @@ module Kore.ASTUtils.SmartConstructors
     , mkRewrites
     , mkTop
     , mkVar
+    , mkVar'
+    , mkCommonVar
     , mkStringLiteral
     , mkCharLiteral
     , mkSort
@@ -56,22 +56,21 @@ module Kore.ASTUtils.SmartConstructors
     , symS
     ) where
 
-
+import           Control.Comonad
 import           Control.Lens hiding
                  ( (:<) )
 import           Control.Monad.State
 import           Data.Foldable
-import           Data.Functor.Classes
-                 ( Show1 )
 import qualified Data.Functor.Foldable as Recursive
 import           Data.Reflection
 import           Data.Text
                  ( Text )
+import           GHC.Stack
+                 ( HasCallStack )
 
-import Kore.AST.MLPatterns
+import Kore.Annotation.Valid
 import Kore.AST.Pure
-import Kore.IndexedModule.MetadataTools
-
+import Kore.Unparser
 
 -- | Gets the sort of of a pattern, taking the Metadatatools implicitly
 -- from the context.
@@ -79,14 +78,14 @@ import Kore.IndexedModule.MetadataTools
 -- Usage: give metadatatools (... computation with Given Metadatatools ..)
 getSort
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
-        , SortedVariable var
         , Functor dom
         )
-    => PurePattern level dom var ann
+    => PurePattern level dom var (Valid level)
     -> Sort level
-getSort (Recursive.project -> _ :< pat) =
-    getPatternResultSort given pat
+getSort purePattern =
+    patternSort
+  where
+    Valid { patternSort } = extract purePattern
 
 -- | Placeholder sort for when we construct a new predicate
 -- But we don't know yet where it's going to be attached.
@@ -99,7 +98,7 @@ predicateSort = mkSort "PREDICATE"
 
 patternLens
     :: forall f lvl dom var var1 ann.
-        (Applicative f, MetaOrObject lvl, Traversable dom)
+        ( Applicative f, MetaOrObject lvl, Traversable dom)
     => (Sort lvl -> f (Sort lvl))
     -> (Sort lvl -> f (Sort lvl))
     -> (var lvl -> f (var1 lvl))
@@ -361,13 +360,11 @@ hasFlexibleHead (Recursive.project -> _ :< pat) =
 -- | Attempts to modify p to have sort s.
 forceSort
     ::  ( MetaOrObject lvl
-        , Given (SymbolOrAliasSorts lvl)
-        , SortedVariable var
         , Traversable dom
         )
     => Sort lvl
-    -> PurePattern lvl dom var ann
-    -> Maybe (PurePattern lvl dom var ann)
+    -> PurePattern lvl dom var (Valid lvl)
+    -> Maybe (PurePattern lvl dom var (Valid lvl))
 forceSort s p
   | getSort p == s = Just p
   | hasRigidHead    p   = Nothing
@@ -377,12 +374,10 @@ forceSort s p
 -- | Modify all patterns in a list to have the same sort.
 makeSortsAgree
     ::  ( MetaOrObject lvl
-        , Given (SymbolOrAliasSorts lvl)
-        , SortedVariable var
         , Traversable dom
         )
-    => [PurePattern lvl dom var ann]
-    -> Maybe [PurePattern lvl dom var ann]
+    => [PurePattern lvl dom var (Valid lvl)]
+    -> Maybe [PurePattern lvl dom var (Valid lvl)]
 makeSortsAgree ps =
     forM ps $ forceSort $
         case asum $ getRigidSort <$> ps of
@@ -391,11 +386,9 @@ makeSortsAgree ps =
 
 getRigidSort
     ::  ( MetaOrObject lvl
-        , Given (SymbolOrAliasSorts lvl)
-        , SortedVariable var
         , Traversable dom
         )
-    => PurePattern lvl dom var ann
+    => PurePattern lvl dom var (Valid lvl)
     -> Maybe (Sort lvl)
 getRigidSort p =
     case forceSort predicateSort p of
@@ -408,13 +401,11 @@ getRigidSort p =
 -- to the valid (x : Int /\ (x < 3 : Int)) : Int
 ensureSortAgreement
     ::  ( MetaOrObject lvl
-        , Given (SymbolOrAliasSorts lvl)
-        , SortedVariable var
-        , Show (PurePattern lvl dom var ())
+        , Unparse (PurePattern lvl dom var (Valid lvl))
         , Traversable dom
         )
-    => PurePattern lvl dom var ann
-    -> PurePattern lvl dom var ann
+    => PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
 ensureSortAgreement p =
   case makeSortsAgree $ p ^. partsOf allChildren of
     Just []    -> p & resultSort .~ predicateSort
@@ -426,7 +417,11 @@ ensureSortAgreement p =
             then predicateSort
             else getSort c
           )
-    Nothing -> error $ "Can't unify sorts of subpatterns: " ++ show (() <$ p)
+    Nothing ->
+        (error . unlines)
+            [ "Can't unify sorts of subpatterns:"
+            , unparseToString p
+            ]
 
 -- | In practice, all the predicate patterns we use are
 -- composed of =, \floor, \ceil, and \in. I haven't come
@@ -461,267 +456,309 @@ isObviouslyPredicate (Recursive.project -> _ :< pat) =
         -- Non-predicates
         _ -> False
 
+{- | Return the unified sort of two patterns.
+
+An error is thrown if the patterns have different sorts.
+ -}
+unifySorts
+    ::  ( Functor dom
+        , Unparse (PurePattern lvl dom var (Valid lvl))
+        )
+    => PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
+    -> Sort lvl
+unifySorts pat1 pat2
+  | sort1 == sort2 = sort1
+  | otherwise =
+    (error . unlines)
+        [ "Cannot unify sort:"
+        , unparseToString sort1
+        , "with sort:"
+        , unparseToString sort2
+        , "in patterns:"
+        , unparseToString pat1
+        , unparseToString pat2
+        ]
+  where
+    Valid { patternSort = sort1 } = extract pat1
+    Valid { patternSort = sort2 } = extract pat2
+
 -- | Constructors that handle sort information automatically.
 -- To use, put `give metadatatools` at the top of the computation.
 mkAnd
-    ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
-        , SortedVariable var
-        , Show (PurePattern level dom var ())
+    ::  ( MetaOrObject lvl
+        , HasCallStack
         , Traversable dom
+        , Unparse (PurePattern lvl dom var (Valid lvl))
         )
-    => PurePattern level dom var ()
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    => PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
 mkAnd andFirst andSecond =
-    ensureSortAgreement $ asPurePattern (mempty :< AndPattern and0)
+    asPurePattern (valid :< AndPattern and0)
   where
-    and0 = And { andSort = fixmeSort, andFirst, andSecond }
+    patternSort = unifySorts andFirst andSecond
+    valid = Valid { patternSort }
+    and0 = And { andSort = patternSort, andFirst, andSecond }
 
 -- TODO: Should this check for sort agreement?
 mkApp
-    :: (Functor dom, MetaOrObject level, Given (SymbolOrAliasSorts level))
-    => SymbolOrAlias level
-    -> [PurePattern level dom var ()]
-    -> PurePattern level dom var ()
-mkApp applicationSymbolOrAlias applicationChildren =
-    asPurePattern (mempty :< ApplicationPattern application)
+    :: (Functor dom, MetaOrObject lvl)
+    => Sort lvl
+    -> SymbolOrAlias lvl
+    -> [PurePattern lvl dom var (Valid lvl)]
+    -> PurePattern lvl dom var (Valid lvl)
+mkApp patternSort applicationSymbolOrAlias applicationChildren =
+    asPurePattern (valid :< ApplicationPattern application)
   where
+    valid = Valid { patternSort }
     application =
         Application { applicationSymbolOrAlias, applicationChildren }
 
 mkBottom
-    :: (Functor dom, MetaOrObject level)
-    => PurePattern level dom var ()
-mkBottom =
-    asPurePattern (mempty :< BottomPattern bottom)
+    :: (Functor dom, MetaOrObject lvl)
+    => Sort lvl -> PurePattern lvl dom var (Valid lvl)
+mkBottom patternSort =
+    asPurePattern (Valid { patternSort } :< BottomPattern bottom)
   where
-    bottom = Bottom { bottomSort = predicateSort }
+    bottom = Bottom { bottomSort = patternSort }
 
 mkCeil
-    ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
-        , SortedVariable var
-        , Show1 dom
+    ::  ( MetaOrObject lvl
         , Functor dom
         )
-    => PurePattern level dom var ()
-    -> PurePattern level dom var ()
-mkCeil ceilChild =
-    asPurePattern (mempty :< CeilPattern ceil)
+    => Sort lvl
+    -> PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
+mkCeil ceilResultSort ceilChild =
+    asPurePattern (valid :< CeilPattern ceil)
   where
-    ceil =
-        Ceil
-            { ceilOperandSort = getSort ceilChild
-            , ceilResultSort = predicateSort
-            , ceilChild
-            }
+    valid = Valid { patternSort = ceilResultSort }
+    Valid { patternSort = ceilOperandSort } = extract ceilChild
+    ceil = Ceil { ceilOperandSort, ceilResultSort, ceilChild }
 
 mkDomainValue
     :: (Functor dom, MetaOrObject Object)
     => Sort Object
-    -> dom (PurePattern Object dom var ())
-    -> PurePattern Object dom var ()
+    -> dom (PurePattern Object dom var (Valid Object))
+    -> PurePattern Object dom var (Valid Object)
 mkDomainValue domainValueSort domainValueChild =
-    asPurePattern (mempty :< DomainValuePattern domainValue)
+    asPurePattern (valid :< DomainValuePattern domainValue)
   where
     domainValue = DomainValue { domainValueSort, domainValueChild }
+    valid = Valid { patternSort = domainValueSort }
 
 mkEquals
-    ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
-        , SortedVariable var
-        , Show (PurePattern level dom var ())
+    ::  ( HasCallStack
+        , MetaOrObject lvl
         , Traversable dom
+        , Unparse (PurePattern lvl dom var (Valid lvl))
         )
-    => PurePattern level dom var ()
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
-mkEquals equalsFirst equalsSecond =
-    ensureSortAgreement $ asPurePattern (mempty :< EqualsPattern equals)
+    => Sort lvl
+    -> PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
+mkEquals equalsResultSort equalsFirst equalsSecond =
+    asPurePattern (valid :< EqualsPattern equals)
   where
+    valid = Valid { patternSort }
+    patternSort = unifySorts equalsFirst equalsSecond
     equals =
         Equals
-            { equalsOperandSort = fixmeSort
-            , equalsResultSort = fixmeSort
+            { equalsOperandSort = patternSort
+            , equalsResultSort
             , equalsFirst
             , equalsSecond
             }
 
 mkExists
-    ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
-        , SortedVariable var
-        , Show (PurePattern level dom var ())
-        , Traversable dom
-        )
-    => var level
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    :: (MetaOrObject lvl, Traversable dom)
+    => var lvl
+    -> PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
 mkExists existsVariable existsChild =
-    ensureSortAgreement $ asPurePattern (mempty :< ExistsPattern exists)
+    asPurePattern (valid :< ExistsPattern exists)
   where
-    exists = Exists { existsSort = fixmeSort, existsVariable, existsChild }
+    Valid { patternSort = existsSort } = extract existsChild
+    valid = Valid { patternSort = existsSort }
+    exists = Exists { existsSort, existsVariable, existsChild }
 
 mkFloor
-    ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
-        , SortedVariable var
-        , Show (var level)
-        , Show1 dom
-        , Traversable dom
-        )
-    => PurePattern level dom var ()
-    -> PurePattern level dom var ()
-mkFloor floorChild =
-    asPurePattern (mempty :< FloorPattern floor0)
+    :: (Functor dom, MetaOrObject lvl)
+    => Sort lvl
+    -> PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
+mkFloor floorResultSort floorChild =
+    asPurePattern (valid :< FloorPattern floor')
   where
-    floor0 =
-        Floor
-            { floorOperandSort = getSort floorChild
-            , floorResultSort = predicateSort
-            , floorChild
-            }
+    valid = Valid { patternSort = floorResultSort }
+    Valid { patternSort = floorOperandSort } = extract floorChild
+    floor' = Floor { floorOperandSort, floorResultSort, floorChild }
 
 mkForall
-    ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
-        , SortedVariable var
-        , Show (PurePattern level dom var ())
-        , Traversable dom
-        )
-    => var level
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    :: (MetaOrObject lvl, Traversable dom)
+    => var lvl
+    -> PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
 mkForall forallVariable forallChild =
-    ensureSortAgreement $ asPurePattern (mempty :< ForallPattern forall)
+    asPurePattern (valid :< ForallPattern forall)
   where
-    forall = Forall { forallSort = fixmeSort, forallVariable, forallChild }
+    Valid { patternSort = forallSort } = extract forallChild
+    valid = Valid { patternSort = forallSort }
+    forall = Forall { forallSort, forallVariable, forallChild }
 
 mkIff
-    ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
-        , SortedVariable var
-        , Show (PurePattern level dom var ())
+    ::  ( HasCallStack
+        , MetaOrObject lvl
         , Traversable dom
+        , Unparse (PurePattern lvl dom var (Valid lvl))
         )
-    => PurePattern level dom var ()
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    => PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
 mkIff iffFirst iffSecond =
-    ensureSortAgreement $ asPurePattern (mempty :< IffPattern iff0)
+    asPurePattern (valid :< IffPattern iff0)
   where
-    iff0 = Iff { iffSort = fixmeSort, iffFirst, iffSecond }
+    patternSort = unifySorts iffFirst iffSecond
+    valid = Valid { patternSort }
+    iff0 = Iff { iffSort = patternSort, iffFirst, iffSecond }
 
 mkImplies
-    ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
-        , SortedVariable var
-        , Show (PurePattern level dom var ())
+    ::  ( HasCallStack
+        , MetaOrObject lvl
         , Traversable dom
+        , Unparse (PurePattern lvl dom var (Valid lvl))
         )
-    => PurePattern level dom var ()
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    => PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
 mkImplies impliesFirst impliesSecond =
-    ensureSortAgreement $ asPurePattern (mempty :< ImpliesPattern implies0)
+    asPurePattern (valid :< ImpliesPattern implies0)
   where
-    implies0 = Implies { impliesSort = fixmeSort, impliesFirst, impliesSecond }
+    patternSort = unifySorts impliesFirst impliesSecond
+    valid = Valid { patternSort }
+    implies0 =
+        Implies
+            { impliesSort = patternSort
+            , impliesFirst
+            , impliesSecond
+            }
 
 mkIn
-    ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
-        , SortedVariable var
-        , Show (PurePattern level dom var ())
+    ::  ( HasCallStack
+        , MetaOrObject lvl
         , Traversable dom
+        , Unparse (PurePattern lvl dom var (Valid lvl))
         )
-    => PurePattern level dom var ()
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
-mkIn inContainedChild inContainingChild =
-    ensureSortAgreement $ asPurePattern (mempty :< InPattern in0)
+    => Sort lvl
+    -> PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
+mkIn inResultSort inContainedChild inContainingChild =
+    asPurePattern (valid :< InPattern in0)
   where
+    valid = Valid { patternSort }
+    patternSort = unifySorts inContainedChild inContainingChild
     in0 =
         In
-            { inOperandSort = fixmeSort
-            , inResultSort= fixmeSort
+            { inOperandSort = patternSort
+            , inResultSort
             , inContainedChild
             , inContainingChild
             }
 
 mkNext
     ::  ( MetaOrObject Object
-        , Given (SymbolOrAliasSorts Object)
-        , SortedVariable var
-        , Show (PurePattern Object dom var ())
+        , Unparse (PurePattern Object dom var (Valid Object))
         , Traversable dom
         )
-    => PurePattern Object dom var ()
-    -> PurePattern Object dom var ()
+    => PurePattern Object dom var (Valid Object)
+    -> PurePattern Object dom var (Valid Object)
 mkNext nextChild =
-    ensureSortAgreement $ asPurePattern (mempty :< NextPattern next)
+    ensureSortAgreement $ asPurePattern (valid :< NextPattern next)
   where
-    next = Next { nextSort = getSort nextChild, nextChild }
+    valid@Valid { patternSort } = extract nextChild
+    next = Next { nextSort = patternSort, nextChild }
 
 mkNot
-    ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
-        , SortedVariable var
-        , Show (PurePattern level dom var ())
-        , Traversable dom
-        )
-    => PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    :: (MetaOrObject lvl, Traversable dom)
+    => PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
 mkNot notChild =
-    ensureSortAgreement $ asPurePattern (mempty :< NotPattern not0)
+    asPurePattern (valid :< NotPattern not0)
   where
-    not0 = Not { notSort = getSort notChild, notChild }
+    valid@Valid { patternSort } = extract notChild
+    not0 = Not { notSort = patternSort, notChild }
 
 mkOr
-    ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
-        , SortedVariable var
-        , Show (PurePattern level dom var ())
+    ::  ( HasCallStack
+        , MetaOrObject lvl
         , Traversable dom
+        , Unparse (PurePattern lvl dom var (Valid lvl))
         )
-    => PurePattern level dom var ()
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    => PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
+    -> PurePattern lvl dom var (Valid lvl)
 mkOr orFirst orSecond =
-    ensureSortAgreement $ asPurePattern (mempty :< OrPattern or0)
+    asPurePattern (valid :< OrPattern or0)
   where
-    or0 = Or { orSort = fixmeSort, orFirst, orSecond }
+    patternSort = unifySorts orFirst orSecond
+    valid = Valid { patternSort }
+    or0 = Or { orSort = patternSort, orFirst, orSecond }
 
 mkRewrites
     ::  ( MetaOrObject Object
-        , Given (SymbolOrAliasSorts Object)
-        , SortedVariable var
-        , Show (PurePattern Object dom var ())
+        , Unparse (PurePattern Object dom var (Valid Object))
         , Traversable dom
         )
-    => PurePattern Object dom var ()
-    -> PurePattern Object dom var ()
-    -> PurePattern Object dom var ()
+    => PurePattern Object dom var (Valid Object)
+    -> PurePattern Object dom var (Valid Object)
+    -> PurePattern Object dom var (Valid Object)
 mkRewrites rewritesFirst rewritesSecond =
-    ensureSortAgreement $ asPurePattern (mempty :< RewritesPattern rewrites0)
+    asPurePattern (valid :< RewritesPattern rewrites0)
   where
+    patternSort = unifySorts rewritesFirst rewritesSecond
+    valid = Valid { patternSort }
     rewrites0 =
-        Rewrites { rewritesSort = fixmeSort, rewritesFirst, rewritesSecond }
+        Rewrites { rewritesSort = patternSort, rewritesFirst, rewritesSecond }
 
 mkTop
-    :: (Functor dom, MetaOrObject level)
-    => PurePattern level dom var ()
-mkTop =
-    asPurePattern (mempty :< TopPattern top)
+    :: (Functor dom, MetaOrObject lvl)
+    => Sort lvl -> PurePattern lvl dom var (Valid lvl)
+mkTop patternSort =
+    asPurePattern (Valid { patternSort } :< TopPattern top)
   where
-    top = Top { topSort = predicateSort }
+    top = Top { topSort = patternSort }
 
 mkVar
-    :: (Functor dom, MetaOrObject level, Given (SymbolOrAliasSorts level))
-    => var level
-    -> PurePattern level dom var ()
-mkVar var =
-    asPurePattern (mempty :< VariablePattern var)
+    :: (Functor dom, MetaOrObject lvl)
+    => Sort lvl
+    -> var lvl
+    -> PurePattern lvl dom var (Valid lvl)
+mkVar patternSort var =
+    asPurePattern (valid :< VariablePattern var)
+  where
+    valid = Valid { patternSort }
+
+mkCommonVar
+    :: (Functor dom, MetaOrObject lvl)
+    => Variable lvl
+    -> PurePattern lvl dom Variable (Valid lvl)
+mkCommonVar var =
+    asPurePattern (valid :< VariablePattern var)
+  where
+    Variable { variableSort = patternSort } = var
+    valid = Valid { patternSort }
+
+mkVar'
+    :: (Functor dom, MetaOrObject lvl)
+    => Sort lvl
+    -> (Sort lvl -> var lvl)
+    -> PurePattern lvl dom var (Valid lvl)
+mkVar' patternSort var =
+    asPurePattern (valid :< VariablePattern (var patternSort))
+  where
+    valid = Valid { patternSort }
 
 mkStringLiteral :: Functor dom => String -> PurePattern Meta dom var ()
 mkStringLiteral string =

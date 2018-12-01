@@ -20,7 +20,8 @@ Please refer to Section 9 (The Kore Language) of the
 <http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf Semantics of K>.
 -}
 
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell      #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Kore.AST.Kore
     ( KorePattern (..)
@@ -113,9 +114,7 @@ instance
     liftCompare = $(makeLiftCompare ''UnifiedPattern)
 
 instance
-    ( Show1 (Pattern Meta domain variable)
-    , Show1 (Pattern Object domain variable)
-    ) =>
+    ( Show1 domain, ShowMetaOrObject variable ) =>
     Show1 (UnifiedPattern domain variable)
   where
     liftShowsPrec = $(makeLiftShowsPrec ''UnifiedPattern)
@@ -238,7 +237,7 @@ instance
             liftCompare compareWorker pat1 pat2
 
 deriving instance
-    (Show ann, ShowMetaOrObject var, Show1 dom) =>
+    (Show1 dom, Show ann, ShowMetaOrObject var) =>
     Show (KorePattern dom var ann)
 
 instance

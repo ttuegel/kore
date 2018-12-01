@@ -9,6 +9,7 @@ form 'SimpleSignature s'.
 Functions are also provided to check and convert strings
 to the 'Label' or 'Sort' types associated with that signature.
 -}
+{-# LANGUAGE UndecidableInstances #-}
 module Logic.Matching.Signature.Simple
     ( SignatureInfo(..)
     , ValidatedSignature, fromValidated, validate
@@ -72,6 +73,7 @@ reifySignature :: ValidatedSignature
                -> a
 reifySignature sig f = reify sig (\(_proxy :: Proxy s) -> f @s Proxy)
 
+-- Needs UndecidableInstances
 instance (Reifies s ValidatedSignature) => IsSignature (SimpleSignature s) where
   newtype Label (SimpleSignature s) = SimpleLabel Text
   newtype Sort (SimpleSignature s) = SimpleSort Text
@@ -103,6 +105,7 @@ instance Pretty (Sort (SimpleSignature s)) where
     | isAlpha (Text.head l) && Text.all isAlphaNum l = pretty l
     | otherwise = pretty (show l)
 
+-- Needs UndecidableInstances
 instance (Reifies s ValidatedSignature) => CheckableSignature (SimpleSignature s) where
     type RawLabel (SimpleSignature s) = Text
     type RawSort (SimpleSignature s) = Text

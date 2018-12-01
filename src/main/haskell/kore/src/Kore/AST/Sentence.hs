@@ -20,6 +20,9 @@ an AST term in a single data type (e.g. 'UnifiedSort' that can be either
 Please refer to Section 9 (The Kore Language) of the
 <http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf Semantics of K>.
 -}
+
+{-# LANGUAGE UndecidableInstances #-}
+
 module Kore.AST.Sentence where
 
 import           Control.DeepSeq

@@ -4,13 +4,15 @@ module Kore.Step.Pattern
     , ConcreteStepPattern
     , StepPatternHead
     , module Kore.AST.Pure
+    , module Kore.Annotation.Valid
     ) where
 
+import           Kore.Annotation.Valid
 import           Kore.AST.Pure
                  ( Concrete, Pattern, PurePattern, Variable )
 import qualified Kore.Domain.Builtin as Domain
 
-type StepPattern lvl var = PurePattern lvl Domain.Builtin var ()
+type StepPattern lvl var = PurePattern lvl Domain.Builtin var (Valid lvl)
 
 type CommonStepPattern lvl = StepPattern lvl Variable
 

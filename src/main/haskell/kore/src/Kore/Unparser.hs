@@ -7,6 +7,9 @@ Maintainer  : traian.serbanuta@runtimeverification.com
 Stability   : experimental
 Portability : portable
 -}
+
+{-# LANGUAGE UndecidableInstances #-}
+
 module Kore.Unparser
     ( Unparse (..)
     , unparseToString
@@ -28,7 +31,6 @@ import           Data.Void
 import           Kore.AST.Kore
 import           Kore.AST.Pure
 import           Kore.AST.Sentence
-import qualified Kore.Builtin as Builtin
 import qualified Kore.Domain.Builtin as Domain
 import qualified Kore.Domain.External as Domain
 import           Kore.Parser.CString
@@ -154,9 +156,9 @@ instance
     unparse =
         \case
             Domain.BuiltinPattern child -> unparse child
-            Domain.BuiltinMap _ -> Builtin.notImplementedInternal
-            Domain.BuiltinList _ -> Builtin.notImplementedInternal
-            Domain.BuiltinSet _ -> Builtin.notImplementedInternal
+            Domain.BuiltinMap _ -> Domain.notImplementedInternal
+            Domain.BuiltinList _ -> Domain.notImplementedInternal
+            Domain.BuiltinSet _ -> Domain.notImplementedInternal
 
 instance Unparse (Domain.External child) where
     unparse (Domain.External lit) = unparse lit

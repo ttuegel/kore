@@ -226,8 +226,3 @@ asMetaPattern =
         Domain.BuiltinMap _ -> notImplementedInternal
         Domain.BuiltinList _ -> notImplementedInternal
         Domain.BuiltinSet _ -> notImplementedInternal
-
-{- | Throw an error for operations not implemented for internal domain values.
- -}
-notImplementedInternal :: HasCallStack => a
-notImplementedInternal = error "Not implemented for internal domain values"

@@ -11,6 +11,9 @@ Functions are also provided to check and convert trees
 over strings into the 'Label' or 'Sort' types associated
 with that signature.
 -}
+
+{-# LANGUAGE UndecidableInstances #-}
+
 module Logic.Matching.Signature.Polymorphic
     ( SortPat
     , SignatureInfo(..)

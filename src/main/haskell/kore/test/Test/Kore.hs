@@ -16,6 +16,7 @@ import qualified Data.Text as Text
 import           Kore.AST.Kore
 import           Kore.AST.Pure
 import           Kore.AST.Sentence
+import           Kore.ASTUtils.SmartConstructors
 import           Kore.ASTUtils.SmartPatterns
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.IndexedModule.MetadataTools
@@ -267,7 +268,7 @@ domainValueGen vars childGen lvl =
 
 externalDomainGen :: [Variable level] -> Gen (Domain.Builtin child)
 externalDomainGen _ =
-    Domain.BuiltinPattern . StringLiteral_ . getStringLiteral
+    Domain.BuiltinPattern . mkStringLiteral . getStringLiteral
         <$> stringLiteralGen
 
 builtinDomainGen
@@ -275,7 +276,7 @@ builtinDomainGen
     -> [Variable level]
     -> Gen (Domain.Builtin child)
 builtinDomainGen _ _ =
-    Domain.BuiltinPattern . StringLiteral_ . getStringLiteral
+    Domain.BuiltinPattern . mkStringLiteral . getStringLiteral
         <$> stringLiteralGen
 
 existsGen
@@ -413,31 +414,6 @@ purePatternGen level =
                     ]
       | otherwise = patternGen vars childGen level
 
-stepPatternGen
-    :: forall level. MetaOrObject level
-    => level
-    -> Gen (CommonStepPattern level)
-stepPatternGen level =
-    childGen []
-  where
-    childGen vars = embed . (mempty :<) <$> sized (stepPatternGenWorker vars)
-    stepPatternGenWorker vars n
-      | n <= 0 =
-        case isMetaOrObject (Proxy :: Proxy level) of
-            IsMeta ->
-                oneof
-                    [ StringLiteralPattern <$> stringLiteralGen
-                    , CharLiteralPattern <$> charLiteralGen
-                    ]
-            IsObject ->
-                oneof
-                    [ DomainValuePattern <$> domainValueGen
-                        vars
-                        (builtinDomainGen childGen)
-                        level
-                    ]
-      | otherwise = patternGen vars childGen level
-
 korePatternGen :: Gen CommonKorePattern
 korePatternGen = sized (\n ->
     if n<=0
@@ -471,29 +447,6 @@ korePatternGen = sized (\n ->
     korePatternGenRewrites =
         asCommonKorePattern . RewritesPattern
             <$> rewritesGen [] (const korePatternGen) Object
-
-predicateGen
-    ::  ( Given (SymbolOrAliasSorts level)
-        , MetaOrObject level
-        )
-    => level
-    -> Gen (Predicate level Variable)
-predicateGen level =
-    oneof
-        [ makeAndPredicate <$> predicateGen level <*> predicateGen level
-        , makeCeilPredicate <$> stepPatternGen level
-        , makeEqualsPredicate <$> stepPatternGen level <*> stepPatternGen level
-        , makeExistsPredicate <$> variableGen [] level <*> predicateGen level
-        , makeForallPredicate <$> variableGen [] level <*> predicateGen level
-        , pure makeFalsePredicate
-        , makeFloorPredicate <$> stepPatternGen level
-        , makeIffPredicate <$> predicateGen level <*> predicateGen level
-        , makeImpliesPredicate <$> predicateGen level <*> predicateGen level
-        , makeInPredicate <$> stepPatternGen level <*> stepPatternGen level
-        , makeNotPredicate <$> predicateGen level
-        , makeOrPredicate <$> predicateGen level <*> predicateGen level
-        , pure makeTruePredicate
-        ]
 
 sentenceAliasGen
     :: MetaOrObject level

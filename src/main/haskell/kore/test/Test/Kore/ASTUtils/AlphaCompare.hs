@@ -18,12 +18,12 @@ import Test.Tasty.QuickCheck as QC
 import Data.Reflection
        ( give )
 
-import Kore.AST.Pure
-import Kore.ASTUtils.AlphaCompare
-import Kore.ASTUtils.SmartConstructors
-import Kore.IndexedModule.MetadataTools
-       ( SymbolOrAliasSorts )
-import Kore.Step.Pattern
+import           Kore.AST.Pure
+import           Kore.ASTUtils.AlphaCompare
+import           Kore.ASTUtils.SmartConstructors
+import qualified Kore.Domain.Builtin as Domain
+import           Kore.IndexedModule.MetadataTools
+                 ( SymbolOrAliasSorts )
 
 import           Test.Kore
 import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
@@ -42,8 +42,8 @@ alphaComparePositives :: TestTree
 alphaComparePositives =
     QC.testProperty
     "alphaCompare x x == True" $
-    forAll (stepPatternGen Object) $
-    (\(x :: CommonStepPattern Object) -> alphaEq x x)
+    forAll (purePatternGen Object) $
+    (\(x :: CommonPurePattern Object Domain.Builtin ()) -> alphaEq x x)
 
 alphaCompareNegatives :: TestTree
 alphaCompareNegatives =
@@ -52,14 +52,14 @@ alphaCompareNegatives =
     forAll pairs $
     (\(x, y) -> (x /= y) ==> not (alphaEq x y))
       where
-       pairs = (,) <$> stepPatternGen Object <*> stepPatternGen Object
+       pairs = (,) <$> purePatternGen Object <*> purePatternGen Object
 
 alphaEq1 :: TestTree
 alphaEq1 =
     give symbolOrAliasSorts $
     QC.testProperty
     "(forall a. a) = (forall b. b)" $
-    alphaEq (mkForall v1 (mkVar v1)) (mkForall v2 (mkVar v2))
+    alphaEq (mkForall v1 (mkVar s v1)) (mkForall v2 (mkVar s v2))
 
 alphaEqList :: TestTree
 alphaEqList =
@@ -67,8 +67,8 @@ alphaEqList =
     QC.testProperty
     "forall a. [a, x] = forall b. [b, x]" $
     alphaEq
-        (mkForall v1 $ Mock.builtinList [mkVar v1, mkVar v3])
-        (mkForall v2 $ Mock.builtinList [mkVar v2, mkVar v3])
+        (mkForall v1 $ Mock.builtinList [mkVar s v1, mkVar s v3])
+        (mkForall v2 $ Mock.builtinList [mkVar s v2, mkVar s v3])
 
 
 alphaEqMap :: TestTree
@@ -77,8 +77,8 @@ alphaEqMap =
     QC.testProperty
     "(forall a. x |-> a) = (forall b. x |-> b)" $
     alphaEq
-        (mkForall v1 $ Mock.builtinMap [(mkTop, mkVar v1)])
-        (mkForall v2 $ Mock.builtinMap [(mkTop, mkVar v2)])
+        (mkForall v1 $ Mock.builtinMap [(mkTop s, mkVar s v1)])
+        (mkForall v2 $ Mock.builtinMap [(mkTop s, mkVar s v2)])
 
 s :: Sort Object
 s = mkSort "S"

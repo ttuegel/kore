@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE UndecidableInstances #-}
 {- | Description: module for the type-class style monad transformer for a REPL-like monad.
 TODO:  In order to continue using the dated 'haskeline' library instances of the MonadFoo
 are provided for the underlying monad transformer in haskeline, InputT.
@@ -38,11 +39,13 @@ instance C.MonadException m => MonadHaskeline (C.InputT m) where
   outputStr    = C.outputStr
   outputStrLn  = C.outputStrLn
 
+-- Needs UndecidableInstances
 instance R.MonadReader e m => R.MonadReader e (C.InputT m) where
   ask =  R.lift R.ask
   reader = R.lift . R.reader
   local f n = C.mapInputT (R.local f) n
 
+-- Needs UndecidableInstances
 instance S.MonadState s m => S.MonadState s (C.InputT m) where
   state = S.lift . S.state
 

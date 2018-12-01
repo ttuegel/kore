@@ -8,6 +8,9 @@ Maintainer  : virgil.serbanuta@runtimeverification.com
 Stability   : experimental
 Portability : POSIX
 -}
+
+{-# LANGUAGE UndecidableInstances #-}
+
 module Kore.Building.Patterns where
 
 import qualified Data.Functor.Foldable as Recursive
@@ -16,6 +19,7 @@ import           Data.Proxy
 import qualified Data.Text as Text
 
 import           Kore.AST.Kore
+import           Kore.ASTUtils.SmartConstructors
 import           Kore.ASTUtils.SmartPatterns
 import           Kore.Building.AsAst
 import           Kore.Building.Sorts
@@ -195,7 +199,7 @@ instance
     asProperPattern (ObjectDomainValue sort child) =
         DomainValuePattern DomainValue
             { domainValueSort = asAst sort
-            , domainValueChild = Domain.BuiltinPattern (StringLiteral_ literal)
+            , domainValueChild = Domain.BuiltinPattern (mkStringLiteral literal)
             }
       where
         externalChild :: CommonKorePattern

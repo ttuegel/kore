@@ -1,3 +1,16 @@
+{- |
+Module      : Kore.Domain.Builtin
+Description : Internal domain value representation
+Copyright   : (c) Runtime Verification, 2018
+License     : NCSA
+Maintainer  : thomas.tuegel@runtimeverification.com
+
+This module is intended to be imported qualified:
+
+@
+    import qualified Kore.Domain.Builtin as Domain
+@
+ -}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Kore.Domain.Builtin where
@@ -21,14 +34,19 @@ import           Data.Void
                  ( Void )
 import           GHC.Generics
                  ( Generic )
+import           GHC.Stack
+                 ( HasCallStack )
 
+import Kore.Annotation.Valid
 import Kore.AST.Pure
+
+type KeyPattern = ConcretePurePattern Object Builtin (Valid Object)
 
 data Builtin child
     = BuiltinPattern !(CommonPurePattern Meta (Const Void) ())
-    | BuiltinMap !(Map (ConcretePurePattern Object Builtin ()) child)
+    | BuiltinMap !(Map KeyPattern child)
     | BuiltinList !(Seq child)
-    | BuiltinSet !(Set (ConcretePurePattern Object Builtin ()))
+    | BuiltinSet !(Set KeyPattern)
     deriving (Foldable, Functor, Generic, Traversable)
 
 deriving instance Eq child => Eq (Builtin child)
@@ -54,3 +72,8 @@ instance Hashable child => Hashable (Builtin child) where
                 salt `hashWithSalt` (3::Int) `hashWithSalt` set
 
 instance NFData child => NFData (Builtin child)
+
+{- | Throw an error for operations not implemented for internal domain values.
+ -}
+notImplementedInternal :: HasCallStack => a
+notImplementedInternal = error "Not implemented for internal domain values"

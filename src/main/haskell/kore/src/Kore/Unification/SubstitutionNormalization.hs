@@ -72,10 +72,8 @@ normalizeSubstitution
         )
     => MetadataTools level StepperAttributes
     -> Substitution level variable
-    -> ExceptT
-        (SubstitutionError level variable)
-        m
-        (PredicateSubstitution level variable)
+    -> ExceptT (SubstitutionError level variable) m
+        (Sort level -> PredicateSubstitution level variable)
 normalizeSubstitution tools substitution =
     ExceptT . sequence . fmap maybeToBottom $ topologicalSortConverted
 
@@ -116,16 +114,17 @@ normalizeSubstitution tools substitution =
 
     normalizeSortedSubstitution'
         :: [variable level]
-        -> m (PredicateSubstitution level variable)
+        -> m (Sort level -> PredicateSubstitution level variable)
     normalizeSortedSubstitution' s =
         normalizeSortedSubstitution (sortedSubstitution s) mempty mempty
 
     maybeToBottom
         :: Maybe [variable level]
-        -> m (PredicateSubstitution level variable)
-    maybeToBottom = maybe
-        (return Predicated.bottomPredicate)
-        normalizeSortedSubstitution'
+        -> m (Sort level -> PredicateSubstitution level variable)
+    maybeToBottom =
+        maybe
+            (return Predicated.bottomPredicate)
+            normalizeSortedSubstitution'
 
 checkCircularVariableDependency
     :: (MetaOrObject level, Eq (variable level))
@@ -190,13 +189,14 @@ normalizeSortedSubstitution
     => [(variable level, StepPattern level variable)]
     -> [(variable level, StepPattern level variable)]
     -> [(Unified variable, StepPattern level variable)]
-    -> m (PredicateSubstitution level variable)
+    -> m (Sort level -> PredicateSubstitution level variable)
 normalizeSortedSubstitution [] result _ =
-    return Predicated
-        { term = ()
-        , predicate = makeTruePredicate
-        , substitution = Substitution.unsafeWrap result
-        }
+    return $ \term ->
+        Predicated
+            { term
+            , predicate = makeTruePredicate
+            , substitution = Substitution.unsafeWrap result
+            }
 normalizeSortedSubstitution
     ((var, varPattern) : unprocessed)
     result

@@ -3,6 +3,7 @@ module Test.Kore.Proof.Value where
 import Test.Tasty
 import Test.Tasty.HUnit
 
+import           Control.Comonad
 import qualified Data.Functor.Foldable as Recursive
 import           Data.Reflection
                  ( give )
@@ -11,7 +12,7 @@ import           Kore.AST.MLPatterns
 import           Kore.AST.Pure
 import           Kore.ASTHelpers
                  ( ApplicationSorts (..) )
-import qualified Kore.ASTUtils.SmartConstructors as Kore
+import           Kore.ASTUtils.SmartConstructors
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.IndexedModule.MetadataTools
                  ( HeadType, MetadataTools )
@@ -50,47 +51,35 @@ test_pairDomainValue =
     ]
 
 unit_fun :: Assertion
-unit_fun = assertNotValue (mkApp funSymbol [onePattern])
-
-mkApp
-    :: SymbolOrAlias Object
-    -> [StepPattern Object var]
-    -> StepPattern Object var
-mkApp = give symbolOrAliasSorts Kore.mkApp
+unit_fun = assertNotValue (mkApp intSort funSymbol [onePattern])
 
 mkInj :: CommonStepPattern Object -> CommonStepPattern Object
-mkInj input@(Recursive.project -> _ :< projected) =
-    mkApp (injSymbol inputSort supSort) [input]
+mkInj input =
+    mkApp supSort (injSymbol inputSort supSort) [input]
   where
-    inputSort = getPatternResultSort symbolOrAliasSorts projected
+    Valid { patternSort = inputSort } = extract input
 
 mkPair
     :: CommonStepPattern Object
     -> CommonStepPattern Object
     -> CommonStepPattern Object
-mkPair a@(Recursive.project -> _ :< projected) b =
-    mkApp (pairSymbol inputSort) [a, b]
+mkPair a b =
+    mkApp (pairSort inputSort) (pairSymbol inputSort) [a, b]
   where
-    inputSort = getPatternResultSort symbolOrAliasSorts projected
-
-mkDomainValue
-    :: Sort Object
-    -> Domain.Builtin (StepPattern Object var)
-    -> StepPattern Object var
-mkDomainValue = give symbolOrAliasSorts Kore.mkDomainValue
+    Valid { patternSort = inputSort } = extract a
 
 unitPattern :: CommonStepPattern Object
-unitPattern = mkApp unitSymbol []
+unitPattern = mkApp unitSort unitSymbol []
 
 onePattern :: CommonStepPattern Object
 onePattern =
     (mkDomainValue intSort . Domain.BuiltinPattern)
-        (Kore.mkStringLiteral "1")
+        (mkStringLiteral "1")
 
 zeroPattern :: CommonStepPattern Object
 zeroPattern =
     (mkDomainValue intSort . Domain.BuiltinPattern)
-        (Kore.mkStringLiteral "1")
+        (mkStringLiteral "1")
 
 unitSort :: Sort Object
 unitSort =
@@ -189,7 +178,7 @@ tools =
 assertValue :: CommonStepPattern Object -> Assertion
 assertValue purePattern =
     assertEqual "Expected normalized pattern"
-        concretePattern
+        ((<$) () <$> concretePattern)
         (concretePattern >>= roundTrip)
   where
     concretePattern = asConcretePurePattern purePattern

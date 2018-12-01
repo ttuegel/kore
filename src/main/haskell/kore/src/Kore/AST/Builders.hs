@@ -55,6 +55,7 @@ import           Kore.AST.BuildersImpl
 import           Kore.AST.Pure
 import           Kore.AST.Sentence
 import           Kore.ASTHelpers
+import           Kore.ASTUtils.SmartConstructors
 import           Kore.ASTUtils.SmartPatterns
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.Error
@@ -488,7 +489,7 @@ parameterizedDomainValue_ sort str =
             DomainValuePattern DomainValue
                 { domainValueSort = sort
                 , domainValueChild =
-                    Domain.BuiltinPattern (StringLiteral_ str)
+                    Domain.BuiltinPattern (mkStringLiteral str)
                 }
         }
 

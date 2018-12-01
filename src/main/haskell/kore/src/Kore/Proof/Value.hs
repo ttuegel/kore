@@ -12,9 +12,9 @@ module Kore.Proof.Value
     ( ValueF (..)
     , Value
     , fromPattern
-    , fromConcretePurePattern
+    , Kore.Proof.Value.fromConcretePurePattern
     , asPattern
-    , asConcretePurePattern
+    , Kore.Proof.Value.asConcretePurePattern
     ) where
 
 import qualified Control.Comonad.Trans.Cofree as Cofree
@@ -26,9 +26,10 @@ import qualified Data.Functor.Foldable as Recursive
 import           Data.Reflection
                  ( give )
 
-import           Kore.AST.Pure
-                 ( CofreeF (..), Object, Pattern (..) )
-import qualified Kore.AST.Pure as Pattern
+import           Kore.AST.MetaOrObject
+import           Kore.AST.Pure hiding
+                 ( DomainValue (..) )
+import qualified Kore.AST.Pure as Pure
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.IndexedModule.MetadataTools
 import           Kore.Step.Pattern
@@ -41,10 +42,10 @@ import           Kore.Step.StepperAttributes
     value), a sort injection, or a domain value.
  -}
 data ValueF level child where
-    Constructor :: !(Pattern.Application level child) -> ValueF level child
-    SortInjection :: !(Pattern.Application level child) -> ValueF level child
+    Constructor :: !(Pure.Application level child) -> ValueF level child
+    SortInjection :: !(Pure.Application level child) -> ValueF level child
     DomainValue
-        :: !(Pattern.DomainValue Object Domain.Builtin child)
+        :: !(Pure.DomainValue Object Domain.Builtin child)
         -> ValueF Object child
 
 deriving instance Eq child => Eq (ValueF level child)
@@ -86,7 +87,7 @@ fromPattern
 fromPattern tools =
     \case
         ApplicationPattern
-            appP@Pattern.Application
+            appP@Pure.Application
                 { applicationSymbolOrAlias = symbolOrAlias }
           | isConstructor symbolOrAlias ->
             -- The constructor application is normal if all its children are
@@ -136,5 +137,7 @@ asPattern val =
 
 {- | View a normalized value as a 'ConcretePurePattern'.
  -}
-asConcretePurePattern :: Value level -> ConcreteStepPattern level
+asConcretePurePattern
+    :: Value level
+    -> ConcretePurePattern level Domain.Builtin ()
 asConcretePurePattern = Recursive.unfold ((:<) mempty . asPattern)

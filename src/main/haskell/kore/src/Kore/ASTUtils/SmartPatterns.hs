@@ -44,130 +44,130 @@ import Kore.AST.Pure
 pattern And_
     :: Functor dom
     => Sort level
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
 
 pattern App_
     :: Functor dom
     => SymbolOrAlias level
-    -> [PurePattern level dom var ()]
-    -> PurePattern level dom var ()
+    -> [PurePattern level dom var ann]
+    -> PurePattern level dom var ann
 
 pattern Bottom_
     :: Functor dom
     => Sort level
-    -> PurePattern level dom var ()
+    -> PurePattern level dom var ann
 
 pattern Ceil_
     :: Functor dom
     => Sort level
     -> Sort level
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
 
 pattern DV_
   :: Functor dom => (level ~ Object) =>
      Sort level
-  -> dom (PurePattern level dom var ())
-  -> PurePattern level dom var ()
+  -> dom (PurePattern level dom var ann)
+  -> PurePattern level dom var ann
 
 pattern Equals_
     :: Functor dom
     => Sort level
     -> Sort level
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
 
 pattern Exists_
     :: Functor dom
     => Sort level
     -> var level
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
 
 pattern Floor_
     :: Functor dom
     => Sort level
     -> Sort level
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
 
 pattern Forall_
     :: Functor dom
     => Sort level
     -> var level
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
 
 pattern Iff_
     :: Functor dom
     => Sort level
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
 
 pattern Implies_
     :: Functor dom
     => Sort level
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
 
 pattern In_
     :: Functor dom
     => Sort level
     -> Sort level
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
 
 pattern Next_
     :: Functor dom => (level ~ Object) =>
        Sort level
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
 
 pattern Not_
     :: Functor dom
     => Sort level
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
 
 pattern Or_
     :: Functor dom
     => Sort level
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
-    -> PurePattern level dom var ()
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
+    -> PurePattern level dom var ann
 
 pattern Rewrites_
   :: Functor dom => (level ~ Object) =>
      Sort level
-  -> PurePattern level dom var ()
-  -> PurePattern level dom var ()
-  -> PurePattern level dom var ()
+  -> PurePattern level dom var ann
+  -> PurePattern level dom var ann
+  -> PurePattern level dom var ann
 
 pattern Top_
     :: Functor dom
     => Sort level
-    -> PurePattern level dom var ()
+    -> PurePattern level dom var ann
 
 pattern Var_
     :: Functor dom
     => var level
-    -> PurePattern level dom var ()
+    -> PurePattern level dom var ann
 
 pattern StringLiteral_
   :: Functor dom => (level ~ Meta)
   => String
-  -> PurePattern level dom var ()
+  -> PurePattern level dom var ann
 
 pattern CharLiteral_
   :: Functor dom => (level ~ Meta)
   => Char
-  -> PurePattern level dom var ()
+  -> PurePattern level dom var ann
 
 -- No way to make multiline pragma?
 -- NOTE: If you add a case to the AST type, add another synonym here.
@@ -175,10 +175,6 @@ pattern CharLiteral_
 
 pattern And_ andSort andFirst andSecond <-
     (Recursive.project -> _ :< AndPattern And { andSort, andFirst, andSecond })
-  where
-    And_ andSort andFirst andSecond =
-        (asPurePattern . (:<) mempty . AndPattern)
-            And { andSort, andFirst, andSecond }
 
 pattern App_ applicationSymbolOrAlias applicationChildren <-
     (Recursive.project ->
@@ -187,34 +183,19 @@ pattern App_ applicationSymbolOrAlias applicationChildren <-
             , applicationChildren
             }
     )
-  where
-    App_ applicationSymbolOrAlias applicationChildren =
-        (asPurePattern . (:<) mempty . ApplicationPattern)
-            Application { applicationSymbolOrAlias, applicationChildren }
 
 pattern Bottom_ bottomSort <-
     (Recursive.project -> _ :< BottomPattern Bottom { bottomSort })
-  where
-    Bottom_ bottomSort =
-        (asPurePattern . (:<) mempty . BottomPattern) Bottom { bottomSort }
 
 pattern Ceil_ ceilOperandSort ceilResultSort ceilChild <-
     (Recursive.project ->
         _ :< CeilPattern Ceil { ceilOperandSort, ceilResultSort, ceilChild }
     )
-  where
-    Ceil_ ceilOperandSort ceilResultSort ceilChild =
-        (asPurePattern . (:<) mempty . CeilPattern)
-            Ceil { ceilOperandSort, ceilResultSort, ceilChild }
 
 pattern DV_ domainValueSort domainValueChild <-
     (Recursive.project -> _ :< DomainValuePattern
         DomainValue { domainValueSort, domainValueChild }
     )
-  where
-    DV_ domainValueSort domainValueChild =
-        (asPurePattern . (:<) mempty . DomainValuePattern)
-            DomainValue { domainValueSort, domainValueChild }
 
 pattern Equals_ equalsOperandSort equalsResultSort equalsFirst equalsSecond <-
     (Recursive.project ->
@@ -225,24 +206,11 @@ pattern Equals_ equalsOperandSort equalsResultSort equalsFirst equalsSecond <-
             , equalsSecond
             }
     )
-  where
-    Equals_ equalsOperandSort equalsResultSort equalsFirst equalsSecond =
-        (asPurePattern . (:<) mempty . EqualsPattern)
-            Equals
-                { equalsOperandSort
-                , equalsResultSort
-                , equalsFirst
-                , equalsSecond
-                }
 
 pattern Exists_ existsSort existsVariable existsChild <-
     (Recursive.project ->
         _ :< ExistsPattern Exists { existsSort, existsVariable, existsChild }
     )
-  where
-    Exists_ existsSort existsVariable existsChild =
-        (asPurePattern . (:<) mempty . ExistsPattern)
-            Exists { existsSort, existsVariable, existsChild }
 
 pattern Floor_ floorOperandSort floorResultSort floorChild <-
     (Recursive.project ->
@@ -252,37 +220,21 @@ pattern Floor_ floorOperandSort floorResultSort floorChild <-
             , floorChild
             }
     )
-  where
-    Floor_ floorOperandSort floorResultSort floorChild =
-        (asPurePattern . (:<) mempty . FloorPattern)
-            Floor { floorOperandSort, floorResultSort, floorChild }
 
 pattern Forall_ forallSort forallVariable forallChild <-
     (Recursive.project ->
         _ :< ForallPattern Forall { forallSort, forallVariable, forallChild }
     )
-  where
-    Forall_ forallSort forallVariable forallChild =
-        (asPurePattern . (:<) mempty . ForallPattern)
-            Forall { forallSort, forallVariable, forallChild }
 
 pattern Iff_ iffSort iffFirst iffSecond <-
     (Recursive.project ->
         _ :< IffPattern Iff { iffSort, iffFirst, iffSecond }
     )
-  where
-    Iff_ iffSort iffFirst iffSecond =
-        (asPurePattern . (:<) mempty . IffPattern)
-            Iff { iffSort, iffFirst, iffSecond }
 
 pattern Implies_ impliesSort impliesFirst impliesSecond <-
     (Recursive.project ->
         _ :< ImpliesPattern Implies { impliesSort, impliesFirst, impliesSecond }
     )
-  where
-    Implies_ impliesSort impliesFirst impliesSecond =
-        (asPurePattern . (:<) mempty . ImpliesPattern)
-            Implies { impliesSort, impliesFirst, impliesSecond }
 
 pattern In_ inOperandSort inResultSort inFirst inSecond <-
     (Recursive.project ->
@@ -293,36 +245,17 @@ pattern In_ inOperandSort inResultSort inFirst inSecond <-
             , inContainingChild = inSecond
             }
     )
-  where
-    In_ inOperandSort inResultSort inFirst inSecond =
-        (asPurePattern . (:<) mempty . InPattern)
-            In
-                { inOperandSort
-                , inResultSort
-                , inContainedChild = inFirst
-                , inContainingChild = inSecond
-                }
 
 pattern Next_ nextSort nextChild <-
     (Recursive.project ->
         _ :< NextPattern Next { nextSort, nextChild })
-  where
-    Next_ nextSort nextChild =
-        (asPurePattern . (:<) mempty . NextPattern) Next { nextSort, nextChild }
 
 pattern Not_ notSort notChild <-
     (Recursive.project ->
         _ :< NotPattern Not { notSort, notChild })
-  where
-    Not_ notSort notChild =
-        (asPurePattern . (:<) mempty . NotPattern) Not { notSort, notChild }
 
 pattern Or_ orSort orFirst orSecond <-
     (Recursive.project -> _ :< OrPattern Or { orSort, orFirst, orSecond })
-  where
-    Or_ orSort orFirst orSecond =
-        (asPurePattern . (:<) mempty . OrPattern)
-            Or { orSort, orFirst, orSecond }
 
 pattern Rewrites_ rewritesSort rewritesFirst rewritesSecond <-
     (Recursive.project ->
@@ -332,34 +265,18 @@ pattern Rewrites_ rewritesSort rewritesFirst rewritesSecond <-
             , rewritesSecond
             }
     )
-  where
-    Rewrites_ rewritesSort rewritesFirst rewritesSecond =
-        (asPurePattern . (:<) mempty . RewritesPattern)
-            Rewrites { rewritesSort, rewritesFirst, rewritesSecond }
 
 pattern Top_ topSort <-
     (Recursive.project -> _ :< TopPattern Top { topSort })
-  where
-    Top_ topSort =
-        (asPurePattern . (:<) mempty . TopPattern) Top { topSort }
 
 pattern Var_ variable <-
     (Recursive.project -> _ :< VariablePattern variable)
-  where
-    Var_ variable =
-        (asPurePattern . (:<) mempty) (VariablePattern variable)
 
 pattern V :: Functor dom => var level -> PurePattern level dom var ()
-pattern V x = Var_ x
+pattern V x <- Var_ x
 
 pattern StringLiteral_ str <-
     (Recursive.project -> _ :< StringLiteralPattern (StringLiteral str))
-  where
-    StringLiteral_ str =
-        (asPurePattern . (:<) mempty) (StringLiteralPattern (StringLiteral str))
 
 pattern CharLiteral_ char <-
     (Recursive.project -> _ :< CharLiteralPattern (CharLiteral char))
-  where
-    CharLiteral_ char =
-        (asPurePattern . (:<) mempty) (CharLiteralPattern (CharLiteral char))

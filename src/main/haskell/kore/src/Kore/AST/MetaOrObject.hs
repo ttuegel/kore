@@ -9,6 +9,9 @@ Stability   : experimental
 Portability : portable
 
 -}
+
+{-# LANGUAGE UndecidableInstances #-}
+
 module Kore.AST.MetaOrObject
     ( Meta (..)
     , Object (..)
@@ -88,6 +91,7 @@ deriving instance (EqMetaOrObject thing) => Eq (Unified thing)
 deriving instance (OrdMetaOrObject thing) => Ord (Unified thing)
 deriving instance (ShowMetaOrObject thing) => Show (Unified thing)
 
+-- Needs UndecidableInstances
 instance (NFData (thing Meta), NFData (thing Object)) => NFData (Unified thing)
 
 {-|Given a function transforming objects of 'Meta' type and another transforming

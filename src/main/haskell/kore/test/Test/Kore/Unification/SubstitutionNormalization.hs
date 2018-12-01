@@ -43,26 +43,31 @@ test_substitutionNormalization =
         (assertEqual ""
             (Right [])
             (runNormalizeSubstitution
+                patternMetaSort
                 ([] :: [(Variable Meta, StepPattern Meta Variable)])
             )
         )
     , testCase "Simple substitution"
         (assertEqual ""
-            (Right [(v1 patternMetaSort, mkTop)])
+            (Right [(v1 patternMetaSort, mkTop patternMetaSort)])
             (runNormalizeSubstitution
-                [(v1 patternMetaSort, mkTop)]
+                patternMetaSort
+                [(v1 patternMetaSort, mkTop patternMetaSort)]
             )
         )
     , testCase "Simple unnormalized substitution"
         (assertEqual ""
             (Right
-                [ (v1 patternMetaSort, mkTop)
-                , (x1 patternMetaSort, mkTop)
+                [ (v1 patternMetaSort, mkTop patternMetaSort)
+                , (x1 patternMetaSort, mkTop patternMetaSort)
                 ]
             )
             (runNormalizeSubstitution
-                [ (v1 patternMetaSort, mkVar $ x1 patternMetaSort)
-                , (x1 patternMetaSort, mkTop)
+                patternMetaSort
+                [   ( v1 patternMetaSort
+                    , mkVar' patternMetaSort x1
+                    )
+                , (x1 patternMetaSort, mkTop patternMetaSort)
                 ]
             )
         )
@@ -70,16 +75,19 @@ test_substitutionNormalization =
         (assertEqual ""
             (Right
                 [   ( v1 patternMetaSort
-                    , And_ patternMetaSort mkTop (Top_ patternMetaSort)
+                    , mkAnd (mkTop patternMetaSort) (mkTop patternMetaSort)
                     )
-                , (x1 patternMetaSort, mkTop)
+                , (x1 patternMetaSort, mkTop patternMetaSort)
                 ]
             )
             (runNormalizeSubstitution
+                patternMetaSort
                 [   ( v1 patternMetaSort
-                    , mkAnd (mkVar $ x1 patternMetaSort) mkTop
+                    , mkAnd
+                        (mkVar' patternMetaSort x1)
+                        (mkTop patternMetaSort)
                     )
-                ,   (x1 patternMetaSort, mkTop)
+                ,   (x1 patternMetaSort, mkTop patternMetaSort)
                 ]
             )
         )
@@ -89,30 +97,35 @@ test_substitutionNormalization =
         testCase "Simplest cycle"
             (assertEqual ""
                 (Right [])
-                (runNormalizeSubstitution [(var1, mkVar $ v1 patternMetaSort)])
+                (runNormalizeSubstitution
+                    patternMetaSort
+                    [(var1, mkVar' patternMetaSort v1)]
+                )
             )
     , let
-        var1 =  (v1 patternMetaSort)
-        varx1 =  (x1 patternMetaSort)
+        var1 = v1 patternMetaSort
+        varx1 = x1 patternMetaSort
       in
         testCase "Cycle with extra substitution"
             (assertEqual ""
-                (Right [(x1 patternMetaSort, mkVar $ v1 patternMetaSort)])
+                (Right [(x1 patternMetaSort, mkVar' patternMetaSort v1)])
                 (runNormalizeSubstitution
-                    [ (var1, mkVar $ v1 patternMetaSort)
-                    , (varx1, mkVar $ v1 patternMetaSort)
+                    patternMetaSort
+                    [ (var1, mkVar' patternMetaSort v1)
+                    , (varx1, mkVar' patternMetaSort v1)
                     ]
                 )
             )
     , let
-        var1 =  (v1 patternMetaSort)
+        var1 = v1 patternMetaSort
       in
         testCase "Function cycle"
             (assertEqual ""
                 (Left (NonCtorCircularVariableDependency [var1]))
                 (runNormalizeSubstitution
+                    patternMetaSort
                     [   ( var1
-                        , mkApp f [mkVar var1]
+                        , mkApp patternMetaSort f [mkVar' patternMetaSort v1]
                         )
                     ]
                 )
@@ -125,8 +138,9 @@ test_substitutionNormalization =
             (assertEqual ""
                 (Right [])
                 (runNormalizeSubstitution
-                    [ (var1, mkVar $ x1 patternMetaSort)
-                    , (varx1, mkVar $ v1 patternMetaSort)
+                    patternMetaSort
+                    [ (var1, mkVar patternMetaSort $ x1 patternMetaSort)
+                    , (varx1, mkVar patternMetaSort $ v1 patternMetaSort)
                     ]
                 )
             )
@@ -138,21 +152,35 @@ test_substitutionNormalization =
             (assertEqual ""
                 (Right [])
                 (runNormalizeSubstitution
-                    [ (var1, mkAnd (mkVar $ x1 patternMetaSort) mkTop)
-                    , (varx1, mkAnd (mkVar $ v1 patternMetaSort) mkTop)
+                    patternMetaSort
+                    [   ( var1
+                        , mkAnd
+                            (mkVar' patternMetaSort x1)
+                            (mkTop patternMetaSort)
+                        )
+                    ,   ( varx1
+                        , mkAnd
+                            (mkVar' patternMetaSort v1)
+                            (mkTop patternMetaSort)
+                        )
                     ]
                 )
             )
     , let
-        var1 =  (v1 patternMetaSort)
-        varx1 =  (x1 patternMetaSort)
+        var1 = v1 patternMetaSort
+        varx1 = x1 patternMetaSort
       in
         testCase "Length 2 non-ctor cycle"
             (assertEqual ""
                 (Left (NonCtorCircularVariableDependency [var1, varx1]))
                 (runNormalizeSubstitution
-                    [ (var1, mkApp f [mkVar varx1])
-                    , (varx1, mkVar var1)
+                    patternMetaSort
+                    [   ( var1
+                        , mkApp patternMetaSort f [mkVar' patternMetaSort v1]
+                        )
+                    ,   ( varx1
+                        , mkVar' patternMetaSort v1
+                        )
                     ]
                 )
             )
@@ -166,15 +194,18 @@ test_substitutionNormalization =
 
 runNormalizeSubstitution
     :: MetaOrObject level
-    => [(Variable level, StepPattern level Variable)]
+    => Sort level
+    -> [(Variable level, StepPattern level Variable)]
     -> Either
         (SubstitutionError level Variable)
         [(Variable level, StepPattern level Variable)]
-runNormalizeSubstitution substitution =
-    fmap (Substitution.unwrap . Predicated.substitution)
+runNormalizeSubstitution sort substitution =
+    fmap (Substitution.unwrap . Predicated.substitution . (apply sort))
     . evalCounter
     . runExceptT
     $ normalizeSubstitution mockMetadataTools (Substitution.wrap substitution)
+  where
+    apply = flip ($)
 
 mockSymbolOrAliasSorts :: MetaOrObject level => SymbolOrAliasSorts level
 mockSymbolOrAliasSorts = const ApplicationSorts

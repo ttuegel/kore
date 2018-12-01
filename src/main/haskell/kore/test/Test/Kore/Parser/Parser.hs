@@ -466,9 +466,10 @@ domainValuePatternParserTests :: [TestTree]
 domainValuePatternParserTests =
     parseTree korePatternParser
         [ success "\\dv{s1}(\"a\")"
+            $ (<$) ()
             $ patternPureToKore
-            $ DV_ (sortVariableSort "s1")
-            $ Domain.BuiltinPattern (StringLiteral_ "a")
+            $ mkDomainValue (sortVariableSort "s1")
+            $ Domain.BuiltinPattern (mkStringLiteral "a")
         , FailureWithoutMessage
             [ ""
             , "\\dv{s1, s2}(\"a\")"
@@ -980,7 +981,7 @@ sentenceAliasParserTests =
                             , symbolOrAliasParams = [resultSort]
                             }
                     argument name =
-                        Var_ Variable
+                        mkCommonVar Variable
                             { variableName = testId name
                             , variableSort = resultSort
                             }
@@ -1018,7 +1019,7 @@ sentenceAliasParserTests =
                             , symbolOrAliasParams = [resultSort]
                             }
                     arg =
-                        Var_ Variable
+                        mkCommonVar Variable
                             { variableName = testId "a"
                             , variableSort = resultSort
                             }

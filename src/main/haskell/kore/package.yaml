@@ -69,6 +69,7 @@ default-extensions:
   - DeriveTraversable
   - DuplicateRecordFields
   - EmptyCase
+  - EmptyDataDeriving
   - ExistentialQuantification
   - FlexibleContexts
   - FlexibleInstances
@@ -89,7 +90,6 @@ default-extensions:
   - TypeApplications
   - TypeFamilies
   - TypeSynonymInstances
-  - UndecidableInstances
   - ViewPatterns
 
 library:

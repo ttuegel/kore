@@ -6,6 +6,9 @@ License     : NCSA
 Maintainer  : traian.serbanuta@runtimeverification.com
 
 -}
+
+{-# LANGUAGE UndecidableInstances #-}
+
 module Kore.AST.Pure
     ( PurePattern (..)
     , CommonPurePattern
@@ -82,7 +85,7 @@ newtype PurePattern
     (ann :: *)
   =
     PurePattern { getPurePattern :: Cofree (Pattern lvl dom var) ann }
-    deriving (Foldable, Functor, Generic, Traversable)
+    deriving (Foldable, Functor, Generic, Show, Traversable)
 
 instance
     ( Eq lvl
@@ -114,13 +117,7 @@ instance
           =
             liftCompare compareWorker pat1 pat2
 
-deriving instance
-    ( Show ann
-    , Show (var lvl)
-    , Show1 dom
-    ) =>
-    Show (PurePattern lvl dom var ann)
-
+-- Needs UndecidableInstances
 instance
     ( Functor dom
     , Hashable (var lvl)
@@ -131,6 +128,7 @@ instance
   where
     hashWithSalt salt (Recursive.project -> _ :< pat) = hashWithSalt salt pat
 
+-- Needs UndecidableInstances
 instance
     ( Functor dom
     , NFData ann

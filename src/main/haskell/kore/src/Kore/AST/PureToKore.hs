@@ -24,6 +24,7 @@ module Kore.AST.PureToKore
 import           Control.Comonad.Trans.Cofree
                  ( CofreeF (..) )
 import qualified Control.Comonad.Trans.Cofree as Cofree
+import           Data.Functor.Const
 import qualified Data.Functor.Foldable as Recursive
 
 import           Kore.AST.Kore
@@ -33,7 +34,7 @@ import qualified Kore.Domain.Builtin as Domain
 import           Kore.Error
 
 patternPureToKore
-    :: (Functor dom, MetaOrObject level)
+    :: (MetaOrObject level, Functor dom)
     => PurePattern level dom var ann
     -> KorePattern dom var ann
 patternPureToKore =
@@ -48,12 +49,32 @@ patternPureToKore =
 -- 'error' any part of the pattern if of a different level.
 -- For lifting functions see "Kore.MetaML.Lift".
 patternKoreToPure
-    :: MetaOrObject level
+    ::  forall level dom var ann e.
+        (MetaOrObject level, Traversable dom)
     => level
-    -> CommonKorePattern
-    -> Either (Error a) (CommonPurePattern level Domain.Builtin ())
+    -> KorePattern dom var ann
+    -> Either (Error e) (PurePattern level dom var ann)
 patternKoreToPure lvl =
-    Recursive.fold (extractPurePattern $ isMetaOrObject $ toProxy lvl)
+    Recursive.fold patternKoreToPureWorker
+  where
+    patternKoreToPureWorker
+        :: Base (KorePattern dom var ann)
+            (Either (Error e) (PurePattern level dom var ann))
+        -> Either (Error e) (PurePattern level dom var ann)
+    patternKoreToPureWorker =
+        case isMetaOrObject (toProxy lvl) of
+            IsMeta -> \(ann :< pat) ->
+                case pat of
+                    UnifiedObjectPattern _ ->
+                        koreFail "Unexpected object-level pattern"
+                    UnifiedMetaPattern mpat ->
+                        Recursive.embed . (ann :<) <$> sequence mpat
+            IsObject -> \(ann :< pat) ->
+                case pat of
+                    UnifiedMetaPattern _ ->
+                        koreFail "Unexpected meta-level pattern"
+                    UnifiedObjectPattern opat ->
+                        Recursive.embed . (ann :<) <$> sequence opat
 
 extractPurePattern
     ::  ( MetaOrObject level
