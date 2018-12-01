@@ -321,14 +321,7 @@ instance
 instance Unparse Attributes where
     unparse = attributes . getAttributes
 
-instance
-    ( Unparse (var lvl)
-    , Unparse child
-    , Unparse (dom child)
-    , child ~ pat dom var ()
-    ) =>
-    Unparse (SentenceAlias lvl pat dom var)
-  where
+instance Unparse pat => Unparse (SentenceAlias lvl pat) where
     unparse
         SentenceAlias
             { sentenceAliasAlias
@@ -351,7 +344,7 @@ instance
             , unparse sentenceAliasAttributes
             ]
 
-instance Unparse (SentenceSymbol lvl pat dom var) where
+instance Unparse (SentenceSymbol lvl pat) where
     unparse
         SentenceSymbol
             { sentenceSymbolSymbol
@@ -371,7 +364,7 @@ instance Unparse (SentenceSymbol lvl pat dom var) where
 instance Unparse ModuleName where
     unparse = pretty . getModuleName
 
-instance Unparse (SentenceImport pat dom var) where
+instance Unparse (SentenceImport pat) where
     unparse
         SentenceImport { sentenceImportModuleName, sentenceImportAttributes }
       =
@@ -380,7 +373,7 @@ instance Unparse (SentenceImport pat dom var) where
             , unparse sentenceImportAttributes
             ]
 
-instance Unparse (SentenceSort lvl pat dom var) where
+instance Unparse (SentenceSort lvl pat) where
     unparse
         SentenceSort
             { sentenceSortName
@@ -395,10 +388,8 @@ instance Unparse (SentenceSort lvl pat dom var) where
             ]
 
 instance
-    ( Unparse (pat dom var ())
-    , Unparse param
-    ) =>
-    Unparse (SentenceAxiom param pat dom var)
+    (Unparse param, Unparse pat) =>
+    Unparse (SentenceAxiom param pat)
   where
     unparse
         SentenceAxiom
@@ -420,26 +411,13 @@ instance Unparse UnifiedSortVariable where
             UnifiedMeta sv -> unparse sv
             UnifiedObject sv -> unparse sv
 
-instance
-    ( Unparse (SentenceSort lvl pat dom var)
-    , Unparse (SentenceSymbol lvl pat dom var)
-    ) =>
-    Unparse (SentenceHook lvl pat dom var)
-  where
+instance Unparse (SentenceHook pat) where
     unparse =
         \case
             SentenceHookedSort a -> "hooked-" <> unparse a
             SentenceHookedSymbol a -> "hooked-" <> unparse a
 
-instance
-    ( Unparse (SentenceAlias lvl pat dom var)
-    , Unparse (SentenceSymbol lvl pat dom var)
-    , Unparse (SentenceImport pat dom var)
-    , Unparse (SentenceAxiom param pat dom var)
-    , Unparse (SentenceSort lvl pat dom var)
-    ) =>
-    Unparse (Sentence lvl param pat dom var)
-  where
+instance (Unparse param, Unparse pat) => Unparse (Sentence lvl param pat) where
      unparse =
         \case
             SentenceAliasSentence s -> unparse s
@@ -452,20 +430,15 @@ instance
 
 
 instance
-    ( Unparse (Sentence Meta param pat dom var)
-    , Unparse (Sentence Object param pat dom var)
-    ) =>
-    Unparse (UnifiedSentence param pat dom var)
+    (Unparse param, Unparse pat) =>
+    Unparse (UnifiedSentence param pat)
   where
     unparse =
         \case
             UnifiedMetaSentence sentence -> unparse sentence
             UnifiedObjectSentence sentence -> unparse sentence
 
-instance
-    Unparse (sentence param pat dom var) =>
-    Unparse (Module sentence param pat dom var)
-  where
+instance Unparse sentence => Unparse (Module sentence) where
     unparse
         Module { moduleName, moduleSentences, moduleAttributes }
       =
@@ -478,10 +451,7 @@ instance
             , Just (unparse moduleAttributes)
             ]
 
-instance
-    Unparse (sentence param pat dom var) =>
-    Unparse (Definition sentence param pat dom var)
-  where
+instance Unparse sentence => Unparse (Definition sentence) where
     unparse Definition { definitionAttributes, definitionModules } =
         vsep (unparse definitionAttributes : map unparse definitionModules)
 

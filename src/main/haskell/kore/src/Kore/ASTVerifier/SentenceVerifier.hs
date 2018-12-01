@@ -80,7 +80,7 @@ definedNamesForSentence =
         definedNamesForObjectSentence
 
 definedNamesForMetaSentence
-    :: Sentence Meta sortParam pat dom var -> [UnparameterizedId]
+    :: Sentence Meta param pat -> [UnparameterizedId]
 definedNamesForMetaSentence (SentenceAliasSentence sentenceAlias) =
     [ toUnparameterizedId (getSentenceSymbolOrAliasConstructor sentenceAlias) ]
 definedNamesForMetaSentence (SentenceSymbolSentence sentenceSymbol) =
@@ -91,7 +91,7 @@ definedNamesForMetaSentence (SentenceClaimSentence _)  = []
 definedNamesForMetaSentence (SentenceSortSentence _)   = []
 
 definedNamesForObjectSentence
-    :: Sentence Object sortParam pat dom var -> [UnparameterizedId]
+    :: Sentence Object param pat -> [UnparameterizedId]
 definedNamesForObjectSentence (SentenceAliasSentence sentenceAlias) =
     [ toUnparameterizedId (getSentenceSymbolOrAliasConstructor sentenceAlias) ]
 definedNamesForObjectSentence (SentenceSymbolSentence sentenceSymbol) =
@@ -154,7 +154,7 @@ verifyMetaSentence
     :: Builtin.Verifiers
     -> KoreIndexedModule atts
     -> AttributesVerification atts
-    -> Sentence Meta UnifiedSortVariable KorePattern Domain.Builtin Variable
+    -> Sentence Meta UnifiedSortVariable CommonKorePattern
     -> Either (Error VerifyError) VerifySuccess
 verifyMetaSentence
     builtinVerifiers
@@ -206,7 +206,7 @@ verifyObjectSentence
     :: Builtin.Verifiers
     -> KoreIndexedModule atts
     -> AttributesVerification atts
-    -> Sentence Object UnifiedSortVariable KorePattern Domain.Builtin Variable
+    -> Sentence Object UnifiedSortVariable CommonKorePattern
     -> Either (Error VerifyError) VerifySuccess
 verifyObjectSentence
     builtinVerifiers
@@ -241,7 +241,7 @@ verifyObjectSentence
 
 verifySentenceAttributes
     :: AttributesVerification atts
-    -> Sentence level UnifiedSortVariable KorePattern Domain.Builtin Variable
+    -> Sentence level UnifiedSortVariable CommonKorePattern
     -> Either (Error VerifyError) VerifySuccess
 verifySentenceAttributes attributesVerification sentence =
     do
@@ -256,7 +256,7 @@ verifyHookSentence
     :: Builtin.Verifiers
     -> KoreIndexedModule atts
     -> AttributesVerification atts
-    -> SentenceHook Object KorePattern Domain.Builtin Variable
+    -> SentenceHook CommonKorePattern
     -> Either (Error VerifyError) VerifySuccess
 verifyHookSentence
     builtinVerifiers
@@ -331,15 +331,7 @@ verifyAliasSentence
         mapM_
             (verifySort findSort variables)
             (sentenceAliasSorts sentence)
-        verifySort
-            findSort
-            variables
-            (sentenceAliasResultSort sentence)
-        if leftPatternSort == rightPatternSort
-            then
-                verifySuccess
-            else
-                koreFail "Left and Right sorts do not match"
+        verifySort findSort variables sentenceAliasResultSort
         let context =
                 PatternVerifier.Context
                     { builtinPatternVerifier =
@@ -349,22 +341,16 @@ verifyAliasSentence
                     , declaredVariables = emptyDeclaredVariables
                     }
         runPatternVerifier context $ do
-            _ <- verifyAliasLeftPattern
-                (Just $ asUnified leftPatternSort)
-                (asCommonKorePattern $ sentenceAliasLeftPattern sentence)
-            _ <- verifyPattern
-                (Just $ asUnified rightPatternSort)
-                (asCommonKorePattern $ sentenceAliasRightPattern sentence)
+            _ <- verifyApplication (verifyPattern Nothing <$> leftPattern)
+            _ <- verifyPattern (Just expectedSort) rightPattern
             verifySuccess
   where
+    SentenceAlias { sentenceAliasLeftPattern = leftPattern } = sentence
+    SentenceAlias { sentenceAliasRightPattern = rightPattern } = sentence
     findSort         = findIndexedSort indexedModule
     sortParams       = (aliasParams . sentenceAliasAlias) sentence
-    leftPatternSort  = patternSort leftPattern
-    rightPatternSort = patternSort rightPattern
-    applicationSorts = getHeadApplicationSorts indexedModule
-    patternSort      = getPatternResultSort applicationSorts
-    leftPattern      = sentenceAliasLeftPattern sentence
-    rightPattern     = sentenceAliasRightPattern sentence
+    SentenceAlias { sentenceAliasResultSort } = sentence
+    expectedSort = asUnified sentenceAliasResultSort
 
 verifyAxiomSentence
     :: KoreSentenceAxiom

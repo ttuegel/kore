@@ -187,7 +187,7 @@ koreSentenceToAxiomPattern level =
 sentenceToAxiomPattern
     :: MetaOrObject level
     => level
-    -> Sentence level' UnifiedSortVariable KorePattern Domain.Builtin Variable
+    -> Sentence level' UnifiedSortVariable CommonKorePattern
     -> Either (Error AxiomPatternError) (QualifiedAxiomPattern level)
 sentenceToAxiomPattern
     level

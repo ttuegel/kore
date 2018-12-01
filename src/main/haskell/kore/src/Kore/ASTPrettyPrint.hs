@@ -608,11 +608,8 @@ instance PrettyPrint Attributes
 
 instance
     ( MetaOrObject level
-    , PrettyPrint child
-    , PrettyPrint (dom child)
-    , child ~ pat dom var ()
-    , PrettyPrint (var level)
-    ) => PrettyPrint (SentenceAlias level pat dom var)
+    , PrettyPrint pat
+    ) => PrettyPrint (SentenceAlias level pat)
   where
     prettyPrint _ sa@(SentenceAlias _ _ _ _ _ _) =
         writeStructure
@@ -629,8 +626,8 @@ instance
 
 instance
     ( MetaOrObject level
-    , PrettyPrint (pat dom var ())
-    ) => PrettyPrint (SentenceSymbol level pat dom var)
+    , PrettyPrint pat
+    ) => PrettyPrint (SentenceSymbol level pat)
   where
     prettyPrint _ sa@(SentenceSymbol _ _ _ _) =
         writeStructure
@@ -644,8 +641,8 @@ instance
             ]
 
 instance
-    (PrettyPrint (pat dom var ())
-    ) => PrettyPrint (SentenceImport pat dom var)
+    (PrettyPrint pat
+    ) => PrettyPrint (SentenceImport pat)
   where
     prettyPrint _ sa@(SentenceImport _ _) =
         writeStructure
@@ -657,9 +654,9 @@ instance
             ]
 
 instance
-    ( PrettyPrint sortParam
-    , PrettyPrint (pat dom var ())
-    ) => PrettyPrint (SentenceAxiom sortParam pat dom var)
+    ( PrettyPrint param
+    , PrettyPrint pat
+    ) => PrettyPrint (SentenceAxiom param pat)
   where
     prettyPrint _ sa@(SentenceAxiom _ _ _) =
         writeStructure
@@ -674,8 +671,8 @@ instance
 
 instance
     ( MetaOrObject level
-    , PrettyPrint (pat dom var ())
-    ) => PrettyPrint (SentenceSort level pat dom var)
+    , PrettyPrint pat
+    ) => PrettyPrint (SentenceSort level pat)
   where
     prettyPrint _ sa@(SentenceSort _ _ _) =
         writeStructure
@@ -687,11 +684,7 @@ instance
                 "sentenceSortAttributes" (sentenceSortAttributes sa)
             ]
 
-instance
-    ( MetaOrObject level
-    , PrettyPrint (pat dom var ())
-    ) => PrettyPrint (SentenceHook level pat dom var)
-  where
+instance PrettyPrint pat => PrettyPrint (SentenceHook pat) where
     prettyPrint flags (SentenceHookedSymbol s)   =
         writeOneFieldStruct flags "SentenceHookedSymbol" s
     prettyPrint flags (SentenceHookedSort s)         =
@@ -699,12 +692,9 @@ instance
 
 instance
     ( MetaOrObject level
-    , PrettyPrint sortParam
-    , PrettyPrint child
-    , PrettyPrint (dom child)
-    , child ~ pat dom var ()
-    , PrettyPrint (var level)
-    ) => PrettyPrint (Sentence level sortParam pat dom var)
+    , PrettyPrint param
+    , PrettyPrint pat
+    ) => PrettyPrint (Sentence level param pat)
   where
     prettyPrint flags (SentenceAliasSentence s)    =
         writeOneFieldStruct flags "SentenceAliasSentence" s
@@ -722,25 +712,15 @@ instance
         writeOneFieldStruct flags "SentenceHookSentence" s
 
 instance
-    ( PrettyPrint sortParam
-    , PrettyPrint child
-    , PrettyPrint (dom child)
-    , child ~ pat dom var ()
-    , PrettyPrint (var Object)
-    , PrettyPrint (var Meta)
-    ) => PrettyPrint (UnifiedSentence sortParam pat dom var)
+    (PrettyPrint param, PrettyPrint pat) =>
+    PrettyPrint (UnifiedSentence param pat)
   where
     prettyPrint flags (UnifiedMetaSentence s) =
         writeOneFieldStruct flags "MetaSentence" s
     prettyPrint flags (UnifiedObjectSentence s) =
         writeOneFieldStruct flags "ObjectSentence" s
 
-instance
-    (PrettyPrint (sentence sortParam pat dom var)
-    , PrettyPrint sortParam
-    , PrettyPrint (pat dom var ())
-    ) => PrettyPrint (Module sentence sortParam pat dom var)
-  where
+instance PrettyPrint sentence => PrettyPrint (Module sentence) where
     prettyPrint _ m@(Module _ _ _) =
         writeStructure
             "Module"
@@ -749,12 +729,7 @@ instance
             , writeAttributesField "moduleAttributes" (moduleAttributes m)
             ]
 
-instance
-    (PrettyPrint (sentence sortParam pat dom var)
-    , PrettyPrint sortParam
-    , PrettyPrint (pat dom var ())
-    ) => PrettyPrint (Definition sentence sortParam pat dom var)
-  where
+instance PrettyPrint sentence => PrettyPrint (Definition sentence) where
     prettyPrint _ d@(Definition _ _) =
         writeStructure
             "Definition"

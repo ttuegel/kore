@@ -85,7 +85,7 @@ extractFunctionAxioms level =
 axiomToIdAxiomPatternPair
     ::  ( MetaOrObject level )
     => level
-    -> SentenceAxiom UnifiedSortVariable KorePattern Domain.Builtin Variable
+    -> SentenceAxiom UnifiedSortVariable CommonKorePattern
     -> Maybe (Id level, EqualityRule level)
 axiomToIdAxiomPatternPair
     level

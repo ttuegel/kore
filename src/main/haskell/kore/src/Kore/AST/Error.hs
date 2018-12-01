@@ -162,12 +162,7 @@ withSentenceImportContext _ = \go -> go
 {- | Identify and  locate the given sentence in the error context.
  -}
 withSentenceContext
-    :: Sentence
-        level
-        UnifiedSortVariable
-        KorePattern
-        Domain.Builtin
-        Variable
+    :: Sentence level UnifiedSortVariable CommonKorePattern
     -> Either (Error e) a
     -> Either (Error e) a
 withSentenceContext =

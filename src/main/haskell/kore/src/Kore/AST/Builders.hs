@@ -81,7 +81,7 @@ applyPS
         , Show (Pattern level domain Variable child)
         , child ~ PurePattern level domain Variable ()
         )
-    => s level (PurePattern level) domain Variable
+    => s level (CommonPurePattern level domain ())
     -> [Sort level]
     -> [CommonPurePatternStub level domain ()]
     -> CommonPurePatternStub level domain ()
@@ -116,7 +116,7 @@ applyS
         , Show (Pattern level domain Variable child)
         , child ~ PurePattern level domain Variable ()
         )
-    => s level (PurePattern level) domain Variable
+    => s level (CommonPurePattern level domain ())
     -> [CommonPurePatternStub level domain ()]
     -> CommonPurePatternStub level domain ()
 applyS sentence = applyPS sentence []
@@ -200,8 +200,8 @@ alias_
     -> AstLocation
     -> [Sort level]
     -> Sort level
-    -> Pattern level domain Variable (CommonPurePattern level domain ())
-    -> Pattern level domain Variable (CommonPurePattern level domain ())
+    -> Application level (CommonPurePattern level domain ())
+    -> CommonPurePattern level domain ()
     -> PureSentenceAlias level domain
 alias_ name location = parameterizedAlias_ name location []
 
@@ -213,8 +213,8 @@ parameterizedAlias_
     -> [SortVariable level]
     -> [Sort level]
     -> Sort level
-    -> Pattern level domain Variable (CommonPurePattern level domain ())
-    -> Pattern level domain Variable (CommonPurePattern level domain ())
+    -> Application level (CommonPurePattern level domain ())
+    -> CommonPurePattern level domain ()
     -> PureSentenceAlias level domain
 parameterizedAlias_ name location parameters operandSorts resultSort leftPat rightPat =
     SentenceAlias
