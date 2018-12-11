@@ -220,7 +220,12 @@ indexImplicitModule implicitModule = do
     preImplicitNames =
         Map.fromList ((,) <$> names <*> pure AstLocationImplicit)
       where
-        names = [ Text.pack (show StringSort) ]
+        names =
+            [ Text.pack (show StringSort)
+            -- Reserved for internal use.
+            -- See TODO PREDICATE in Kore.ASTUtils.SmartConstructors
+            , "PREDICATE"
+            ]
     implicitModuleName = moduleName implicitModule
     moduleNameForError = getModuleNameForError implicitModuleName
     modulesByName = Map.singleton implicitModuleName implicitModule

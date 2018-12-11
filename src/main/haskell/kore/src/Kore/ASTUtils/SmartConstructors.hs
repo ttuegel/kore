@@ -96,6 +96,20 @@ getSort (Recursive.project -> _ :< pat) =
 predicateSort
     :: MetaOrObject level
     => Sort level
+{- TODO PREDICATE (thomas.tuegel):
+
+Add a constructor
+
+> data Sort level = ... | FlexibleSort
+
+to use internally as a placeholder where the predicate sort is not yet
+known. Using the sort PREDICATE{} is a kludge; the backend will melt down if the
+user tries to define a sort named PREDICATE{}.
+
+Until this is fixed, the identifier PREDICATE is reserved in
+Kore.ASTVerifier.DefinitionVerifier.indexImplicitModule.
+
+-}
 predicateSort = mkSort "PREDICATE"
 
 patternLens
