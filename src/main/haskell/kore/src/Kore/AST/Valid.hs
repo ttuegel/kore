@@ -50,6 +50,8 @@ module Kore.AST.Valid
     , varS
     , symS
     -- * Sentence constructors
+    , mkAlias'
+    , mkAlias
     , mkAxiom'
     , mkAxiom
     , mkSymbol'
@@ -680,6 +682,52 @@ mkSymbol
     -> Sort level
     -> SentenceSymbol level patternType
 mkSymbol symbolConstructor = mkSymbol' symbolConstructor []
+
+mkAlias'
+    ::  ( patternType ~ PurePattern level domain Variable (Valid level)
+        , sortParam ~ SortVariable level
+        )
+    => Id level
+    -> [sortParam]
+    -> Sort level
+    -> [Variable level]
+    -> patternType
+    -> SentenceAlias level patternType
+mkAlias' aliasConstructor aliasParams resultSort arguments right =
+    SentenceAlias
+        { sentenceAliasAlias =
+            Alias
+                { aliasConstructor
+                , aliasParams
+                }
+        , sentenceAliasSorts = argumentSorts
+        , sentenceAliasResultSort = resultSort
+        , sentenceAliasLeftPattern =
+            Application
+                { applicationSymbolOrAlias =
+                    SymbolOrAlias
+                        { symbolOrAliasConstructor = aliasConstructor
+                        , symbolOrAliasParams =
+                            SortVariableSort <$> aliasParams
+                        }
+                , applicationChildren = arguments
+                }
+        , sentenceAliasRightPattern = right
+        , sentenceAliasAttributes = Attributes []
+        }
+  where
+    argumentSorts = variableSort <$> arguments
+
+mkAlias
+    ::  ( patternType ~ PurePattern level domain Variable (Valid level)
+        , sortParam ~ SortVariable level
+        )
+    => Id level
+    -> Sort level
+    -> [Variable level]
+    -> patternType
+    -> SentenceAlias level patternType
+mkAlias aliasConstructor = mkAlias' aliasConstructor []
 
 pattern And_
     :: Functor dom
