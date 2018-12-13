@@ -52,6 +52,8 @@ module Kore.AST.Valid
     -- * Sentence constructors
     , mkAxiom'
     , mkAxiom
+    , mkSymbol'
+    , mkSymbol
     -- * Pattern synonyms
     , pattern And_
     , pattern App_
@@ -268,12 +270,12 @@ mkApp patternSort applicationSymbolOrAlias applicationChildren =
 
 applySymbol'
     ::  ( Functor domain
-        , patternType ~ PurePattern level domain variable (Valid level)
+        , pattern' ~ PurePattern level domain variable (Valid level)
         )
-    => SentenceSymbol level (patternType)
+    => SentenceSymbol level pattern'
     -> [Sort level]
-    -> [patternType]
-    -> patternType
+    -> [pattern']
+    -> pattern'
 applySymbol' sentence params children =
     mkApp
         resultSort
@@ -320,11 +322,11 @@ applySymbol' sentence params children =
 
 applySymbol
     ::  ( Functor domain
-        , patternType ~ PurePattern level domain variable (Valid level)
+        , pattern' ~ PurePattern level domain variable (Valid level)
         )
-    => SentenceSymbol level (patternType)
-    -> [patternType]
-    -> patternType
+    => SentenceSymbol level pattern'
+    -> [pattern']
+    -> pattern'
 applySymbol sentence = applySymbol' sentence []
 
 mkBottom'
@@ -647,6 +649,37 @@ mkAxiom
     => patternType
     -> SentenceAxiom sortParam patternType
 mkAxiom = mkAxiom' []
+
+mkSymbol'
+    ::  ( patternType ~ PurePattern level domain variable (Valid level)
+        , sortParam ~ SortVariable level
+        )
+    => Id level
+    -> [sortParam]
+    -> [Sort level]
+    -> Sort level
+    -> SentenceSymbol level patternType
+mkSymbol' symbolConstructor symbolParams argumentSorts resultSort =
+    SentenceSymbol
+        { sentenceSymbolSymbol =
+            Symbol
+                { symbolConstructor
+                , symbolParams
+                }
+        , sentenceSymbolSorts = argumentSorts
+        , sentenceSymbolResultSort = resultSort
+        , sentenceSymbolAttributes = Attributes []
+        }
+
+mkSymbol
+    ::  ( patternType ~ PurePattern level domain variable (Valid level)
+        , sortParam ~ SortVariable level
+        )
+    => Id level
+    -> [Sort level]
+    -> Sort level
+    -> SentenceSymbol level patternType
+mkSymbol symbolConstructor = mkSymbol' symbolConstructor []
 
 pattern And_
     :: Functor dom
