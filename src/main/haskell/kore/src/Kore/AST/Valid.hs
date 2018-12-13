@@ -20,6 +20,8 @@ module Kore.AST.Valid
     -- * Pure Kore pattern constructors
     , mkAnd
     , mkApp
+    , applySymbol
+    , applySymbol'
     , mkBottom
     , mkBottom'
     , mkCeil
@@ -73,13 +75,18 @@ module Kore.AST.Valid
 
 import           Control.Applicative
 import           Control.Comonad
+import           Data.Align
+import           Data.Foldable
 import qualified Data.Functor.Foldable as Recursive
+import qualified Data.Map.Strict as Map
 import           Data.Maybe
 import           Data.Text
                  ( Text )
+import           Data.These
 
 import Kore.Annotation.Valid
 import Kore.AST.Pure
+import Kore.AST.Sentence
 import Kore.ASTUtils.SmartConstructors
        ( predicateSort )
 import Kore.Implicit.ImplicitSorts
@@ -255,6 +262,67 @@ mkApp patternSort applicationSymbolOrAlias applicationChildren =
   where
     valid = Valid { patternSort }
     application = Application { applicationSymbolOrAlias, applicationChildren }
+
+applySymbol'
+    ::  ( Functor domain
+        , patternType ~ PurePattern level domain variable (Valid level)
+        )
+    => SentenceSymbol level (patternType)
+    -> [Sort level]
+    -> [patternType]
+    -> patternType
+applySymbol' sentence params children =
+    mkApp
+        resultSort
+        symbolOrAlias
+        children
+  where
+    SentenceSymbol { sentenceSymbolSymbol = symbol } = sentence
+    SentenceSymbol { sentenceSymbolResultSort } = sentence
+    Symbol { symbolConstructor } = symbol
+    Symbol { symbolParams } = symbol
+    symbolOrAlias =
+        SymbolOrAlias
+            { symbolOrAliasConstructor = symbolConstructor
+            , symbolOrAliasParams = params
+            }
+    substitution =
+        foldl' insertSortVariable Map.empty (align symbolParams params)
+      where
+        insertSortVariable map' =
+            \case
+                This _ ->
+                    (error . unlines)
+                        [ "Applying '" ++ unparseToString symbol ++ "':"
+                        , "Not applied to enough parameters."
+                        , "Expected:"
+                        , unparseToString symbol
+                        , "but found:"
+                        , unparseToString symbolOrAlias
+                        ]
+                That _ ->
+                    (error . unlines)
+                        [ "Applying '" ++ unparseToString symbol ++ "':"
+                        , "Applied to too many parameters."
+                        , "Expected:"
+                        , unparseToString symbol
+                        , "but found:"
+                        , unparseToString symbolOrAlias
+                        ]
+                These var sort -> Map.insert var sort map'
+    resultSort =
+        substituteSortVariables
+            substitution
+            sentenceSymbolResultSort
+
+applySymbol
+    ::  ( Functor domain
+        , patternType ~ PurePattern level domain variable (Valid level)
+        )
+    => SentenceSymbol level (patternType)
+    -> [patternType]
+    -> patternType
+applySymbol sentence = applySymbol' sentence []
 
 mkBottom'
     :: Functor domain
