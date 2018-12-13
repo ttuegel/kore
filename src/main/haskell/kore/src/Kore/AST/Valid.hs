@@ -49,6 +49,9 @@ module Kore.AST.Valid
     , mkSort
     , varS
     , symS
+    -- * Sentence constructors
+    , mkAxiom'
+    , mkAxiom
     -- * Pattern synonyms
     , pattern And_
     , pattern App_
@@ -622,6 +625,28 @@ varS x s =
 symS :: MetaOrObject level => Text -> [Sort level] -> SymbolOrAlias level
 symS x s =
     SymbolOrAlias (noLocationId x) s
+
+mkAxiom'
+    ::  ( patternType ~ PurePattern level domain variable (Valid level)
+        , sortParam ~ SortVariable level
+        )
+    => [sortParam]
+    -> patternType
+    -> SentenceAxiom sortParam patternType
+mkAxiom' sentenceAxiomParameters sentenceAxiomPattern =
+    SentenceAxiom
+        { sentenceAxiomParameters
+        , sentenceAxiomPattern
+        , sentenceAxiomAttributes = Attributes []
+        }
+
+mkAxiom
+    ::  ( patternType ~ PurePattern level domain variable (Valid level)
+        , sortParam ~ SortVariable level
+        )
+    => patternType
+    -> SentenceAxiom sortParam patternType
+mkAxiom = mkAxiom' []
 
 pattern And_
     :: Functor dom
