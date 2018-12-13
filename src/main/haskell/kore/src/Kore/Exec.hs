@@ -80,6 +80,7 @@ import           Kore.Substitution.Class
                  ( substitute )
 import qualified Kore.Substitution.List as ListSubstitution
 import qualified Kore.Unification.Substitution as Substitution
+import           Kore.Unparser
 import           Kore.Variables.Fresh
                  ( FreshVariable )
 
@@ -276,6 +277,7 @@ makeAxiomsAndSimplifiers verifiedModule tools =
                     , Ord (variable Object)
                     , Show (variable Meta)
                     , Show (variable Object)
+                    , Unparse (variable Object)
                     , FreshVariable variable
                     )
                 => StepPatternSimplifier Object variable
@@ -322,6 +324,7 @@ emptyPatternSimplifier tools =
             , Ord (variable Object)
             , Show (variable Meta)
             , Show (variable Object)
+            , Unparse (variable Object)
             , FreshVariable variable
             )
         => StepPatternSimplifier Object variable

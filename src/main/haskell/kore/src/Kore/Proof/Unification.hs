@@ -139,6 +139,3 @@ flipEqn eq = case getConclusion eq of
       provablySubstitute eq [0] (useRule $ EqualityIntro a)
       -- i.e. substitute a=b in the first position of a=a to get b=a
     _ -> impossible
-
-
-

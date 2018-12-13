@@ -11,10 +11,10 @@ import           Data.Maybe
 import qualified Data.Set as Set
 import qualified Data.Text as Text
 
-import           Kore.AST.Builders
 import           Kore.AST.Kore
 import           Kore.AST.PureToKore
 import           Kore.AST.Sentence
+import           Kore.AST.Valid
 import           Kore.ASTHelpers
                  ( ApplicationSorts (..) )
 import           Kore.ASTVerifier.DefinitionVerifier
@@ -24,12 +24,12 @@ import qualified Kore.Attribute.Null as Attribute
 import           Kore.Attribute.Subsort
                  ( subsortAttribute )
 import qualified Kore.Builtin as Builtin
-import qualified Kore.Domain.Builtin as Domain
 import           Kore.Error
 import           Kore.Implicit.ImplicitSorts
 import           Kore.IndexedModule.IndexedModule
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools (..), extractMetadataTools )
+import           Kore.Step.Pattern
 import           Kore.Step.StepperAttributes
 
 import Test.Kore
@@ -38,20 +38,13 @@ import Test.Kore.ASTVerifier.DefinitionVerifier
 objectS1 :: Sort Object
 objectS1 = simpleSort (SortName "s1")
 
-objectA :: PureSentenceSymbol Object Domain.Builtin
-objectA = SentenceSymbol
-    { sentenceSymbolSymbol =
-        Symbol
-          { symbolConstructor = (Id "b" AstLocationNone)
-          , symbolParams = []
-          }
-    , sentenceSymbolSorts = []
-    , sentenceSymbolResultSort = objectS1
-    , sentenceSymbolAttributes = Attributes [ constructorAttribute ]
-    }
+objectA :: SentenceSymbol Object (CommonStepPattern Object)
+objectA =
+    (mkSymbol (testId "b") [] objectS1)
+        { sentenceSymbolAttributes = Attributes [ constructorAttribute ] }
 
-metaA :: PureSentenceSymbol Meta Domain.Builtin
-metaA = symbol_ "#a" AstLocationTest [] charListMetaSort
+metaA :: SentenceSymbol Meta (CommonStepPattern Meta)
+metaA = mkSymbol (testId "#a") [] charListMetaSort
 
 testObjectModuleName :: ModuleName
 testObjectModuleName = ModuleName "TEST-OBJECT-MODULE"
@@ -62,7 +55,7 @@ testMetaModuleName = ModuleName "TEST-META-MODULE"
 testMainModuleName :: ModuleName
 testMainModuleName = ModuleName "TEST-MAIN-MODULE"
 
-testObjectModule :: PureModule Object Domain.Builtin
+testObjectModule :: Module (VerifiedPureSentence Object)
 testObjectModule =
     Module
         { moduleName = testObjectModuleName
@@ -79,7 +72,7 @@ testObjectModule =
         , moduleAttributes = Attributes []
         }
 
-testMetaModule :: PureModule Meta Domain.Builtin
+testMetaModule :: Module (VerifiedPureSentence Meta)
 testMetaModule =
     Module
         { moduleName = testMetaModuleName
@@ -87,7 +80,7 @@ testMetaModule =
         , moduleAttributes = Attributes []
         }
 
-mainModule :: KoreModule
+mainModule :: VerifiedKoreModule
 mainModule =
     Module
         { moduleName = testMainModuleName
@@ -101,14 +94,16 @@ mainModule =
 
 testDefinition :: KoreDefinition
 testDefinition =
-    Definition
-        { definitionAttributes = Attributes []
-        , definitionModules =
-            [ modulePureToKore testObjectModule
-            , modulePureToKore testMetaModule
-            , mainModule
-            ]
-        }
+    (<$>)
+        eraseUnifiedSentenceAnnotations
+        Definition
+            { definitionAttributes = Attributes []
+            , definitionModules =
+                [ modulePureToKore testObjectModule
+                , modulePureToKore testMetaModule
+                , mainModule
+                ]
+            }
 
 testVerifiedModule :: VerifiedModule StepperAttributes
 testVerifiedModule =

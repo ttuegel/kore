@@ -11,12 +11,9 @@ import Data.Reflection
        ( Given, give )
 
 import           Kore.AST.Pure
+import           Kore.AST.Valid
 import           Kore.ASTHelpers
                  ( ApplicationSorts (..) )
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkApp, mkBottom, mkOr, mkTop )
-import           Kore.ASTUtils.SmartPatterns
-                 ( pattern Bottom_ )
 import           Kore.IndexedModule.MetadataTools
                  ( SymbolOrAliasSorts )
 import           Kore.Predicate.Predicate
@@ -149,11 +146,13 @@ test_floorSimplification =
         , symbolOrAliasParams      = []
         }
     x = Variable (testId "x") testSort
-    a = give mockSymbolOrAliasSorts $ mkApp aSymbol []
-    b = give mockSymbolOrAliasSorts $ mkApp bSymbol []
-    fOfA = give mockSymbolOrAliasSorts $ mkApp fSymbol [a]
-    fOfB = give mockSymbolOrAliasSorts $ mkApp fSymbol [b]
-    gOfA = give mockSymbolOrAliasSorts $ mkApp gSymbol [a]
+    a :: CommonStepPattern Object
+    a = mkApp testSort aSymbol []
+    b :: CommonStepPattern Object
+    b = mkApp testSort bSymbol []
+    fOfA = mkApp testSort fSymbol [a]
+    fOfB = mkApp testSort fSymbol [b]
+    gOfA = mkApp testSort gSymbol [a]
     aExpanded = Predicated
         { term = a
         , predicate = makeTruePredicate

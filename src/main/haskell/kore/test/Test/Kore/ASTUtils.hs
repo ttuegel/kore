@@ -23,14 +23,14 @@ import           Data.Text
                  ( Text )
 import qualified Data.Text as Text
 
-import Kore.AST.Pure
-import Kore.ASTHelpers
-       ( ApplicationSorts (..) )
-import Kore.ASTUtils.SmartConstructors
-import Kore.ASTUtils.SmartPatterns
-import Kore.ASTUtils.Substitution
-import Kore.IndexedModule.MetadataTools
-import Kore.Step.Pattern
+import           Kore.AST.Pure
+import           Kore.ASTHelpers
+                 ( ApplicationSorts (..) )
+import           Kore.ASTUtils.SmartConstructors
+import           Kore.ASTUtils.SmartPatterns
+import           Kore.ASTUtils.Substitution
+import qualified Kore.Domain.Builtin as Domain
+import           Kore.IndexedModule.MetadataTools
 
 test_substitutions :: TestTree
 test_substitutions = testGroup "Substitutions"
@@ -67,18 +67,18 @@ test_sortAgreement = testGroup "Sort agreement"
     , testCase "predicateSort.1" $
         assertEqual ""
             (dummyEnvironment
-                (mkBottom :: CommonStepPattern Object) ^? resultSort)
+                (mkBottom :: CommonPurePattern Object Domain.Builtin) ^? resultSort)
             (Just (predicateSort :: Sort Object))
     , testCase "predicateSort.2" $
         assertEqual ""
             (dummyEnvironment
-                (mkTop :: CommonStepPattern Object) ^? resultSort)
+                (mkTop :: CommonPurePattern Object Domain.Builtin) ^? resultSort)
             (Just (predicateSort :: Sort Object))
     , testCase "predicateSort.3" $
         assertEqual ""
             (dummyEnvironment
                 (mkExists (var_ "a" "A") mkBottom
-                    :: CommonStepPattern Object) ^? resultSort
+                    :: CommonPurePattern Object Domain.Builtin) ^? resultSort
             )
             (Just (predicateSort :: Sort Object))
     , testGroup "sortAgreementManySimplePatterns" $
@@ -86,66 +86,66 @@ test_sortAgreement = testGroup "Sort agreement"
     , testGetSetIdentity 5
     ]
 
-subTrivial :: CommonStepPattern Object
+subTrivial :: CommonPurePattern Object Domain.Builtin
 subTrivial = dummyEnvironment $
     subst (Var_ $ var "a") (Var_ $ var "b") $
     mkExists (var "p") (Var_ $ var "a")
 
-subTrivialSolution :: CommonStepPattern Object
+subTrivialSolution :: CommonPurePattern Object Domain.Builtin
 subTrivialSolution = dummyEnvironment $
     mkExists (var "p") (Var_ $ var "b")
 
-subShadow :: CommonStepPattern Object
+subShadow :: CommonPurePattern Object Domain.Builtin
 subShadow = dummyEnvironment $
     subst (Var_ $ var "a") (Var_ $ var "b") $
     mkExists (var "a") (Var_ $ var "q")
 
-subShadowSolution :: CommonStepPattern Object
+subShadowSolution :: CommonPurePattern Object Domain.Builtin
 subShadowSolution = dummyEnvironment $
     mkExists (var "a") (Var_ $ var "q")
 
-subAlphaRename1 :: CommonStepPattern Object
+subAlphaRename1 :: CommonPurePattern Object Domain.Builtin
 subAlphaRename1 = dummyEnvironment $
     subst (Var_ $ var "a") (Var_ $ var "b") $
     mkExists (var "b") (Var_ $ var "q")
 
-subAlphaRename1Solution :: CommonStepPattern Object
+subAlphaRename1Solution :: CommonPurePattern Object Domain.Builtin
 subAlphaRename1Solution = dummyEnvironment $
     mkExists (var "b0") (Var_ $ var "q")
 
-subAlphaRename2 :: CommonStepPattern Object
+subAlphaRename2 :: CommonPurePattern Object Domain.Builtin
 subAlphaRename2 = dummyEnvironment $
     subst (Var_ $ var "a") (Var_ $ var "b") $
     mkExists (var "b") (Var_ $ var "a")
 
-subTermForTerm :: CommonStepPattern Object
+subTermForTerm :: CommonPurePattern Object Domain.Builtin
 subTermForTerm = dummyEnvironment $
     subst (mkOr mkTop mkBottom) (mkAnd mkTop mkBottom) $
     mkImplies (mkOr mkTop mkBottom) mkTop
 
-subTermForTermSolution :: CommonStepPattern Object
+subTermForTermSolution :: CommonPurePattern Object Domain.Builtin
 subTermForTermSolution = dummyEnvironment $
     mkImplies (mkAnd mkTop mkBottom) mkTop
 
--- subAlphaRename2Solution :: CommonStepPattern Object
+-- subAlphaRename2Solution :: CommonPurePattern Object Domain.Builtin
 -- subAlphaRename2Solution = dummyEnvironment @Object $
 --   subst (Var_ $ var "a") (Var_ $ var "b") $
 --   mkExists (var "b0") (Var_ $ var "b")
 
 -- the a : X forces bottom : X
-sortAgreement1 :: CommonStepPattern Object
+sortAgreement1 :: CommonPurePattern Object Domain.Builtin
 sortAgreement1 = dummyEnvironment $
     mkOr (Var_ $ var_ "a" "X") mkBottom
 
 -- the y : Y should force everything else to be Y
-sortAgreement2 :: CommonStepPattern Object
+sortAgreement2 :: CommonPurePattern Object Domain.Builtin
 sortAgreement2 = dummyEnvironment $
     mkImplies mkBottom $
     mkIff
         (mkEquals (Var_ $ var_ "foo" "X") (Var_ $ var_ "bar" "X"))
         (Var_ $ var_ "y" "Y")
 
-varX :: (Given (SymbolOrAliasSorts Object)) => CommonStepPattern Object
+varX :: (Given (SymbolOrAliasSorts Object)) => CommonPurePattern Object Domain.Builtin
 varX = mkVar $ var_ "x" "X"
 
 sortAgreementManySimplePatterns
@@ -197,12 +197,12 @@ substitutionGetSetIdentity a b pat =
 generatePatterns
   :: Given (SymbolOrAliasSorts Object)
   => Int
-  -> [CommonStepPattern Object]
+  -> [CommonPurePattern Object Domain.Builtin]
 generatePatterns size = genBinaryPatterns size ++ genUnaryPatterns size
 genBinaryPatterns
   :: Given (SymbolOrAliasSorts Object)
   => Int
-  -> [CommonStepPattern Object]
+  -> [CommonPurePattern Object Domain.Builtin]
 genBinaryPatterns 0 = []
 genBinaryPatterns size = do
   sa <- [1..size-1]
@@ -213,7 +213,7 @@ genBinaryPatterns size = do
 genUnaryPatterns
   :: Given (SymbolOrAliasSorts Object)
   => Int
-  -> [CommonStepPattern Object]
+  -> [CommonPurePattern Object Domain.Builtin]
 genUnaryPatterns 0 = []
 genUnaryPatterns 1 = [Var_ $ var_ "x" "X"]
 genUnaryPatterns size = do

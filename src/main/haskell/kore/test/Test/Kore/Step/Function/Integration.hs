@@ -15,8 +15,7 @@ import           Data.These
 
 import           Kore.AST.Pure hiding
                  ( mapVariables )
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkAnd, mkOr, mkVar )
+import           Kore.AST.Valid
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools (..), SymbolOrAliasSorts )
 import           Kore.Predicate.Predicate
@@ -51,6 +50,7 @@ import qualified Kore.Step.Simplification.Simplifier as Simplifier
                  ( create )
 import           Kore.Step.StepperAttributes
 import qualified Kore.Unification.Substitution as Substitution
+import           Kore.Unparser
 import           Kore.Variables.Fresh
                  ( FreshVariable, freshVariableFromVariable )
 import qualified SMT
@@ -410,7 +410,7 @@ mockEvaluator
     -> MetadataTools level StepperAttributes
     -> PredicateSubstitutionSimplifier level Simplifier
     -> StepPatternSimplifier level variable
-    -> Application level (StepPattern level variable)
+    -> CofreeF (Application level) (Valid level) (StepPattern level variable)
     -> Simplifier
         (AttemptedFunction level variable, SimplificationProof level)
 mockEvaluator evaluation _ _ _ _ =
@@ -441,6 +441,7 @@ evaluate metadataTools functionIdToEvaluator patt =
             , Ord (variable Object)
             , Show (variable Meta)
             , Show (variable Object)
+            , Unparse (variable level)
             , FreshVariable variable
             )
         => StepPatternSimplifier level variable

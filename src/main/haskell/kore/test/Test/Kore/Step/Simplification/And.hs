@@ -9,10 +9,7 @@ import Data.Reflection
        ( give )
 
 import           Kore.AST.Pure
-import           Kore.ASTUtils.SmartConstructors
-                 ( getSort, mkAnd, mkBottom, mkTop, mkVar )
-import           Kore.ASTUtils.SmartPatterns
-                 ( pattern Bottom_ )
+import           Kore.AST.Valid
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools, SymbolOrAliasSorts )
 import           Kore.Predicate.Predicate

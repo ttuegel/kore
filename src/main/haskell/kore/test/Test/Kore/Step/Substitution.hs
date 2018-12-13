@@ -11,12 +11,8 @@ import           Test.Tasty
 import           Test.Tasty.HUnit
                  ( assertEqual, testCase )
 
-import           Kore.AST.Common
-                 ( Variable )
-import           Kore.AST.MetaOrObject
-                 ( Object )
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkVar )
+import           Kore.AST.Pure
+import           Kore.AST.Valid
 import           Kore.Predicate.Predicate
                  ( makeCeilPredicate, makeEqualsPredicate, makeFalsePredicate,
                  makeTruePredicate )

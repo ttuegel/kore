@@ -20,7 +20,7 @@ import           Data.These
                  ( These (..) )
 
 import           Kore.AST.Pure
-import           Kore.ASTUtils.SmartConstructors
+import           Kore.AST.Valid
 import qualified Kore.Builtin.Map as Map
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.IndexedModule.MetadataTools
@@ -51,6 +51,7 @@ import qualified Kore.Step.Simplification.Simplifier as Simplifier
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 import qualified Kore.Unification.Substitution as Substitution
+import           Kore.Unparser
 import           Kore.Variables.Fresh
                  ( FreshVariable )
 import qualified SMT
@@ -388,6 +389,7 @@ evaluateWithAxioms tools axioms patt =
             , Ord (variable Object)
             , Show (variable Meta)
             , Show (variable Object)
+            , Unparse (variable Object)
             , SortedVariable variable
             )
         => StepPatternSimplifier Object variable

@@ -10,8 +10,7 @@ import           Data.Reflection
                  ( Given, give )
 
 import           Kore.AST.Pure
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkAnd, mkApp, mkEquals, mkExists, mkTop, mkVar )
+import           Kore.AST.Valid
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools, SymbolOrAliasSorts )
 import           Kore.Predicate.Predicate
@@ -107,9 +106,9 @@ test_existsSimplification = give mockSymbolOrAliasSorts
         let expect =
                 OrOfExpandedPattern.make
                     [ Predicated
-                        { term = mkApp Mock.fSymbol [gOfA]
+                        { term = Mock.f gOfA
                         , predicate =
-                            makeCeilPredicate (mkApp Mock.hSymbol [gOfA])
+                            makeCeilPredicate (Mock.h gOfA)
                         , substitution = Substitution.unsafeWrap
                             [(Mock.y, fOfA)]
                         }
@@ -118,7 +117,7 @@ test_existsSimplification = give mockSymbolOrAliasSorts
             makeEvaluate mockMetadataTools
                 Mock.x
                 Predicated
-                    { term = mkApp Mock.fSymbol [mkVar Mock.x]
+                    { term = Mock.f (mkVar Mock.x)
                     , predicate = makeCeilPredicate (Mock.h (mkVar Mock.x))
                     , substitution =
                         Substitution.wrap [(Mock.x, gOfA), (Mock.y, fOfA)]

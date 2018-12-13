@@ -116,7 +116,9 @@ verifyAndIndexDefinitionWithBase
   = do
     (implicitModules, implicitDefaultModule, defaultNames) <-
         withContext "Indexing unverified implicit Kore modules"
-        $ indexImplicitModule (modulePureToKore uncheckedKoreModule)
+        $ indexImplicitModule
+        $ modulePureToKore
+        $ eraseSentenceAnnotations <$> uncheckedKoreModule
     let
         (baseIndexedModules, baseNames) =
             case maybeBaseDefinition of

@@ -25,8 +25,7 @@ import qualified Data.Limit as Limit
 import           Kore.AST.Common
                  ( Variable (..) )
 import           Kore.AST.MetaOrObject
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkVar )
+import           Kore.AST.Valid
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools (..), SymbolOrAliasSorts )
 import           Kore.OnePath.Step

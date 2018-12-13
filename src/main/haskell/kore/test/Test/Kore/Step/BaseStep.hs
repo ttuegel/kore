@@ -15,11 +15,9 @@ import           Data.Reflection
 import qualified Data.Set as Set
 
 import           Kore.AST.Pure
+import           Kore.AST.Valid
 import           Kore.ASTHelpers
                  ( ApplicationSorts (..) )
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkVar )
-import           Kore.ASTUtils.SmartPatterns
 import           Kore.Implicit.ImplicitSorts
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools (..), SymbolOrAliasSorts )
@@ -36,6 +34,7 @@ import           Kore.Step.ExpandedPattern
                  ( CommonExpandedPattern, Predicated (..) )
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
                  ( bottom )
+import           Kore.Step.Pattern
 import           Kore.Step.Simplification.Data
                  ( evalSimplifier )
 import           Kore.Step.StepperAttributes
@@ -61,7 +60,7 @@ test_baseStep =
         let expect =
                 Right
                     ( Predicated
-                        { term = Var_ $ v1 patternMetaSort
+                        { term = mkVar $ v1 patternMetaSort
                         , predicate = makeTruePredicate
                         , substitution = mempty
                         }
@@ -76,7 +75,7 @@ test_baseStep =
             runStep
                 mockMetadataTools
                 Predicated
-                    { term = Var_ $ v1 patternMetaSort
+                    { term = mkVar $ v1 patternMetaSort
                     , predicate = makeTruePredicate
                     , substitution = mempty
                     }
@@ -87,7 +86,7 @@ test_baseStep =
         let expect =
                 Right
                     ( Predicated
-                        { term = Var_ $ y1 patternMetaSort
+                        { term = mkVar $ y1 patternMetaSort
                         , predicate = makeTruePredicate
                         , substitution = mempty
                         }
@@ -102,7 +101,7 @@ test_baseStep =
             runStep
                 mockMetadataTools
                 Predicated
-                    { term = Var_ $ y1 patternMetaSort
+                    { term = mkVar $ y1 patternMetaSort
                     , predicate = makeTruePredicate
                     , substitution = mempty
                     }
@@ -113,7 +112,7 @@ test_baseStep =
         let expect =
                 Right
                     ( Predicated
-                        { term = Var_ $ v1 patternMetaSort
+                        { term = mkVar $ v1 patternMetaSort
                         , predicate = makeTruePredicate
                         , substitution = mempty
                         }
@@ -130,8 +129,8 @@ test_baseStep =
                 Predicated
                     { term =
                         metaSigma
-                            (Var_ $ v1 patternMetaSort)
-                            (Var_ $ v1 patternMetaSort)
+                            (mkVar $ v1 patternMetaSort)
+                            (mkVar $ v1 patternMetaSort)
                     , predicate = makeTruePredicate
                     , substitution = mempty
                     }
@@ -144,11 +143,11 @@ test_baseStep =
         let expect =
                 Right
                     ( Predicated
-                        { term = metaF (Var_ $ b1 patternMetaSort)
+                        { term = metaF (mkVar $ b1 patternMetaSort)
                         , predicate = makeTruePredicate
                         , substitution = Substitution.wrap
                             [   ( a1 patternMetaSort
-                                , metaF (Var_ $ b1 patternMetaSort)
+                                , metaF (mkVar $ b1 patternMetaSort)
                                 )
                             ]
                         }
@@ -165,8 +164,8 @@ test_baseStep =
                 Predicated
                     { term =
                         metaSigma
-                            (Var_ $ a1 patternMetaSort)
-                            (metaF (Var_ $ b1 patternMetaSort))
+                            (mkVar $ a1 patternMetaSort)
+                            (metaF (mkVar $ b1 patternMetaSort))
                     , predicate = makeTruePredicate
                     , substitution = mempty
                     }
@@ -179,10 +178,10 @@ test_baseStep =
         let expect =
                 Right
                     ( Predicated
-                        { term = metaF (Var_ $ b1 patternMetaSort)
+                        { term = metaF (mkVar $ b1 patternMetaSort)
                         , predicate = makeTruePredicate
                         , substitution = Substitution.wrap
-                            [(a1 patternMetaSort, Var_ $ b1 patternMetaSort)]
+                            [(a1 patternMetaSort, mkVar $ b1 patternMetaSort)]
                         }
                     , mconcat
                         (map stepProof
@@ -197,8 +196,8 @@ test_baseStep =
                 Predicated
                     { term =
                         metaSigma
-                            (metaF $ Var_ $ a1 patternMetaSort)
-                            (metaF $ Var_ $ b1 patternMetaSort)
+                            (metaF $ mkVar $ a1 patternMetaSort)
+                            (metaF $ mkVar $ b1 patternMetaSort)
                     , predicate = makeTruePredicate
                     , substitution = mempty
                     }
@@ -225,11 +224,11 @@ test_baseStep =
                     ( Predicated
                         { term =
                             metaSigma
-                                (Var_ $ b1 patternMetaSort)
-                                (Var_ $ b1 patternMetaSort)
+                                (mkVar $ b1 patternMetaSort)
+                                (mkVar $ b1 patternMetaSort)
                         , predicate = makeTruePredicate
                         , substitution = Substitution.wrap
-                            [(a1 patternMetaSort, Var_ $ b1 patternMetaSort)]
+                            [(a1 patternMetaSort, mkVar $ b1 patternMetaSort)]
                         }
                     , mconcat
                         (map stepProof
@@ -245,12 +244,12 @@ test_baseStep =
                     { term =
                         metaSigma
                             (metaSigma
-                                (Var_ $ a1 patternMetaSort)
-                                (Var_ $ b1 patternMetaSort)
+                                (mkVar $ a1 patternMetaSort)
+                                (mkVar $ b1 patternMetaSort)
                             )
                             (metaSigma
-                                (Var_ $ b1 patternMetaSort)
-                                (Var_ $ a1 patternMetaSort)
+                                (mkVar $ b1 patternMetaSort)
+                                (mkVar $ a1 patternMetaSort)
                             )
                     , predicate = makeTruePredicate
                     , substitution = mempty
@@ -259,17 +258,17 @@ test_baseStep =
                     { left =
                         metaSigma
                             (metaSigma
-                                (Var_ $ x1 patternMetaSort)
-                                (Var_ $ x1 patternMetaSort)
+                                (mkVar $ x1 patternMetaSort)
+                                (mkVar $ x1 patternMetaSort)
                             )
                             (metaSigma
-                                (Var_ $ y1 patternMetaSort)
-                                (Var_ $ y1 patternMetaSort)
+                                (mkVar $ y1 patternMetaSort)
+                                (mkVar $ y1 patternMetaSort)
                             )
                     , right =
                         metaSigma
-                            (Var_ $ x1 patternMetaSort)
-                            (Var_ $ y1 patternMetaSort)
+                            (mkVar $ x1 patternMetaSort)
+                            (mkVar $ y1 patternMetaSort)
                     , requires = makeTruePredicate
                     , attributes = def
                     }
@@ -283,10 +282,9 @@ test_baseStep =
                 Right
                     ( Predicated
                         { term =
-                            Exists_
-                                patternMetaSort
+                            mkExists
                                 (var_a1_0 patternMetaSort)
-                                (Var_ $ a1 patternMetaSort)
+                                (mkVar $ a1 patternMetaSort)
                         , predicate = makeTruePredicate
                         , substitution = mempty
                         }
@@ -305,17 +303,16 @@ test_baseStep =
             runStep
                 mockMetadataTools
                 Predicated
-                    { term = Var_ $ a1 patternMetaSort
+                    { term = mkVar $ a1 patternMetaSort
                     , predicate = makeTruePredicate
                     , substitution = mempty
                     }
                 (RewriteRule RulePattern
-                    { left = Var_ $ x1 patternMetaSort
+                    { left = mkVar $ x1 patternMetaSort
                     , right =
-                        Exists_
-                            patternMetaSort
+                        mkExists
                             (a1 patternMetaSort)
-                            (Var_ $ x1 patternMetaSort)
+                            (mkVar $ x1 patternMetaSort)
                     , requires = makeTruePredicate
                     , attributes = def
                     }
@@ -332,8 +329,8 @@ test_baseStep =
                 Predicated
                     { term =
                         metaSigma
-                            (metaG (Var_ $ a1 patternMetaSort))
-                            (metaF (Var_ $ b1 patternMetaSort))
+                            (metaG (mkVar $ a1 patternMetaSort))
+                            (metaF (mkVar $ b1 patternMetaSort))
                     , predicate = makeTruePredicate
                     , substitution = mempty
                     }
@@ -352,12 +349,12 @@ test_baseStep =
                     { term =
                         metaSigma
                             (metaSigma
-                                (Var_ $ a1 patternMetaSort)
-                                (metaF (Var_ $ b1 patternMetaSort))
+                                (mkVar $ a1 patternMetaSort)
+                                (metaF (mkVar $ b1 patternMetaSort))
                             )
                             (metaSigma
-                                (Var_ $ a1 patternMetaSort)
-                                (Var_ $ b1 patternMetaSort)
+                                (mkVar $ a1 patternMetaSort)
+                                (mkVar $ b1 patternMetaSort)
                             )
                     , predicate = makeTruePredicate
                     , substitution = mempty
@@ -366,17 +363,17 @@ test_baseStep =
                     { left =
                         metaSigma
                             (metaSigma
-                                (Var_ $ x1 patternMetaSort)
-                                (Var_ $ x1 patternMetaSort)
+                                (mkVar $ x1 patternMetaSort)
+                                (mkVar $ x1 patternMetaSort)
                             )
                             (metaSigma
-                                (Var_ $ y1 patternMetaSort)
-                                (Var_ $ y1 patternMetaSort)
+                                (mkVar $ y1 patternMetaSort)
+                                (mkVar $ y1 patternMetaSort)
                             )
                     , right =
                         metaSigma
-                            (Var_ $ x1 patternMetaSort)
-                            (Var_ $ y1 patternMetaSort)
+                            (mkVar $ x1 patternMetaSort)
+                            (mkVar $ y1 patternMetaSort)
                     , requires = makeTruePredicate
                     , attributes = def
                     }
@@ -394,11 +391,11 @@ test_baseStep =
                 Predicated
                     { term =
                         metaSigma
-                            (Var_ $ a1 patternMetaSort)
-                            (metaF (Var_ $ b1 patternMetaSort))
+                            (mkVar $ a1 patternMetaSort)
+                            (metaF (mkVar $ b1 patternMetaSort))
                     , predicate = makeTruePredicate
                     , substitution = Substitution.wrap
-                        [(b1 patternMetaSort, Var_ $ a1 patternMetaSort)]
+                        [(b1 patternMetaSort, mkVar $ a1 patternMetaSort)]
                     }
                 axiomMetaSigmaId
         assertEqualWithExplanation "" expect (Bifunctor.second fst actual)
@@ -422,11 +419,11 @@ test_baseStep =
                 Predicated
                     { term =
                         metaSigma
-                            (Var_ $ a1 patternMetaSort)
-                            (metaH (Var_ $ b1 patternMetaSort))
+                            (mkVar $ a1 patternMetaSort)
+                            (metaH (mkVar $ b1 patternMetaSort))
                     , predicate = makeTruePredicate
                     , substitution = Substitution.wrap
-                        [(b1 patternMetaSort, Var_ $ a1 patternMetaSort)]
+                        [(b1 patternMetaSort, mkVar $ a1 patternMetaSort)]
                     }
                 axiomMetaSigmaId
         assertEqualWithExplanation "" expect actual
@@ -442,8 +439,8 @@ test_baseStep =
                 Predicated
                     { term =
                         metaSigma
-                            (Var_ $ a1 patternMetaSort)
-                            (metaI (Var_ $ b1 patternMetaSort))
+                            (mkVar $ a1 patternMetaSort)
+                            (metaI (mkVar $ b1 patternMetaSort))
                     , predicate = makeTruePredicate
                     , substitution = mempty
                     }
@@ -459,22 +456,22 @@ test_baseStep =
                     { term =
                         metaSigma
                             (metaSigma
-                                (Var_ $ c1 patternMetaSort)
-                                (Var_ $ c1 patternMetaSort)
+                                (mkVar $ c1 patternMetaSort)
+                                (mkVar $ c1 patternMetaSort)
                             )
                             (metaSigma
-                                (Var_ $ c1 patternMetaSort)
-                                (Var_ $ c1 patternMetaSort)
+                                (mkVar $ c1 patternMetaSort)
+                                (mkVar $ c1 patternMetaSort)
                             )
                     , predicate = makeTruePredicate
                     , substitution = Substitution.wrap
                         [   ( a1 patternMetaSort
                             , metaSigma
-                                (Var_ $ c1 patternMetaSort)
-                                (Var_ $ c1 patternMetaSort)
+                                (mkVar $ c1 patternMetaSort)
+                                (mkVar $ c1 patternMetaSort)
                             )
                         ,   ( b1 patternMetaSort
-                            , Var_ $ c1 patternMetaSort
+                            , mkVar $ c1 patternMetaSort
                             )
                         ]
                     }
@@ -485,17 +482,17 @@ test_baseStep =
                     { term =
                         metaSigma
                             (metaSigma
-                                (Var_ $ a1 patternMetaSort)
-                                (Var_ $ a1 patternMetaSort)
+                                (mkVar $ a1 patternMetaSort)
+                                (mkVar $ a1 patternMetaSort)
                             )
                             (metaSigma
                                 (metaSigma
-                                    (Var_ $ b1 patternMetaSort)
-                                    (Var_ $ c1 patternMetaSort)
+                                    (mkVar $ b1 patternMetaSort)
+                                    (mkVar $ c1 patternMetaSort)
                                 )
                                 (metaSigma
-                                    (Var_ $ b1 patternMetaSort)
-                                    (Var_ $ b1 patternMetaSort)
+                                    (mkVar $ b1 patternMetaSort)
+                                    (mkVar $ b1 patternMetaSort)
                                 )
                             )
                     , predicate = makeTruePredicate
@@ -510,7 +507,7 @@ test_baseStep =
     -- Expected: sigma(f(b), f(b)) and a=f(b)
     , testCase "Substitution normalization." $ do
         let
-            fOfB = metaF (Var_ $ b1 patternMetaSort)
+            fOfB = metaF (mkVar $ b1 patternMetaSort)
             expect =
                 Right
                     ( Predicated
@@ -533,10 +530,10 @@ test_baseStep =
                     { term =
                         metaSigma
                             (metaSigma
-                                (Var_ $ a1 patternMetaSort)
+                                (mkVar $ a1 patternMetaSort)
                                 fOfB
                             )
-                            (Var_ $ a1 patternMetaSort)
+                            (mkVar $ a1 patternMetaSort)
                     , predicate = makeTruePredicate
                     , substitution = mempty
                     }
@@ -544,15 +541,15 @@ test_baseStep =
                     { left =
                         (metaSigma
                             (metaSigma
-                                (Var_ $ x1 patternMetaSort)
-                                (Var_ $ x1 patternMetaSort)
+                                (mkVar $ x1 patternMetaSort)
+                                (mkVar $ x1 patternMetaSort)
                             )
-                            (Var_ $ y1 patternMetaSort)
+                            (mkVar $ y1 patternMetaSort)
                         )
                     , right =
                         metaSigma
-                            (Var_ $ x1 patternMetaSort)
-                            (Var_ $ y1 patternMetaSort)
+                            (mkVar $ x1 patternMetaSort)
+                            (mkVar $ y1 patternMetaSort)
                     , requires = makeTruePredicate
                     , attributes = def
                     }
@@ -565,8 +562,8 @@ test_baseStep =
     -- Expected: sigma(f(b), f(b)) and a=f(b), b=c
     , testCase "Merging substitution with existing one." $ do
         let
-            fOfB = metaF (Var_ $ b1 patternMetaSort)
-            fOfC = metaF (Var_ $ c1 patternMetaSort)
+            fOfB = metaF (mkVar $ b1 patternMetaSort)
+            fOfC = metaF (mkVar $ c1 patternMetaSort)
             expect =
                 Right
                     ( Predicated
@@ -574,7 +571,7 @@ test_baseStep =
                         , predicate = makeTruePredicate
                         , substitution = Substitution.wrap
                             [ (a1 patternMetaSort, fOfC)
-                            , (b1 patternMetaSort, Var_ $ c1 patternMetaSort)
+                            , (b1 patternMetaSort, mkVar $ c1 patternMetaSort)
                             ]
                         }
                     , mconcat
@@ -590,8 +587,8 @@ test_baseStep =
                 Predicated
                     { term =
                         metaSigma
-                            (metaSigma (Var_ $ a1 patternMetaSort) fOfB)
-                            (Var_ $ a1 patternMetaSort)
+                            (metaSigma (mkVar $ a1 patternMetaSort) fOfB)
+                            (mkVar $ a1 patternMetaSort)
                     , predicate = makeTruePredicate
                     , substitution = Substitution.wrap
                         [(a1 patternMetaSort, fOfC)]
@@ -600,14 +597,14 @@ test_baseStep =
                     { left =
                         metaSigma
                             (metaSigma
-                                (Var_ $ x1 patternMetaSort)
-                                (Var_ $ x1 patternMetaSort)
+                                (mkVar $ x1 patternMetaSort)
+                                (mkVar $ x1 patternMetaSort)
                             )
-                            (Var_ $ y1 patternMetaSort)
+                            (mkVar $ y1 patternMetaSort)
                     , right =
                         metaSigma
-                            (Var_ $ x1 patternMetaSort)
-                            (Var_ $ y1 patternMetaSort)
+                            (mkVar $ x1 patternMetaSort)
+                            (mkVar $ y1 patternMetaSort)
                     , requires = makeTruePredicate
                     , attributes = def
                     }
@@ -624,13 +621,13 @@ test_baseStep =
             runStep
                 mockMetadataTools
                 Predicated
-                    { term = StringLiteral_ "sl2"
+                    { term = mkStringLiteral "sl2"
                     , predicate = makeTruePredicate
                     , substitution = mempty
                     }
                 (RewriteRule RulePattern
-                    { left = StringLiteral_ "sl1"
-                    , right = Var_ $ x1 patternMetaSort
+                    { left = mkStringLiteral "sl1"
+                    , right = mkVar $ x1 patternMetaSort
                     , requires = makeTruePredicate
                     , attributes = def
                     }
@@ -645,11 +642,11 @@ test_baseStep =
         let expect =
                 Right
                     ( Predicated
-                        { term = Var_ $ a1 patternMetaSort
+                        { term = mkVar $ a1 patternMetaSort
                         , predicate =
                             makeEqualsPredicate
-                                (metaG (Var_ $ a1 patternMetaSort))
-                                (metaF (Var_ $ a1 patternMetaSort))
+                                (metaG (mkVar $ a1 patternMetaSort))
+                                (metaF (mkVar $ a1 patternMetaSort))
                         , substitution = mempty
                         }
                     , mconcat
@@ -663,11 +660,11 @@ test_baseStep =
             runStep
                 mockMetadataTools
                 Predicated
-                    { term = Var_ $ a1 patternMetaSort
+                    { term = mkVar $ a1 patternMetaSort
                     , predicate =
                         makeEqualsPredicate
-                            (metaG (Var_ $ a1 patternMetaSort))
-                            (metaF (Var_ $ a1 patternMetaSort))
+                            (metaG (mkVar $ a1 patternMetaSort))
+                            (metaF (mkVar $ a1 patternMetaSort))
                     , substitution = mempty
                     }
                 axiomId
@@ -679,7 +676,7 @@ test_baseStep =
     -- Expected: sigma(f(b), f(b)) and a=f(b) and and g(f(b))=f(f(b))
     , testCase "Substitution_normalization." $ do
         let
-            fOfB = metaF (Var_ $ b1 patternMetaSort)
+            fOfB = metaF (mkVar $ b1 patternMetaSort)
             expect =
                 Right
                     ( Predicated
@@ -703,28 +700,28 @@ test_baseStep =
                     { term =
                         metaSigma
                             (metaSigma
-                                (Var_ $ a1 patternMetaSort)
+                                (mkVar $ a1 patternMetaSort)
                                 fOfB
                             )
-                            (Var_ $ a1 patternMetaSort)
+                            (mkVar $ a1 patternMetaSort)
                     , predicate =
                         makeEqualsPredicate
-                            (metaG (Var_ $ a1 patternMetaSort))
-                            (metaF (Var_ $ a1 patternMetaSort))
+                            (metaG (mkVar $ a1 patternMetaSort))
+                            (metaF (mkVar $ a1 patternMetaSort))
                     , substitution = mempty
                     }
                 (RewriteRule RulePattern
                     { left =
                         metaSigma
                             (metaSigma
-                                (Var_ $ x1 patternMetaSort)
-                                (Var_ $ x1 patternMetaSort)
+                                (mkVar $ x1 patternMetaSort)
+                                (mkVar $ x1 patternMetaSort)
                             )
-                            (Var_ $ y1 patternMetaSort)
+                            (mkVar $ y1 patternMetaSort)
                     , right =
                         metaSigma
-                            (Var_ $ x1 patternMetaSort)
-                            (Var_ $ y1 patternMetaSort)
+                            (mkVar $ x1 patternMetaSort)
+                            (mkVar $ y1 patternMetaSort)
                     , requires = makeTruePredicate
                     , attributes = def
                     }
@@ -739,12 +736,12 @@ test_baseStep =
         let
             preCondition var =
                 makeEqualsPredicate
-                    (metaG (Var_ $ var patternMetaSort))
-                    (metaF (Var_ $ var patternMetaSort))
+                    (metaG (mkVar $ var patternMetaSort))
+                    (metaF (mkVar $ var patternMetaSort))
             expect =
               Right
                   ( Predicated
-                      { term = Var_ $ a1 patternMetaSort
+                      { term = mkVar $ a1 patternMetaSort
                       , predicate = preCondition a1
                       , substitution = mempty
                       }
@@ -759,7 +756,7 @@ test_baseStep =
             runStep
                 mockMetadataTools
                 Predicated
-                    { term = Var_ $ a1 patternMetaSort
+                    { term = mkVar $ a1 patternMetaSort
                     , predicate = makeTruePredicate
                     , substitution = mempty
                     }
@@ -800,7 +797,7 @@ test_baseStep =
         let expect =
                 Right
                     ( Predicated
-                        { term = Var_ $ var patternMetaSort
+                        { term = mkVar $ var patternMetaSort
                         , predicate = makeTruePredicate
                         , substitution = mempty
                         }
@@ -817,17 +814,17 @@ test_baseStep =
                 Predicated
                     { term =
                         metaSigma
-                            (Var_ $ var patternMetaSort)
-                            (Var_ $ var patternMetaSort)
+                            (mkVar $ var patternMetaSort)
+                            (mkVar $ var patternMetaSort)
                     , predicate = makeTruePredicate
                     , substitution = mempty
                     }
                 (RewriteRule RulePattern
                     { left =
                         metaSigma
-                            (Var_ $ x1 patternMetaSort)
-                            (Var_ $ x1 patternMetaSort)
-                    , right = Var_ $ x1 patternMetaSort
+                            (mkVar $ x1 patternMetaSort)
+                            (mkVar $ x1 patternMetaSort)
+                    , right = mkVar $ x1 patternMetaSort
                     , requires = makeTruePredicate
                     , attributes = def
                     }
@@ -836,8 +833,8 @@ test_baseStep =
 
     ruleId =
         RulePattern
-            { left = Var_ $ x1 patternMetaSort
-            , right = Var_ $ x1 patternMetaSort
+            { left = mkVar $ x1 patternMetaSort
+            , right = mkVar $ x1 patternMetaSort
             , requires = makeTruePredicate
             , attributes = def
             }
@@ -847,10 +844,10 @@ test_baseStep =
         RewriteRule RulePattern
             { left =
                 metaSigma
-                    (Var_ $ x1 patternMetaSort)
-                    (Var_ $ x1 patternMetaSort)
+                    (mkVar $ x1 patternMetaSort)
+                    (mkVar $ x1 patternMetaSort)
             , right =
-                Var_ $ x1 patternMetaSort
+                mkVar $ x1 patternMetaSort
             , requires = makeTruePredicate
             , attributes = def
             }
@@ -1080,11 +1077,10 @@ sigmaSymbol = SymbolOrAlias
     }
 
 metaSigma
-    :: Functor domain
-    => CommonPurePattern Meta domain
-    -> CommonPurePattern Meta domain
-    -> CommonPurePattern Meta domain
-metaSigma p1 p2 = App_ sigmaSymbol [p1, p2]
+    :: CommonStepPattern Meta
+    -> CommonStepPattern Meta
+    -> CommonStepPattern Meta
+metaSigma p1 p2 = mkApp patternMetaSort sigmaSymbol [p1, p2]
 
 
 fSymbol :: SymbolOrAlias Meta
@@ -1094,10 +1090,9 @@ fSymbol = SymbolOrAlias
     }
 
 metaF
-    :: Functor domain
-    => CommonPurePattern Meta domain
-    -> CommonPurePattern Meta domain
-metaF p = App_ fSymbol [p]
+    :: CommonStepPattern Meta
+    -> CommonStepPattern Meta
+metaF p = mkApp patternMetaSort fSymbol [p]
 
 
 gSymbol :: SymbolOrAlias Meta
@@ -1107,10 +1102,9 @@ gSymbol = SymbolOrAlias
     }
 
 metaG
-    :: Functor domain
-    => CommonPurePattern Meta domain
-    -> CommonPurePattern Meta domain
-metaG p = App_ gSymbol [p]
+    :: CommonStepPattern Meta
+    -> CommonStepPattern Meta
+metaG p = mkApp patternMetaSort gSymbol [p]
 
 hSymbol :: SymbolOrAlias Meta
 hSymbol = SymbolOrAlias
@@ -1119,10 +1113,9 @@ hSymbol = SymbolOrAlias
     }
 
 metaH
-    :: Functor domain
-    => CommonPurePattern Meta domain
-    -> CommonPurePattern Meta domain
-metaH p = App_ hSymbol [p]
+    :: CommonStepPattern Meta
+    -> CommonStepPattern Meta
+metaH p = mkApp patternMetaSort hSymbol [p]
 
 iSymbol :: SymbolOrAlias Meta
 iSymbol = SymbolOrAlias
@@ -1131,10 +1124,9 @@ iSymbol = SymbolOrAlias
     }
 
 metaI
-    :: Functor domain
-    => CommonPurePattern Meta domain
-    -> CommonPurePattern Meta domain
-metaI p = App_ iSymbol [p]
+    :: CommonStepPattern Meta
+    -> CommonStepPattern Meta
+metaI p = mkApp patternMetaSort iSymbol [p]
 
 runStep
     :: MetaOrObject level

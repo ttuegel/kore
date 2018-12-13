@@ -17,13 +17,8 @@ import Control.Monad.Except
 import Data.Reflection
        ( give )
 
-import           Kore.AST.Common
-import           Kore.AST.MetaOrObject
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkAnd, mkBottom, mkCeil, mkCharLiteral, mkDomainValue,
-                 mkEquals, mkExists, mkFloor, mkForall, mkIff, mkImplies, mkIn,
-                 mkNext, mkNot, mkOr, mkRewrites, mkStringLiteral, mkTop,
-                 mkVar )
+import           Kore.AST.Pure
+import           Kore.AST.Valid
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools, SymbolOrAliasSorts )
@@ -161,10 +156,14 @@ test_matcherEqualHeads = give mockSymbolOrAliasSorts
         actual <-
             match mockMetadataTools
                 (mkDomainValue Mock.testSort1
-                    (Domain.BuiltinPattern  (mkStringLiteral "10"))
+                    $ Domain.BuiltinPattern
+                    $ eraseAnnotations
+                    $ mkStringLiteral "10"
                 )
                 (mkDomainValue Mock.testSort1
-                    (Domain.BuiltinPattern (mkStringLiteral "10"))
+                    $ Domain.BuiltinPattern
+                    $ eraseAnnotations
+                    $ mkStringLiteral "10"
                 )
         assertEqualWithExplanation "" expect actual
 

@@ -41,8 +41,7 @@ import           GHC.Generics
 
 
 import           Kore.AST.Pure
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkBottom )
+import           Kore.AST.Valid
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools, SymbolOrAliasSorts )
 import qualified Kore.IndexedModule.MetadataTools as MetadataTools
@@ -84,6 +83,7 @@ import           Kore.Unification.Procedure
 import           Kore.Unification.Substitution
                  ( Substitution )
 import qualified Kore.Unification.Substitution as Substitution
+import           Kore.Unparser
 import           Kore.Variables.Free
                  ( pureAllVariables )
 import           Kore.Variables.Fresh
@@ -176,6 +176,15 @@ instance
     freshVariableWith (ConfigurationVariable a) n =
         ConfigurationVariable $ freshVariableWith a n
 
+instance
+    Unparse (variable level) =>
+    Unparse (StepperVariable variable level)
+  where
+    unparse =
+        \case
+            AxiomVariable var -> unparse var
+            ConfigurationVariable var -> unparse var
+
 {-! The result of applying an axiom to a pattern. Contains the rewritten
 pattern (if any) and the unrewritten part of the original pattern.
 -}
@@ -203,6 +212,7 @@ newtype UnificationProcedure level =
         .   ( SortedVariable variable
             , Ord (variable level)
             , Show (variable level)
+            , Unparse (variable level)
             , OrdMetaOrObject variable
             , ShowMetaOrObject variable
             , MetaOrObject level
@@ -239,6 +249,7 @@ stepWithRuleForUnifier
         , SortedVariable variable
         , Show (variable level)
         , ShowMetaOrObject variable
+        , Unparse (variable level)
         )
     => MetadataTools level StepperAttributes
     -> UnificationProcedure level
@@ -549,6 +560,7 @@ stepWithRule
         , SortedVariable variable
         , Show (variable level)
         , ShowMetaOrObject variable
+        , Unparse (variable level)
         )
     => MetadataTools level StepperAttributes
     -> PredicateSubstitutionSimplifier level Simplifier

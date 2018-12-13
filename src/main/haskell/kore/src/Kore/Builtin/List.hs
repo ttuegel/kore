@@ -51,7 +51,7 @@ import           Data.Text
                  ( Text )
 
 import           Kore.AST.Pure
-import           Kore.ASTUtils.SmartPatterns
+import           Kore.AST.Valid
 import           Kore.Attribute.Hook
                  ( Hook )
 import qualified Kore.Builtin.Builtin as Builtin
@@ -71,6 +71,7 @@ import           Kore.Step.Simplification.Data
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 import qualified Kore.Step.StepperAttributes as StepperAttributes
+import           Kore.Unparser
 import           Kore.Variables.Fresh
 
 {- | Builtin variable name of the @List@ sort.
@@ -150,7 +151,7 @@ returnList
 returnList resultSort list =
     Builtin.appliedFunction
         $ ExpandedPattern.fromPurePattern
-        $ DV_ resultSort
+        $ mkDomainValue resultSort
         $ Domain.BuiltinList list
 
 evalElement :: Builtin.Function
@@ -283,11 +284,11 @@ asPattern
         (Builtin variable -> StepPattern Object variable)
 asPattern indexedModule dvSort = do
     symbolUnit <- lookupSymbolUnit dvSort indexedModule
-    let applyUnit = App_ symbolUnit []
+    let applyUnit = mkApp dvSort symbolUnit []
     symbolElement <- lookupSymbolElement dvSort indexedModule
-    let applyElement elem' = App_ symbolElement [elem']
+    let applyElement elem' = mkApp dvSort symbolElement [elem']
     symbolConcat <- lookupSymbolConcat dvSort indexedModule
-    let applyConcat list1 list2 = App_ symbolConcat [list1, list2]
+    let applyConcat list1 list2 = mkApp dvSort symbolConcat [list1, list2]
     let asPattern0 list =
             foldr applyConcat applyUnit
             $ Foldable.toList (applyElement <$> list)
@@ -366,6 +367,7 @@ unifyEquals
         , ShowMetaOrObject variable
         , Ord (variable level)
         , Show (variable level)
+        , Unparse (variable level)
         , SortedVariable variable
         , MonadCounter m
         , MetaOrObject level
@@ -458,7 +460,7 @@ unifyEquals
                 result = asBuiltinDomainList <$> propagatedUnified
             return (result, SimplificationProof)
       where
-        asBuiltinDomainList = DV_ dvSort . Domain.BuiltinList
+        asBuiltinDomainList = mkDomainValue dvSort . Domain.BuiltinList
 
     unifyEqualsFramedRight
         :: (level ~ Object)
@@ -484,7 +486,7 @@ unifyEquals
                     <* suffixUnified
             return (result, SimplificationProof)
       where
-        asBuiltinDomainList = DV_ resultSort . Domain.BuiltinList
+        asBuiltinDomainList = mkDomainValue resultSort . Domain.BuiltinList
         (prefix1, suffix1) = Seq.splitAt prefixLength list1
           where
             prefixLength = Seq.length prefix2
@@ -515,7 +517,7 @@ unifyEquals
                     <* suffixUnified
             return (result, SimplificationProof)
       where
-        asBuiltinDomainList = DV_ resultSort . Domain.BuiltinList
+        asBuiltinDomainList = mkDomainValue resultSort . Domain.BuiltinList
         (prefix1, suffix1) = Seq.splitAt prefixLength list1
           where
             prefixLength = Seq.length list1 - Seq.length suffix2

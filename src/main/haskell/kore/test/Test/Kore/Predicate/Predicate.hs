@@ -12,12 +12,9 @@ import           Data.Reflection
 import qualified Data.Set as Set
 
 import           Kore.AST.Pure
+import           Kore.AST.Valid
 import           Kore.ASTHelpers
                  ( ApplicationSorts (..) )
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkAnd, mkBottom, mkCeil, mkEquals, mkExists, mkFloor,
-                 mkForall, mkIff, mkImplies, mkIn, mkNot, mkOr, mkTop )
-import           Kore.ASTUtils.SmartPatterns
 import           Kore.Implicit.ImplicitSorts
 import           Kore.IndexedModule.MetadataTools
                  ( SymbolOrAliasSorts )
@@ -309,7 +306,7 @@ test_predicate = give mockSymbolOrAliasSorts
             assertEqual "a = b"
                 (makeAndPredicate pr1 makeTruePredicate)
                 (substitutionToPredicate $ Substitution.wrap
-                    [(a patternMetaSort, Var_ $ b patternMetaSort)]
+                    [(a patternMetaSort, mkVar $ b patternMetaSort)]
                 )
         )
     , let
@@ -374,42 +371,42 @@ makePredicateYieldsWrapPredicate msg p =
 pr1 :: CommonPredicate Meta
 pr1 =
     give mockSymbolOrAliasSorts makeEqualsPredicate
-        (Var_ $ a patternMetaSort)
-        (Var_ $ b patternMetaSort)
+        (mkVar $ a patternMetaSort)
+        (mkVar $ b patternMetaSort)
 
 pr2 :: CommonPredicate Meta
 pr2 =
     give mockSymbolOrAliasSorts makeEqualsPredicate
-        (Var_ $ c patternMetaSort)
-        (Var_ $ d patternMetaSort)
+        (mkVar $ c patternMetaSort)
+        (mkVar $ d patternMetaSort)
 
 pa1 :: CommonStepPattern Meta
 pa1 =
     give mockSymbolOrAliasSorts mkEquals
-        (Var_ $ a patternMetaSort)
-        (Var_ $ b patternMetaSort)
+        (mkVar $ a patternMetaSort)
+        (mkVar $ b patternMetaSort)
 
 pa2 :: CommonStepPattern Meta
 pa2 =
     give mockSymbolOrAliasSorts mkEquals
-        (Var_ $ c patternMetaSort)
-        (Var_ $ d patternMetaSort)
+        (mkVar $ c patternMetaSort)
+        (mkVar $ d patternMetaSort)
 
 ceilA :: CommonStepPattern Meta
 ceilA =
     give mockSymbolOrAliasSorts mkCeil
-        (Var_ $ a patternMetaSort)
+        (mkVar $ a patternMetaSort)
 
 inA :: CommonStepPattern Meta
 inA =
     give mockSymbolOrAliasSorts mkIn
-        (Var_ $ a patternMetaSort)
-        (Var_ $ b patternMetaSort)
+        (mkVar $ a patternMetaSort)
+        (mkVar $ b patternMetaSort)
 
 floorA :: CommonStepPattern Meta
 floorA =
     give mockSymbolOrAliasSorts $ mkFloor
-        (Var_ $ a patternMetaSort)
+        (mkVar $ a patternMetaSort)
 
 makeAnd
     :: CommonPredicate Meta

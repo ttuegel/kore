@@ -13,10 +13,8 @@ import qualified Control.Error as Error
 import           Data.Reflection
                  ( give )
 
-import           Kore.AST.MetaOrObject
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkAnd, mkBottom, mkCharLiteral, mkDomainValue,
-                 mkStringLiteral, mkTop, mkVar )
+import           Kore.AST.Pure
+import           Kore.AST.Valid
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools, SymbolOrAliasSorts )
@@ -783,13 +781,17 @@ aDomainValue :: CommonStepPattern Object
 aDomainValue =
     give mockSymbolOrAliasSorts
         $ mkDomainValue  Mock.testSort
-        $ Domain.BuiltinPattern (mkStringLiteral "a")
+        $ Domain.BuiltinPattern
+        $ eraseAnnotations
+        $ mkStringLiteral "a"
 
 bDomainValue :: CommonStepPattern Object
 bDomainValue =
     give mockSymbolOrAliasSorts
         $ mkDomainValue Mock.testSort
-        $ Domain.BuiltinPattern (mkStringLiteral "b")
+        $ Domain.BuiltinPattern
+        $ eraseAnnotations
+        $ mkStringLiteral "b"
 
 simplifyUnify
     :: MetaOrObject level

@@ -30,11 +30,9 @@ import qualified Data.Set as Set
 import           GHC.Generics
 
 import           Kore.AST.Common
-                 ( Variable )
+                 ( Variable (..) )
 import           Kore.AST.MetaOrObject
-                 ( MetaOrObject )
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkAnd, mkCeil, mkExists, mkNot )
+import           Kore.AST.Valid
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools (MetadataTools) )
 import qualified Kore.IndexedModule.MetadataTools as MetadataTools

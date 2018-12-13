@@ -47,6 +47,7 @@ import           Kore.Unification.Error
 import           Kore.Unification.Substitution
                  ( Substitution )
 import qualified Kore.Unification.Substitution as Substitution
+import           Kore.Unparser
 import           Kore.Variables.Fresh
                  ( FreshVariable )
 
@@ -99,6 +100,7 @@ simplifyAnds
         , Eq level
         , Ord (variable level)
         , Show (variable level)
+        , Unparse (variable level)
         , OrdMetaOrObject variable
         , ShowMetaOrObject variable
         , SortedVariable variable
@@ -178,6 +180,7 @@ solveGroupedSubstitution
        , Eq level
        , Ord (variable level)
        , Show (variable level)
+       , Unparse (variable level)
        , OrdMetaOrObject variable
        , ShowMetaOrObject variable
        , SortedVariable variable
@@ -223,6 +226,7 @@ normalizeSubstitutionDuplication
         , Eq level
         , Ord (variable level)
         , Show (variable level)
+        , Unparse (variable level)
         , OrdMetaOrObject variable
         , ShowMetaOrObject variable
         , SortedVariable variable
@@ -288,10 +292,10 @@ mergePredicateSubstitutionList
     :: ( MetaOrObject level
        , Eq level
        , Ord (variable level)
-       , Ord (variable Meta)
-       , Ord (variable Object)
+       , OrdMetaOrObject variable
        , SortedVariable variable
        , Show (variable level)
+       , Unparse (variable level)
        )
     => MetadataTools level StepperAttributes
     -> [(PredicateSubstitution level variable, UnificationProof level variable)]

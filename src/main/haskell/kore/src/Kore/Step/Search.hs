@@ -51,6 +51,7 @@ import           Kore.Step.Substitution
                  ( mergePredicatesAndSubstitutions )
 import           Kore.Unification.Procedure
                  ( unificationProcedure )
+import           Kore.Unparser
 import           Kore.Variables.Fresh
                  ( FreshVariable )
 
@@ -116,12 +117,12 @@ searchGraph Config { searchType, bound } match executionGraph = do
 matchWith
     ::  ( MetaOrObject level
         , SortedVariable variable
-        , Eq (variable level)
         , FreshVariable variable
         , Ord (variable level)
         , OrdMetaOrObject variable
         , Show (variable level)
         , ShowMetaOrObject variable
+        , Unparse (variable level)
         )
     => MetadataTools level StepperAttributes
     -> PredicateSubstitutionSimplifier level Simplifier

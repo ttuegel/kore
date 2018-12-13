@@ -48,6 +48,7 @@ import           Kore.Unification.Data
                  ( UnificationProof (..) )
 import           Kore.Unification.Error
                  ( UnificationOrSubstitutionError (..) )
+import           Kore.Unparser
 import           Kore.Variables.Fresh
                  ( FreshVariable )
 
@@ -60,6 +61,7 @@ unificationProcedure
     ::  ( SortedVariable variable
         , Ord (variable level)
         , Show (variable level)
+        , Unparse (variable level)
         , OrdMetaOrObject variable
         , ShowMetaOrObject variable
         , MetaOrObject level

@@ -22,8 +22,7 @@ import           Data.These
                  ( these )
 
 import           Kore.AST.Pure
-import           Kore.ASTUtils.SmartPatterns
-                 ( pattern App_ )
+import           Kore.AST.Valid
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools (..) )
 import           Kore.Predicate.Predicate
@@ -47,20 +46,20 @@ import           Kore.Step.Simplification.Data
                  Simplifier, StepPatternSimplifier (..) )
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes, isSortInjection_ )
+import           Kore.Unparser
 import           Kore.Variables.Fresh
 
 {-| 'evaluateApplication' - evaluates functions on an application pattern.
 -}
 evaluateApplication
     ::  ( MetaOrObject level
-        , SortedVariable variable
-        , Show (variable level)
         , Ord (variable level)
+        , Show (variable level)
+        , Unparse (variable level)
         , OrdMetaOrObject variable
         , ShowMetaOrObject variable
         , FreshVariable variable
-        , Show (variable Meta)
-        , Show (variable Object)
+        , SortedVariable variable
         )
     => MetadataTools level StepperAttributes
     -- ^ Tools for finding additional information about patterns
@@ -72,7 +71,7 @@ evaluateApplication
     -- ^ Map from symbol IDs to defined functions
     -> PredicateSubstitution level variable
     -- ^ Aggregated children predicate and substitution.
-    -> Application level (StepPattern level variable)
+    -> CofreeF (Application level) (Valid level) (StepPattern level variable)
     -- ^ The pattern to be evaluated
     -> Simplifier (OrOfExpandedPattern level variable, SimplificationProof level)
 evaluateApplication
@@ -81,10 +80,7 @@ evaluateApplication
     simplifier
     symbolIdToEvaluator
     childrenPredicateSubstitution
-    app@Application
-        { applicationSymbolOrAlias = appHead@SymbolOrAlias
-            { symbolOrAliasConstructor = symbolId }
-        }
+    validApp@(valid :< app)
   =
     case Map.lookup symbolId symbolIdToEvaluator of
         Nothing
@@ -98,7 +94,7 @@ evaluateApplication
                 evaluateWithFunctionAxioms
                 (\builtinEvaluator axiomEvaluators ->
                     do
-                    (result, proof) <- applyEvaluator app builtinEvaluator
+                    (result, proof) <- applyEvaluator validApp builtinEvaluator
                     case result of
                         AttemptedFunction.NotApplicable ->
                             evaluateWithFunctionAxioms axiomEvaluators
@@ -106,6 +102,9 @@ evaluateApplication
                 )
                 builtinOrAxiomEvaluators
   where
+    Application { applicationSymbolOrAlias = appHead } = app
+    SymbolOrAlias { symbolOrAliasConstructor = symbolId } = appHead
+
     notApplicable :: (AttemptedFunction level variable, x) -> Bool
     notApplicable (AttemptedFunction.NotApplicable, _) = True
     notApplicable _ = False
@@ -121,7 +120,7 @@ evaluateApplication
             Predicated { predicate, substitution } ->
                 Predicated
                     { term         =
-                        asPurePattern (mempty :< ApplicationPattern app)
+                        asPurePattern (valid :< ApplicationPattern app)
                     , predicate    = predicate
                     , substitution = substitution
                     }
@@ -149,7 +148,7 @@ evaluateApplication
                 not (OrOfExpandedPattern.isFalse thing)
 
     evaluateWithFunctionAxioms evaluators = do
-        results <- mapM (applyEvaluator app) evaluators
+        results <- mapM (applyEvaluator validApp) evaluators
         let
             -- Separate into NotApplied and Applied results.
             (notApplied, applied) =
@@ -194,7 +193,7 @@ evaluateSortInjection tools unchanged ap = case apChild of
             return
                 ( OrOfExpandedPattern.make
                     [ Predicated
-                        { term = App_ apHeadNew grandChildren
+                        { term = apHeadNew grandChildren
                         , predicate = makeTruePredicate
                         , substitution = mempty
                         }
@@ -207,9 +206,12 @@ evaluateSortInjection tools unchanged ap = case apChild of
     [fromSort, _] = symbolOrAliasParams apHead
     [apChild] = applicationChildren ap
     updateSortInjectionSource
-        :: SymbolOrAlias level -> Sort level -> SymbolOrAlias level
+        :: SymbolOrAlias level
+        -> Sort level
+        -> [StepPattern level variable]
+        -> StepPattern level variable
     updateSortInjectionSource head1 fromSort1 =
-        head1 { symbolOrAliasParams = [fromSort1, toSort1] }
+        mkApp toSort1 head1 { symbolOrAliasParams = [fromSort1, toSort1] }
       where
         [_, toSort1] = symbolOrAliasParams head1
 
@@ -218,12 +220,13 @@ function evaluation.
 -}
 mergeWithConditionAndSubstitution
     ::  ( MetaOrObject level
-        , SortedVariable variable
-        , Show (variable level)
         , Ord (variable level)
+        , Show (variable level)
+        , Unparse (variable level)
         , OrdMetaOrObject variable
         , ShowMetaOrObject variable
         , FreshVariable variable
+        , SortedVariable variable
         )
     => MetadataTools level StepperAttributes
     -> PredicateSubstitutionSimplifier level Simplifier

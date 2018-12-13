@@ -13,10 +13,7 @@ import           Data.Reflection
 import qualified Data.Sequence as Seq
 
 import           Kore.AST.Pure
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkBottom, mkDomainValue, mkStringLiteral )
-import           Kore.ASTUtils.SmartPatterns
-                 ( pattern Bottom_ )
+import           Kore.AST.Valid
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools, SymbolOrAliasSorts )
@@ -50,7 +47,10 @@ test_domainValueSimplification =
                     { term =
                         mkDomainValue
                             testSort
-                            (Domain.BuiltinPattern (mkStringLiteral "a"))
+                            (Domain.BuiltinPattern
+                                $ eraseAnnotations
+                                $ mkStringLiteral "a"
+                            )
                     , predicate = makeTruePredicate
                     , substitution = mempty
                     }
@@ -60,7 +60,10 @@ test_domainValueSimplification =
                 mockMetadataTools
                 (DomainValue
                     testSort
-                    (Domain.BuiltinPattern (mkStringLiteral "a"))
+                    (Domain.BuiltinPattern
+                        $ eraseAnnotations
+                        $ mkStringLiteral "a"
+                    )
                 )
             )
         )

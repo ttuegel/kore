@@ -10,11 +10,8 @@ import Test.Tasty.HUnit
 import Data.Reflection
        ( Given, give )
 
-import           Kore.AST.Common
-                 ( Iff (..) )
-import           Kore.AST.MetaOrObject
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkAnd, mkCeil, mkEquals, mkIff, mkNot, mkTop, mkVar )
+import           Kore.AST.Pure
+import           Kore.AST.Valid
 import           Kore.IndexedModule.MetadataTools
                  ( SymbolOrAliasSorts )
 import           Kore.Predicate.Predicate

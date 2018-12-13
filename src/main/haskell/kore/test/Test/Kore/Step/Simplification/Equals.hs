@@ -11,11 +11,7 @@ import Data.Reflection
        ( give )
 
 import           Kore.AST.Pure
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkBottom, mkCharLiteral, mkDomainValue, mkStringLiteral,
-                 mkStringLiteral, mkTop, mkVar )
-import           Kore.ASTUtils.SmartPatterns
-                 ( pattern Bottom_ )
+import           Kore.AST.Valid
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools, SymbolOrAliasSorts )
@@ -240,11 +236,17 @@ test_equalsSimplification_Patterns = give mockSymbolOrAliasSorts
             Predicated.topPredicate
             (mkDomainValue
                 testSort
-                (Domain.BuiltinPattern (mkStringLiteral "a"))
+                (Domain.BuiltinPattern
+                    $ eraseAnnotations
+                    $ mkStringLiteral "a"
+                )
             )
             (mkDomainValue
                 testSort
-                (Domain.BuiltinPattern (mkStringLiteral "a"))
+                (Domain.BuiltinPattern
+                    $ eraseAnnotations
+                    $ mkStringLiteral "a"
+                )
             )
         )
     , testCase "domain-value != domain-value"
@@ -253,11 +255,17 @@ test_equalsSimplification_Patterns = give mockSymbolOrAliasSorts
             Predicated.bottomPredicate
             (mkDomainValue
                 testSort
-                (Domain.BuiltinPattern (mkStringLiteral "a"))
+                (Domain.BuiltinPattern
+                    $ eraseAnnotations
+                    $ mkStringLiteral "a"
+                )
             )
             (mkDomainValue
                 testSort
-                (Domain.BuiltinPattern (mkStringLiteral "b"))
+                (Domain.BuiltinPattern
+                    $ eraseAnnotations
+                    $ mkStringLiteral "b"
+                )
             )
         )
     , testCase "domain-value != domain-value because of sorts"
@@ -266,11 +274,17 @@ test_equalsSimplification_Patterns = give mockSymbolOrAliasSorts
             Predicated.bottomPredicate
             (mkDomainValue
                 testSort
-                (Domain.BuiltinPattern (mkStringLiteral "a"))
+                (Domain.BuiltinPattern
+                    $ eraseAnnotations
+                    $ mkStringLiteral "a"
+                )
             )
             (mkDomainValue
                 testSort2
-                (Domain.BuiltinPattern (mkStringLiteral "a"))
+                (Domain.BuiltinPattern
+                    $ eraseAnnotations
+                    $ mkStringLiteral "a"
+                )
             )
         )
     , testCase "\"a\" == \"a\""

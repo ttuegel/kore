@@ -15,8 +15,7 @@ import           Data.Set
 import qualified Data.Set as Set
 
 import           Kore.AST.Pure
-import qualified Kore.ASTUtils.SmartConstructors as Kore
-import           Kore.ASTUtils.SmartPatterns
+import           Kore.AST.Valid
 import qualified Kore.Builtin.Set as Set
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.Predicate.Predicate as Predicate
@@ -61,7 +60,13 @@ test_getUnit =
         "in{}(_, unit{}() === \\dv{Bool{}}(\"false\")"
         (do
             patKey <- forAll genIntegerPattern
-            let patIn = App_ inSetSymbol [ patKey, App_ unitSetSymbol [] ]
+            let patIn =
+                    mkApp
+                        boolSort
+                        inSetSymbol
+                        [ patKey
+                        , mkApp setSort unitSetSymbol []
+                        ]
                 patFalse = Test.Bool.asPattern False
                 predicate = mkEquals patFalse patIn
             (===) (Test.Bool.asExpandedPattern False) =<< evaluate patIn
@@ -74,8 +79,8 @@ test_inElement =
         "in{}(x, element{}(x)) === \\dv{Bool{}}(\"true\")"
         (do
             patKey <- forAll genIntegerPattern
-            let patIn = App_ inSetSymbol [ patKey, patElement ]
-                patElement = App_ elementSetSymbol [ patKey ]
+            let patIn = mkApp boolSort inSetSymbol [ patKey, patElement ]
+                patElement = mkApp setSort elementSetSymbol [ patKey ]
                 patTrue = Test.Bool.asPattern True
                 predicate = mkEquals patIn patTrue
             (===) (Test.Bool.asExpandedPattern True) =<< evaluate patIn
@@ -89,7 +94,7 @@ test_inConcat =
         (do
             elem' <- forAll genConcreteIntegerPattern
             values <- forAll genSetConcreteIntegerPattern
-            let patIn = App_ inSetSymbol [ patElem , patSet ]
+            let patIn = mkApp boolSort inSetSymbol [ patElem , patSet ]
                 patSet = asPattern $ Set.insert elem' values
                 patElem = fromConcretePurePattern elem'
                 patTrue = Test.Bool.asPattern True
@@ -104,9 +109,11 @@ test_concatUnit =
         "concat{}(unit{}(), xs) === concat{}(xs, unit{}()) === xs"
         (do
             patValues <- forAll genSetPattern
-            let patUnit = App_ unitSetSymbol []
-                patConcat1 = App_ concatSetSymbol [ patUnit, patValues ]
-                patConcat2 = App_ concatSetSymbol [ patValues, patUnit ]
+            let patUnit = mkApp setSort unitSetSymbol []
+                patConcat1 =
+                    mkApp setSort concatSetSymbol [ patUnit, patValues ]
+                patConcat2 =
+                    mkApp setSort concatSetSymbol [ patValues, patUnit ]
                 predicate1 = mkEquals patValues patConcat1
                 predicate2 = mkEquals patValues patConcat2
             expect <- evaluate patValues
@@ -124,10 +131,10 @@ test_concatAssociates =
             patSet1 <- forAll genSetPattern
             patSet2 <- forAll genSetPattern
             patSet3 <- forAll genSetPattern
-            let patConcat12 = App_ concatSetSymbol [ patSet1, patSet2 ]
-                patConcat23 = App_ concatSetSymbol [ patSet2, patSet3 ]
-                patConcat12_3 = App_ concatSetSymbol [ patConcat12, patSet3 ]
-                patConcat1_23 = App_ concatSetSymbol [ patSet1, patConcat23 ]
+            let patConcat12 = mkApp setSort concatSetSymbol [ patSet1, patSet2 ]
+                patConcat23 = mkApp setSort concatSetSymbol [ patSet2, patSet3 ]
+                patConcat12_3 = mkApp setSort concatSetSymbol [ patConcat12, patSet3 ]
+                patConcat1_23 = mkApp setSort concatSetSymbol [ patSet1, patConcat23 ]
                 predicate = mkEquals patConcat12_3 patConcat1_23
             concat12_3 <- evaluate patConcat12_3
             concat1_23 <- evaluate patConcat1_23
@@ -145,7 +152,7 @@ test_difference =
             let set3 = Set.difference set1 set2
                 patSet3 = asPattern set3
                 patDifference =
-                    App_ differenceSetSymbol [ asPattern set1, asPattern set2 ]
+                    mkApp setSort differenceSetSymbol [ asPattern set1, asPattern set2 ]
                 predicate = mkEquals patSet3 patDifference
             expect <- evaluate patSet3
             (===) expect =<< evaluate patDifference
@@ -186,8 +193,8 @@ asSymbolicPattern result
         foldr1 applyConcat (applyElement <$> Set.toAscList result)
   where
     applyUnit = mkDomainValue setSort $ Domain.BuiltinSet Set.empty
-    applyElement key = App_ elementSetSymbol [key]
-    applyConcat set1 set2 = App_ concatSetSymbol [set1, set2]
+    applyElement key = mkApp setSort elementSetSymbol [key]
+    applyConcat set1 set2 = mkApp setSort concatSetSymbol [set1, set2]
 
 {- | Check that unifying a concrete set with itself results in the same set
  -}
@@ -234,9 +241,9 @@ tree_unifyFramingVariable =
             frameVar <- forAll (genSortedVariable setSort)
             let patConcreteSet = asPattern concreteSet
                 patFramedSet =
-                    App_ concatSetSymbol
+                    mkApp setSort concatSetSymbol
                         [ fromConcretePurePattern framedElem
-                        , Var_ frameVar
+                        , mkVar frameVar
                         ]
                 remainder = Set.delete framedElem concreteSet
                 patRemainder = asPattern remainder
@@ -354,42 +361,6 @@ asExpandedPattern :: Set.Builtin -> CommonExpandedPattern Object
 Right asExpandedPattern = Set.asExpandedPattern verifiedModule setSort
 
 -- * Constructors
-
-mkBottom :: CommonStepPattern Object
-mkBottom = Kore.mkBottom
-
-mkEquals
-    :: CommonStepPattern Object
-    -> CommonStepPattern Object
-    -> CommonStepPattern Object
-mkEquals = give testSymbolOrAliasSorts Kore.mkEquals
-
-mkAnd
-    :: CommonStepPattern Object
-    -> CommonStepPattern Object
-    -> CommonStepPattern Object
-mkAnd = give testSymbolOrAliasSorts Kore.mkAnd
-
-mkTop :: CommonStepPattern Object
-mkTop = Kore.mkTop
-
-mkVar :: Variable Object -> CommonStepPattern Object
-mkVar = give testSymbolOrAliasSorts Kore.mkVar
-
-mkDomainValue
-    :: Sort Object
-    -> Domain.Builtin (CommonStepPattern Object)
-    -> CommonStepPattern Object
-mkDomainValue = give testSymbolOrAliasSorts Kore.mkDomainValue
-
-mkImplies
-    :: CommonStepPattern Object
-    -> CommonStepPattern Object
-    -> CommonStepPattern Object
-mkImplies = give testSymbolOrAliasSorts Kore.mkImplies
-
-mkNot :: CommonStepPattern Object -> CommonStepPattern Object
-mkNot = give testSymbolOrAliasSorts Kore.mkNot
 
 mkIntVar :: Id Object -> CommonStepPattern Object
 mkIntVar variableName =

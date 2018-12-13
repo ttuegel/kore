@@ -11,8 +11,7 @@ import Data.Reflection
        ( Given, give )
 
 import           Kore.AST.Pure
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkAnd, mkApp, mkCeil, mkEquals, mkForall, mkVar )
+import           Kore.AST.Valid
 import           Kore.IndexedModule.MetadataTools
                  ( SymbolOrAliasSorts )
 import           Kore.Predicate.Predicate
@@ -110,7 +109,7 @@ test_forallSimplification = give mockSymbolOrAliasSorts
                     mkForall Mock.x
                         (mkAnd
                             (mkAnd
-                                (mkApp Mock.fSymbol [mkVar Mock.x])
+                                (Mock.f $ mkVar Mock.x)
                                 (mkCeil (Mock.h (mkVar Mock.x)))
                             )
                             (mkAnd
@@ -124,7 +123,7 @@ test_forallSimplification = give mockSymbolOrAliasSorts
             (makeEvaluate
                 Mock.x
                 Predicated
-                    { term = mkApp Mock.fSymbol [mkVar Mock.x]
+                    { term = Mock.f $ mkVar Mock.x
                     , predicate = makeCeilPredicate (Mock.h (mkVar Mock.x))
                     , substitution =
                         Substitution.wrap [(Mock.x, gOfA), (Mock.y, fOfA)]

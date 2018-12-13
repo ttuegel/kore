@@ -36,37 +36,31 @@ module Kore.Predicate.Predicate
     , Kore.Predicate.Predicate.mapVariables
     , stringFromPredicate
     , substitutionToPredicate
+    , fromPredicate
     , unwrapPredicate
     , wrapPredicate
     ) where
 
-import qualified Control.Comonad.Trans.Cofree as Cofree
 import           Control.DeepSeq
                  ( NFData )
 import qualified Data.Functor.Foldable as Recursive
 import           Data.Hashable
 import           Data.List
                  ( foldl', nub )
-import           Data.Reflection
-                 ( Given )
 import           Data.Set
                  ( Set )
 import           GHC.Generics
                  ( Generic )
 
-import           Kore.AST.Pure as Pure
-import           Kore.ASTUtils.SmartConstructors
-import           Kore.ASTUtils.SmartPatterns
-                 ( pattern Bottom_, pattern Ceil_, pattern Equals_,
-                 pattern Floor_, pattern In_, pattern Top_ )
+import           Kore.AST.Pure
+import           Kore.AST.Valid
 import           Kore.Error
                  ( Error, koreFail )
-import           Kore.IndexedModule.MetadataTools
-                 ( SymbolOrAliasSorts )
 import           Kore.Step.Pattern
 import           Kore.Unification.Substitution
                  ( Substitution )
 import qualified Kore.Unification.Substitution as Substitution
+import           Kore.Unparser
 import           Kore.Variables.Free
                  ( freePureVariables, pureAllVariables )
 
@@ -112,13 +106,28 @@ We should consider deleting this and implementing the functionality otherwise.
 wrapPredicate :: StepPattern level variable -> Predicate level variable
 wrapPredicate = GenericPredicate
 
-{- 'unwrapPredicate' wraps a pattern in a GenericPredicate. This should be
-not be used outside of that.
+{- | Unwrap a 'GenericPredicate'.
 
-We should consider deleting this and implementing the functionality otherwise.
--}
+This is intended for predicate evaluation and tests and should not be used
+outside of that.  We should consider deleting this and implementing the
+functionality otherwise.
+
+ -}
 unwrapPredicate :: Predicate level variable -> StepPattern level variable
 unwrapPredicate (GenericPredicate p) = p
+
+{- | Return the 'StepPattern' corresponding to the given 'Predicate'.
+
+All predicates are flexibly-sorted; the sort argument is used to force the
+resulting pattern into a particular sort.
+
+ -}
+fromPredicate
+    :: Unparse (variable level)
+    => Sort level  -- ^ Sort of resulting pattern
+    -> Predicate level variable
+    -> StepPattern level variable
+fromPredicate sort (GenericPredicate p) = forceSort sort p
 
 {-|'PredicateFalse' is a pattern for matching 'bottom' predicates.
 -}
@@ -128,8 +137,10 @@ pattern PredicateFalse :: Predicate level variable
 -}
 pattern PredicateTrue :: Predicate level variable
 
-pattern PredicateFalse <- GenericPredicate(Bottom_ _)
-pattern PredicateTrue <- GenericPredicate(Top_ _)
+pattern PredicateFalse
+    <- GenericPredicate (Recursive.project -> _ :< BottomPattern _)
+pattern PredicateTrue
+    <- GenericPredicate (Recursive.project -> _ :< TopPattern _)
 
 {-|'isFalse' checks whether a predicate matches 'PredicateFalse'.
 -}
@@ -142,10 +153,11 @@ doing some simplification.
 -}
 makeMultipleAndPredicate
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
         , Eq (variable level)
-        , Show (variable level))
+        , Show (variable level)
+        , Unparse (variable level)
+        )
     => [Predicate level variable]
     -> Predicate level variable
 makeMultipleAndPredicate =
@@ -158,10 +170,11 @@ doing some simplification.
 -}
 makeMultipleOrPredicate
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
         , Eq (variable level)
-        , Show (variable level))
+        , Show (variable level)
+        , Unparse (variable level)
+        )
     => [Predicate level variable]
     -> Predicate level variable
 makeMultipleOrPredicate =
@@ -176,10 +189,10 @@ makeAndPredicate
     -- TODO(virgil): Group these constraints in a class
     -- or, even better, a type (like ShowMetaOrObject in MetaOrObject).
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
         , Eq (variable level)
-        , Show (variable level))
+        , Unparse (variable level)
+        )
     => Predicate level variable
     -> Predicate level variable
     -> Predicate level variable
@@ -197,10 +210,10 @@ some simplification.
 -}
 makeOrPredicate
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
         , Eq (variable level)
         , Show (variable level)
+        , Unparse (variable level)
         )
     => Predicate level variable
     -> Predicate level variable
@@ -219,9 +232,11 @@ implication, doing some simplification.
 -}
 makeImpliesPredicate
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
-        , Show (variable level))
+        , Eq (variable level)
+        , Show (variable level)
+        , Unparse (variable level)
+        )
     => Predicate level variable
     -> Predicate level variable
     -> Predicate level variable
@@ -237,9 +252,11 @@ some simplification.
 -}
 makeIffPredicate
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
-        , Show (variable level))
+        , Eq (variable level)
+        , Show (variable level)
+        , Unparse (variable level)
+        )
     => Predicate level variable
     -> Predicate level variable
     -> Predicate level variable
@@ -255,9 +272,11 @@ simplification.
 -}
 makeNotPredicate
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
-        , Show (variable level))
+        , Eq (variable level)
+        , Show (variable level)
+        , Unparse (variable level)
+        )
     => Predicate level variable
     -> Predicate level variable
 makeNotPredicate PredicateFalse = GenericPredicate mkTop
@@ -270,9 +289,11 @@ predicate.
 -}
 makeEqualsPredicate
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
-        , Show (variable level))
+        , Eq (variable level)
+        , Show (variable level)
+        , Unparse (variable level)
+        )
     => StepPattern level variable
     -> StepPattern level variable
     -> Predicate level variable
@@ -284,9 +305,10 @@ predicate.
 -}
 makeInPredicate
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
-        , Show (variable level))
+        , Show (variable level)
+        , Unparse (variable level)
+        )
     => StepPattern level variable
     -> StepPattern level variable
     -> Predicate level variable
@@ -298,9 +320,10 @@ predicate.
 -}
 makeCeilPredicate
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
-        , Show (variable level))
+        , Show (variable level)
+        , Unparse (variable level)
+        )
     => StepPattern level variable
     -> Predicate level variable
 makeCeilPredicate patt =
@@ -311,9 +334,10 @@ predicate.
 -}
 makeFloorPredicate
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
-        , Show (variable level))
+        , Show (variable level)
+        , Unparse (variable level)
+        )
     => StepPattern level variable
     -> Predicate level variable
 makeFloorPredicate patt =
@@ -323,9 +347,10 @@ makeFloorPredicate patt =
 -}
 makeExistsPredicate
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
-        , Show (variable level))
+        , Show (variable level)
+        , Unparse (variable level)
+        )
     => variable level
     -> Predicate level variable
     -> Predicate level variable
@@ -338,9 +363,10 @@ makeExistsPredicate v (GenericPredicate p) =
 -}
 makeForallPredicate
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
-        , Show (variable level))
+        , Show (variable level)
+        , Unparse (variable level)
+        )
     => variable level
     -> Predicate level variable
     -> Predicate level variable
@@ -370,20 +396,21 @@ makeFalsePredicate =
 makePredicate
     :: forall level variable e .
         ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
         , Eq (variable level)
         , Show (variable level)
+        , Unparse (variable level)
         )
     => StepPattern level variable
     -> Either (Error e) (Predicate level variable)
 makePredicate = Recursive.elgot makePredicateBottomUp makePredicateTopDown
   where
     makePredicateBottomUp
-        :: StepPatternHead level variable
+        :: Base
+            (StepPattern level variable)
             (Either (Error e) (Predicate level variable))
         -> Either (Error e) (Predicate level variable)
-    makePredicateBottomUp patE = do
+    makePredicateBottomUp (_ :< patE) = do
         pat <- sequence patE
         case pat of
             TopPattern _ -> return makeTruePredicate
@@ -404,24 +431,25 @@ makePredicate = Recursive.elgot makePredicateBottomUp makePredicateTopDown
         :: StepPattern level variable
         -> Either
             (Either (Error e) (Predicate level variable))
-            (StepPatternHead level variable (StepPattern level variable))
-    makePredicateTopDown =
-        \case
-            Ceil_ _ _ p ->
-                Left (pure (makeCeilPredicate p))
-            Floor_ _ _ p ->
-                Left (pure (makeFloorPredicate p))
-            Equals_ _ _ p1 p2 ->
-                Left (pure (makeEqualsPredicate p1 p2))
-            In_ _ _ p1 p2 ->
-                Left (pure (makeInPredicate p1 p2))
-            p -> Right (Cofree.tailF $ Recursive.project p)
+            (Base (StepPattern level variable) (StepPattern level variable))
+    makePredicateTopDown (Recursive.project -> projected@(_ :< pat)) =
+        case pat of
+            CeilPattern Ceil { ceilChild } ->
+                (Left . pure) (makeCeilPredicate ceilChild)
+            FloorPattern Floor { floorChild } ->
+                (Left . pure) (makeFloorPredicate floorChild)
+            EqualsPattern Equals { equalsFirst, equalsSecond } ->
+                (Left . pure) (makeEqualsPredicate equalsFirst equalsSecond)
+            InPattern In { inContainedChild, inContainingChild } ->
+                (Left . pure)
+                    (makeInPredicate inContainedChild inContainingChild)
+            _ -> Right projected
 
 {- | Replace all variables in a @Predicate@ using the provided mapping.
 -}
 mapVariables
     :: (from level -> to level) -> Predicate level from -> Predicate level to
-mapVariables f = fmap (Pure.mapVariables f)
+mapVariables f = fmap (Kore.AST.Pure.mapVariables f)
 
 {- | Extract the set of all (free and bound) variables from a @Predicate@.
 -}
@@ -447,10 +475,11 @@ freeVariables = freePureVariables . unwrapPredicate
 -}
 substitutionToPredicate
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
         , Eq (variable level)
-        , Show (variable level))
+        , Show (variable level)
+        , Unparse (variable level)
+        )
     => Substitution level variable
     -> Predicate level variable
 substitutionToPredicate =
@@ -460,9 +489,11 @@ substitutionToPredicate =
 
 singleSubstitutionToPredicate
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
-        , Show (variable level))
+        , Eq (variable level)
+        , Show (variable level)
+        , Unparse (variable level)
+        )
     => (variable level, StepPattern level variable)
     -> Predicate level variable
 singleSubstitutionToPredicate (var, patt) =

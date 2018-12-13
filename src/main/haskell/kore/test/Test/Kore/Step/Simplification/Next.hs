@@ -11,8 +11,7 @@ import Data.Reflection
        ( give )
 
 import           Kore.AST.Pure
-import           Kore.ASTUtils.SmartConstructors
-                 ( getSort, mkAnd, mkEquals, mkNext, mkOr )
+import           Kore.AST.Valid
 import           Kore.IndexedModule.MetadataTools
                  ( SymbolOrAliasSorts )
 import           Kore.Predicate.Predicate

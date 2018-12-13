@@ -55,6 +55,7 @@ import           Kore.Step.Simplification.Data
                  StepPatternSimplifier (..) )
 import           Kore.Step.StepperAttributes
 import qualified Kore.Step.StepperAttributes as StepperAttributes
+import           Kore.Unparser
 import           SMT
                  ( MonadSMT, Result (..), SExpr (..), SMT )
 import qualified SMT
@@ -69,9 +70,9 @@ evaluate
     ::  forall level variable .
         ( MetaOrObject level
         , SortedVariable variable
-        , Eq (variable level)
         , Ord (variable level)
         , Show (variable level)
+        , Unparse (variable level)
         , Given (MetadataTools level StepperAttributes)
         )
     => PredicateSubstitutionSimplifier level Simplifier
@@ -107,10 +108,10 @@ evaluate
 
 asPredicateSubstitution
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
         , Eq (variable level)
         , Show (variable level)
+        , Unparse (variable level)
         )
     => ExpandedPattern level variable
     -> (PredicateSubstitution level variable, SimplificationProof level)

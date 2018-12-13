@@ -53,6 +53,7 @@ import           Kore.Unification.SubstitutionNormalization
                  ( normalizeSubstitution )
 import           Kore.Unification.UnifierImpl
                  ( normalizeSubstitutionDuplication )
+import           Kore.Unparser
 import           Kore.Variables.Fresh
 
 -- | Normalize the substitution and predicate of 'expanded'.
@@ -66,6 +67,7 @@ normalize
         , SortedVariable variable
         , OrdMetaOrObject variable
         , ShowMetaOrObject variable
+        , Unparse (variable level)
         )
     => MetadataTools level StepperAttributes
     -> PredicateSubstitutionSimplifier level m
@@ -99,6 +101,7 @@ normalizeSubstitutionAfterMerge
     ::  ( MetaOrObject level
         , Ord (variable level)
         , Show (variable level)
+        , Unparse (variable level)
         , OrdMetaOrObject variable
         , ShowMetaOrObject variable
         , SortedVariable variable
@@ -171,6 +174,7 @@ hs-boot: Please remember to update the hs-boot file when changing the signature.
 -}
 mergePredicatesAndSubstitutions
     :: ( Show (variable level)
+       , Unparse (variable level)
        , SortedVariable variable
        , MetaOrObject level
        , Ord (variable level)
@@ -217,6 +221,7 @@ mergePredicatesAndSubstitutionsExcept
        , SortedVariable variable
        , MetaOrObject level
        , Ord (variable level)
+       , Unparse (variable level)
        , OrdMetaOrObject variable
        , ShowMetaOrObject variable
        , FreshVariable variable
@@ -260,6 +265,7 @@ normalizePredicatedSubstitution
     ::  ( MetaOrObject level
         , Ord (variable level)
         , Show (variable level)
+        , Unparse (variable level)
         , OrdMetaOrObject variable
         , ShowMetaOrObject variable
         , SortedVariable variable

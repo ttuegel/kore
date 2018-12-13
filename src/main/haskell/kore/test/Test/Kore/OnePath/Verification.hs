@@ -19,9 +19,8 @@ import           Numeric.Natural
 
 import           Data.Limit
                  ( Limit (..) )
-import           Kore.AST.MetaOrObject
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkVar )
+import           Kore.AST.Pure
+import           Kore.AST.Valid
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools (..), SymbolOrAliasSorts )
 import qualified Kore.OnePath.Verification as OnePath

@@ -25,24 +25,12 @@ import           Control.Monad.Trans.Maybe
                  ( MaybeT (..) )
 import qualified Data.List as List
 import qualified Data.Map as Map
-import           Data.Reflection
-                 ( Given, give )
 import qualified Data.Set as Set
 
-import           Kore.AST.Common
-                 ( SortedVariable )
-import           Kore.AST.MetaOrObject
-import           Kore.ASTUtils.SmartPatterns
-                 ( pattern And_, pattern App_, pattern Bottom_, pattern Ceil_,
-                 pattern CharLiteral_, pattern DV_, pattern Equals_,
-                 pattern Exists_, pattern Floor_, pattern Forall_,
-                 pattern Iff_, pattern Implies_, pattern In_, pattern Next_,
-                 pattern Not_, pattern Or_, pattern Rewrites_,
-                 pattern StringLiteral_, pattern Top_, pattern Var_ )
+import           Kore.AST.Pure
+import           Kore.AST.Valid
 import           Kore.IndexedModule.MetadataTools
-                 ( MetadataTools, SymbolOrAliasSorts )
-import qualified Kore.IndexedModule.MetadataTools as MetadataTools
-                 ( MetadataTools (..) )
+                 ( MetadataTools )
 import           Kore.Step.ExpandedPattern
                  ( PredicateSubstitution, Predicated (..) )
 import qualified Kore.Step.ExpandedPattern as Predicated
@@ -64,6 +52,7 @@ import           Kore.Unification.Error
 import qualified Kore.Unification.Substitution as Substitution
 import           Kore.Unification.Unifier
                  ( UnificationProof (..) )
+import           Kore.Unparser
 import           Kore.Variables.Free
                  ( freePureVariables )
 import           Kore.Variables.Fresh
@@ -93,6 +82,7 @@ matchAsUnification
         , Show (variable level)
         , Show (variable Object)
         , Show (variable Meta)
+        , Unparse (variable level)
         , SortedVariable variable
         , MonadCounter m
         )
@@ -123,6 +113,7 @@ match
         , Show (variable level)
         , Show (variable Object)
         , Show (variable Meta)
+        , Unparse (variable level)
         , SortedVariable variable
         , MonadCounter m
         )
@@ -149,6 +140,7 @@ matchEqualHeadPatterns
        , SortedVariable variable
        , MetaOrObject level
        , Ord (variable level)
+       , Unparse (variable level)
        , Ord (variable Meta)
        , Ord (variable Object)
        , Show (variable Meta)
@@ -223,8 +215,7 @@ matchEqualHeadPatterns
         (Exists_ _ firstVariable firstChild) ->
             case second of
                 (Exists_ _ secondVariable secondChild) ->
-                    give (MetadataTools.symbolOrAliasSorts tools)
-                    $ checkVariableEscape [firstVariable, secondVariable]
+                    checkVariableEscape [firstVariable, secondVariable]
                     <$> match
                         tools
                         substitutionSimplifier
@@ -247,8 +238,7 @@ matchEqualHeadPatterns
         (Forall_ _ firstVariable firstChild) ->
             case second of
                 (Forall_ _ secondVariable secondChild) ->
-                    give (MetadataTools.symbolOrAliasSorts tools)
-                    $ checkVariableEscape [firstVariable, secondVariable]
+                    checkVariableEscape [firstVariable, secondVariable]
                     <$> match
                         tools
                         substitutionSimplifier
@@ -361,6 +351,7 @@ matchJoin
         , Show (variable level)
         , Show (variable Object)
         , Show (variable Meta)
+        , Unparse (variable level)
         , SortedVariable variable
         , MonadCounter m
         )
@@ -406,6 +397,7 @@ matchVariableFunction
        , SortedVariable variable
        , MetaOrObject level
        , Ord (variable level)
+       , Unparse (variable level)
        , MonadCounter m
        )
     => MetadataTools level StepperAttributes
@@ -439,6 +431,7 @@ matchNonVarToPattern
         , Show (variable level)
         , Show (variable Object)
         , Show (variable Meta)
+        , Unparse (variable level)
         , SortedVariable variable
         , MonadCounter m
         )
@@ -452,9 +445,8 @@ matchNonVarToPattern
             m
         )
         (PredicateSubstitution level variable)
-matchNonVarToPattern tools substitutionSimplifier first second
-  -- TODO(virgil): For simplification axioms this would need to return bottom!
-  = give (MetadataTools.symbolOrAliasSorts tools) $
+matchNonVarToPattern tools substitutionSimplifier first second =
+    -- TODO(virgil): For simplification axioms this would need to return bottom!
     MaybeT $ lift $ do -- MonadCounter
         (Predicated {predicate, substitution}, _proof) <-
             Equals.makeEvaluateTermsToPredicateSubstitution
@@ -487,11 +479,11 @@ checkVariableEscape
         , Show (variable Meta)
         , Ord (variable Object)
         , Ord (variable Meta)
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
-        , Eq (variable level)
         , Ord (variable level)
-        , Show (variable level))
+        , Show (variable level)
+        , Unparse (variable level)
+        )
     => [variable level]
     -> PredicateSubstitution level variable
     -> PredicateSubstitution level variable

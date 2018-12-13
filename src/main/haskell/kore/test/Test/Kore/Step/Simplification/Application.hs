@@ -12,12 +12,9 @@ import           Data.These
                  ( These (That) )
 
 import           Kore.AST.Pure
+import           Kore.AST.Valid
 import           Kore.ASTHelpers
                  ( ApplicationSorts (..) )
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkApp, mkBottom )
-import           Kore.ASTUtils.SmartPatterns
-                 ( pattern Bottom_ )
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )
 import qualified Kore.IndexedModule.MetadataTools as HeadType
@@ -67,22 +64,22 @@ test_applicationSimplification = give mockSymbolOrAliasSorts
         let expect =
                 OrOfExpandedPattern.make
                     [ Predicated
-                        { term = mkApp sigmaSymbol [a, c]
+                        { term = sigma a c
                         , predicate = makeTruePredicate
                         , substitution = mempty
                         }
                     , Predicated
-                        { term = mkApp sigmaSymbol [a, d]
+                        { term = sigma a d
                         , predicate = makeTruePredicate
                         , substitution = mempty
                         }
                     , Predicated
-                        { term = mkApp sigmaSymbol [b, c]
+                        { term = sigma b c
                         , predicate = makeTruePredicate
                         , substitution = mempty
                         }
                     ,  Predicated
-                        { term = mkApp sigmaSymbol [b, d]
+                        { term = sigma b d
                         , predicate = makeTruePredicate
                         , substitution = mempty
                         }
@@ -93,6 +90,7 @@ test_applicationSimplification = give mockSymbolOrAliasSorts
                 (mockSimplifier [])
                 Map.empty
                 (makeApplication
+                    testSort
                     sigmaSymbol
                     [ [aExpanded, bExpanded]
                     , [cExpanded, dExpanded]
@@ -109,6 +107,7 @@ test_applicationSimplification = give mockSymbolOrAliasSorts
                 (mockSimplifier [])
                 Map.empty
                 (makeApplication
+                    testSort
                     sigmaSymbol
                     [ [aExpanded, bExpanded]
                     , []
@@ -137,6 +136,7 @@ test_applicationSimplification = give mockSymbolOrAliasSorts
                     )
                 )
                 (makeApplication
+                    testSort
                     fSymbol
                     [[aExpanded]]
                 )
@@ -151,7 +151,7 @@ test_applicationSimplification = give mockSymbolOrAliasSorts
             let expect =
                     OrOfExpandedPattern.make
                         [ Predicated
-                            { term = mkApp sigmaSymbol [a, b]
+                            { term = sigma a b
                             , predicate =
                                 makeAndPredicate
                                     (makeEqualsPredicate fOfA fOfB)
@@ -168,6 +168,7 @@ test_applicationSimplification = give mockSymbolOrAliasSorts
                     (mockSimplifier [])
                     Map.empty
                     (makeApplication
+                        testSort
                         sigmaSymbol
                         [   [ Predicated
                                 { term = a
@@ -195,7 +196,7 @@ test_applicationSimplification = give mockSymbolOrAliasSorts
             let expect =
                     OrOfExpandedPattern.make
                         [ Predicated
-                            { term = mkApp fSymbol [a]
+                            { term = fOfA
                             , predicate =
                                 makeAndPredicate
                                     (makeEqualsPredicate fOfA gOfA)
@@ -224,7 +225,7 @@ test_applicationSimplification = give mockSymbolOrAliasSorts
                                         ( AttemptedFunction.Applied
                                             (OrOfExpandedPattern.make
                                                 [ Predicated
-                                                    { term = mkApp fSymbol [a]
+                                                    { term = fOfA
                                                     , predicate =
                                                         makeEqualsPredicate
                                                             fOfA
@@ -242,6 +243,7 @@ test_applicationSimplification = give mockSymbolOrAliasSorts
                         )
                     )
                     (makeApplication
+                        testSort
                         sigmaSymbol
                         [   [ Predicated
                                 { term = a
@@ -292,21 +294,32 @@ test_applicationSimplification = give mockSymbolOrAliasSorts
         { symbolOrAliasConstructor = sigmaId
         , symbolOrAliasParams      = []
         }
+    sigma
+        :: StepPattern Object variable
+        -> StepPattern Object variable
+        -> StepPattern Object variable
+    sigma child1 child2 = mkApp testSort sigmaSymbol [child1, child2]
     x = Variable (testId "x") testSort
     y = Variable (testId "y") testSort
     z = Variable (testId "z") testSort
 
-    a = give mockSymbolOrAliasSorts $ mkApp aSymbol []
-    b = give mockSymbolOrAliasSorts $ mkApp bSymbol []
-    c = give mockSymbolOrAliasSorts $ mkApp cSymbol []
-    d = give mockSymbolOrAliasSorts $ mkApp dSymbol []
+    a = mkApp testSort aSymbol []
+    b = mkApp testSort bSymbol []
+    c = mkApp testSort cSymbol []
+    d = mkApp testSort dSymbol []
+
+    f x' = mkApp testSort fSymbol [x']
+    g x' = mkApp testSort gSymbol [x']
+
     fOfA :: StepPattern Object variable
-    fOfA = give mockSymbolOrAliasSorts $ mkApp fSymbol [a]
-    fOfB = give mockSymbolOrAliasSorts $ mkApp fSymbol [b]
+    fOfA = f a
+    fOfB = f b
+
     gOfA :: StepPattern Object variable
-    gOfA = give mockSymbolOrAliasSorts $ mkApp gSymbol [a]
+    gOfA = g a
     gOfB :: StepPattern Object variable
-    gOfB = give mockSymbolOrAliasSorts $ mkApp gSymbol [b]
+    gOfB = g b
+
     aExpanded = Predicated
         { term = a
         , predicate = makeTruePredicate
@@ -431,14 +444,22 @@ test_applicationSimplification = give mockSymbolOrAliasSorts
 
 makeApplication
     :: (MetaOrObject level, Ord (variable level))
-    => SymbolOrAlias level
+    => Sort level
+    -> SymbolOrAlias level
     -> [[ExpandedPattern level variable]]
-    -> Application level (OrOfExpandedPattern level variable)
-makeApplication symbol patterns =
-    Application
-        { applicationSymbolOrAlias = symbol
-        , applicationChildren = map OrOfExpandedPattern.make patterns
-        }
+    -> CofreeF
+        (Application level)
+        (Valid level)
+        (OrOfExpandedPattern level variable)
+makeApplication patternSort symbol patterns =
+    (:<)
+        valid
+        Application
+            { applicationSymbolOrAlias = symbol
+            , applicationChildren = map OrOfExpandedPattern.make patterns
+            }
+  where
+    valid = Valid { patternSort }
 
 testSort :: Sort Object
 testSort =
@@ -453,7 +474,10 @@ evaluate
     -- ^ Evaluates functions.
     -> BuiltinAndAxiomsFunctionEvaluatorMap level
     -- ^ Map from symbol IDs to defined functions
-    -> Application level (CommonOrOfExpandedPattern level)
+    -> CofreeF
+        (Application level)
+        (Valid level)
+        (CommonOrOfExpandedPattern level)
     -> IO (CommonOrOfExpandedPattern level)
 evaluate
     tools

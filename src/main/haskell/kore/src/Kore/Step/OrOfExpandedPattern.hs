@@ -32,21 +32,13 @@ module Kore.Step.OrOfExpandedPattern
     , traverseFlattenWithPairsGeneric
     ) where
 
+import qualified Data.Functor.Foldable as Recursive
 import           Data.List
                  ( foldl' )
-import           Data.Reflection
-                 ( Given )
 import qualified Data.Set as Set
 
-import           Kore.AST.Common
-                 ( SortedVariable, Variable )
-import           Kore.AST.MetaOrObject
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkOr )
-import           Kore.ASTUtils.SmartPatterns
-                 ( pattern Top_ )
-import           Kore.IndexedModule.MetadataTools
-                 ( SymbolOrAliasSorts )
+import           Kore.AST.Pure
+import           Kore.AST.Valid
 import           Kore.Predicate.Predicate
                  ( pattern PredicateTrue, makeTruePredicate )
 import           Kore.Step.ExpandedPattern
@@ -54,6 +46,7 @@ import           Kore.Step.ExpandedPattern
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
 import           Kore.Step.Pattern
 import qualified Kore.Unification.Substitution as Substitution
+import           Kore.Unparser
 
 {-| 'MultiOr' is a Matching logic or of its children
 
@@ -158,9 +151,10 @@ isTrue :: OrOfExpandedPattern level variable -> Bool
 isTrue
     (MultiOr
         [ Predicated
-            {term = Top_ _, predicate = PredicateTrue, substitution}
+            { term, predicate = PredicateTrue, substitution }
         ]
     )
+  | (Recursive.project -> _ :< TopPattern _) <- term
   = Substitution.null substitution
 isTrue _ = False
 
@@ -413,10 +407,10 @@ an 'ExpandedPattern'.
 -}
 toExpandedPattern
     ::  ( MetaOrObject level
-        , Given (SymbolOrAliasSorts level)
         , SortedVariable variable
         , Eq (variable level)
         , Show (variable level)
+        , Unparse (variable level)
         )
     => OrOfExpandedPattern level variable -> ExpandedPattern level variable
 toExpandedPattern (MultiOr []) = ExpandedPattern.bottom

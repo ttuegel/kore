@@ -11,8 +11,7 @@ import Data.Reflection
        ( give )
 
 import           Kore.AST.Pure
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkCharLiteral, mkOr, mkStringLiteral, mkVar )
+import           Kore.AST.Valid
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools, SymbolOrAliasSorts )
@@ -54,7 +53,9 @@ test_patternAttributes = give mockSymbolOrAliasSorts
                 dv = DomainValue
                     { domainValueSort = testSort
                     , domainValueChild =
-                        Domain.BuiltinPattern (mkStringLiteral "10")
+                        Domain.BuiltinPattern
+                        $ eraseAnnotations
+                        $ mkStringLiteral "10"
                     }
             assertEqualWithExplanation "FunctionalDomainValue"
                 (FunctionalDomainValue dv)

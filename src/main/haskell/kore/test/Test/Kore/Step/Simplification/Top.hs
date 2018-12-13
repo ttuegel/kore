@@ -8,8 +8,7 @@ import Test.Tasty.HUnit
        ( testCase )
 
 import           Kore.AST.Pure
-import           Kore.ASTUtils.SmartConstructors
-import           Kore.ASTUtils.SmartPatterns
+import           Kore.AST.Valid
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
 import           Kore.Step.OrOfExpandedPattern
                  ( CommonOrOfExpandedPattern )

@@ -16,8 +16,7 @@ import           Data.These
                  ( These (That) )
 
 import           Kore.AST.Pure
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkVar )
+import           Kore.AST.Valid
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools, SymbolOrAliasSorts )
 import           Kore.Predicate.Predicate
@@ -326,14 +325,14 @@ simpleEvaluator
         , ShowMetaOrObject variable
         )
     => [(StepPattern Object variable, StepPattern Object variable)]
-    -> Application Object (StepPattern Object variable)
+    -> CofreeF (Application Object) (Valid Object) (StepPattern Object variable)
     -> Simplifier
         ( AttemptedFunction Object variable
         , SimplificationProof Object
         )
 simpleEvaluator [] _ = return (NotApplicable, SimplificationProof)
-simpleEvaluator ((from, to) : ps) app
-  | from == embed (mempty :< ApplicationPattern app) =
+simpleEvaluator ((from, to) : ps) validApp@(valid :< app)
+  | from == embed (valid :< ApplicationPattern app) =
     return
         ( Applied
             (OrOfExpandedPattern.make
@@ -342,4 +341,4 @@ simpleEvaluator ((from, to) : ps) app
         , SimplificationProof
         )
   | otherwise =
-    simpleEvaluator ps app
+    simpleEvaluator ps validApp

@@ -14,11 +14,9 @@ import qualified Data.Set as Set
 import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
 
 import           Kore.AST.Pure
+import           Kore.AST.Valid
 import           Kore.ASTHelpers
                  ( ApplicationSorts (..) )
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkTop )
-import           Kore.ASTUtils.SmartPatterns
 import           Kore.Implicit.ImplicitSorts
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools (..), SymbolOrAliasSorts )
@@ -62,7 +60,7 @@ test_userDefinedFunction =
                 AttemptedFunction.Applied $ OrOfExpandedPattern.make
                     [ Predicated
                         { term =
-                            asApplication $ metaG (Var_ $ x patternMetaSort)
+                            asApplicationPattern $ metaG (mkVar $ x patternMetaSort)
                         , predicate = makeTruePredicate
                         , substitution = mempty
                         }
@@ -72,15 +70,15 @@ test_userDefinedFunction =
                 mockMetadataTools
                 (EqualityRule RulePattern
                     { left =
-                        asApplication $ metaF (Var_ $ x patternMetaSort)
+                        asApplicationPattern $ metaF (mkVar $ x patternMetaSort)
                     , right =
-                        asApplication $ metaG (Var_ $ x patternMetaSort)
+                        asApplicationPattern $ metaG (mkVar $ x patternMetaSort)
                     , requires = makeTruePredicate
                     , attributes = def
                     }
                 )
                 (mockSimplifier [])
-                (metaF (Var_ $ x patternMetaSort))
+                (metaF (mkVar $ x patternMetaSort))
         assertEqualWithExplanation "f(x) => g(x)" expect actual
 
     , testCase "Cannot apply step with unsat axiom pre-condition" $ do
@@ -91,15 +89,15 @@ test_userDefinedFunction =
                 mockMetadataTools
                 (EqualityRule RulePattern
                     { left =
-                        asApplication $ metaF (Var_ $ x patternMetaSort)
+                        asApplicationPattern $ metaF (mkVar $ x patternMetaSort)
                     , right =
-                        asApplication $ metaG (Var_ $ x patternMetaSort)
+                        asApplicationPattern $ metaG (mkVar $ x patternMetaSort)
                     , requires = makeFalsePredicate
                     , attributes = def
                     }
                 )
                 (mockSimplifier [])
-                (metaF (Var_ $ x patternMetaSort))
+                (metaF (mkVar $ x patternMetaSort))
         assertEqualWithExplanation "f(x) => g(x) requires false" expect actual
 
     , testCase "Cannot apply step with unsat condition" $ do
@@ -111,9 +109,9 @@ test_userDefinedFunction =
                 mockMetadataTools
                 (EqualityRule RulePattern
                     { left =
-                        asApplication $ metaF (Var_ $ x patternMetaSort)
+                        asApplicationPattern $ metaF (mkVar $ x patternMetaSort)
                     , right =
-                        asApplication $ metaG (Var_ $ x patternMetaSort)
+                        asApplicationPattern $ metaG (mkVar $ x patternMetaSort)
                     , requires = makeTruePredicate
                     , attributes = def
                     }
@@ -122,7 +120,7 @@ test_userDefinedFunction =
                     -- Evaluate Top to Bottom.
                     [ (mkTop, ([], SimplificationProof)) ]
                 )
-                (metaF (Var_ $ x patternMetaSort))
+                (metaF (mkVar $ x patternMetaSort))
         assertEqualWithExplanation "" expect actual
 
     , testCase "Reevaluates the step application" $ do
@@ -130,7 +128,7 @@ test_userDefinedFunction =
                 AttemptedFunction.Applied $ OrOfExpandedPattern.make
                     [ Predicated
                         { term =
-                            asApplication $ metaH (Var_ $ x patternMetaSort)
+                            asApplicationPattern $ metaH (mkVar $ x patternMetaSort)
                         , predicate = makeTruePredicate
                         , substitution = mempty
                         }
@@ -140,19 +138,19 @@ test_userDefinedFunction =
                 mockMetadataTools
                 (EqualityRule RulePattern
                     { left =
-                        asApplication $ metaF (Var_ $ x patternMetaSort)
+                        asApplicationPattern $ metaF (mkVar $ x patternMetaSort)
                     , right =
-                        asApplication $ metaG (Var_ $ x patternMetaSort)
+                        asApplicationPattern $ metaG (mkVar $ x patternMetaSort)
                     , requires = makeTruePredicate
                     , attributes = def
                     }
                 )
                 (mockSimplifier
-                    [   (   asApplication $ metaG (Var_ $ x patternMetaSort)
+                    [   (   asApplicationPattern $ metaG (mkVar $ x patternMetaSort)
                         ,   (   [ Predicated
                                     { term =
-                                        asApplication
-                                        $ metaH (Var_ $ x patternMetaSort)
+                                        asApplicationPattern
+                                        $ metaH (mkVar $ x patternMetaSort)
                                     , predicate = makeTruePredicate
                                     , substitution = mempty
                                     }
@@ -162,7 +160,7 @@ test_userDefinedFunction =
                         )
                     ]
                 )
-                (metaF (Var_ $ x patternMetaSort))
+                (metaF (mkVar $ x patternMetaSort))
         assertEqualWithExplanation "f(x) => g(x) and g(x) => h(x)" expect actual
 
     , testCase "Does not reevaluate the step application with incompatible condition" $ do
@@ -174,19 +172,19 @@ test_userDefinedFunction =
                 mockMetadataTools
                 (EqualityRule RulePattern
                     { left =
-                        asApplication $ metaF (Var_ $ x patternMetaSort)
+                        asApplicationPattern $ metaF (mkVar $ x patternMetaSort)
                     , right =
-                        asApplication $ metaG (Var_ $ x patternMetaSort)
+                        asApplicationPattern $ metaG (mkVar $ x patternMetaSort)
                     , requires = makeTruePredicate
                     , attributes = def
                     }
                 )
                 (mockSimplifier
-                    [   (   asApplication $ metaG (Var_ $ x patternMetaSort)
+                    [   (   asApplicationPattern $ metaG (mkVar $ x patternMetaSort)
                         ,   (   [ Predicated
                                     { term =
-                                        asApplication
-                                        $ metaH (Var_ $ x patternMetaSort)
+                                        asApplicationPattern
+                                        $ metaH (mkVar $ x patternMetaSort)
                                     , predicate = makeFalsePredicate
                                     , substitution = mempty
                                     }
@@ -196,7 +194,7 @@ test_userDefinedFunction =
                         )
                     ]
                 )
-                (metaF (Var_ $ x patternMetaSort))
+                (metaF (mkVar $ x patternMetaSort))
         assertEqualWithExplanation
             "f(x) => g(x) and g(x) => h(x) + false"
             expect
@@ -207,10 +205,10 @@ test_userDefinedFunction =
                 AttemptedFunction.Applied $ OrOfExpandedPattern.make
                     [ Predicated
                         { term =
-                            asApplication $ metaG (Var_ $ b patternMetaSort)
+                            asApplicationPattern $ metaG (mkVar $ b patternMetaSort)
                         , predicate = makeTruePredicate
                         , substitution = Substitution.wrap
-                            [(a patternMetaSort, Var_ $ b patternMetaSort)]
+                            [(a patternMetaSort, mkVar $ b patternMetaSort)]
                         }
                     ]
         actual <-
@@ -218,19 +216,19 @@ test_userDefinedFunction =
                 mockMetadataTools
                 (EqualityRule RulePattern
                     { left  =
-                        asApplication $ metaSigma
-                            (Var_ $ x patternMetaSort)
-                            (Var_ $ x patternMetaSort)
+                        asApplicationPattern $ metaSigma
+                            (mkVar $ x patternMetaSort)
+                            (mkVar $ x patternMetaSort)
                     , right =
-                        asApplication $ metaG (Var_ $ x patternMetaSort)
+                        asApplicationPattern $ metaG (mkVar $ x patternMetaSort)
                     , requires = makeTruePredicate
                     , attributes = def
                     }
                 )
                 (mockSimplifier [])
                 (metaSigma
-                    (Var_ $ a patternMetaSort)
-                    (Var_ $ b patternMetaSort)
+                    (mkVar $ a patternMetaSort)
+                    (mkVar $ b patternMetaSort)
                 )
         assertEqualWithExplanation "sigma(x,x) => g(x) vs sigma(a, b)" expect actual
 
@@ -239,15 +237,15 @@ test_userDefinedFunction =
                 AttemptedFunction.Applied $ OrOfExpandedPattern.make
                     [ Predicated
                         { term =
-                            asApplication $ metaH (Var_ $ c patternMetaSort)
+                            asApplicationPattern $ metaH (mkVar $ c patternMetaSort)
                         , predicate = makeTruePredicate
                         , substitution = Substitution.wrap
                             [   ( a patternMetaSort
                                 -- TODO(virgil): Do we want normalization here?
-                                , Var_ $ c patternMetaSort
+                                , mkVar $ c patternMetaSort
                                 )
                             ,   ( b patternMetaSort
-                                , Var_ $ c patternMetaSort
+                                , mkVar $ c patternMetaSort
                                 )
                             ]
                         }
@@ -257,25 +255,25 @@ test_userDefinedFunction =
                 mockMetadataTools
                 (EqualityRule RulePattern
                     { left  =
-                        asApplication $ metaSigma
-                            (Var_ $ x patternMetaSort)
-                            (Var_ $ x patternMetaSort)
+                        asApplicationPattern $ metaSigma
+                            (mkVar $ x patternMetaSort)
+                            (mkVar $ x patternMetaSort)
                     , right =
-                        asApplication $ metaG (Var_ $ x patternMetaSort)
+                        asApplicationPattern $ metaG (mkVar $ x patternMetaSort)
                     , requires = makeTruePredicate
                     , attributes = def
                     }
                 )
                 (mockSimplifier
-                    [   (   asApplication $ metaG (Var_ $ b patternMetaSort)
+                    [   (   asApplicationPattern $ metaG (mkVar $ b patternMetaSort)
                         ,   (   [ Predicated
                                     { term =
-                                        asApplication
-                                        $ metaH (Var_ $ c patternMetaSort)
+                                        asApplicationPattern
+                                        $ metaH (mkVar $ c patternMetaSort)
                                     , predicate = makeTruePredicate
                                     , substitution = Substitution.wrap
                                         [   ( b patternMetaSort
-                                            , Var_ $ c patternMetaSort
+                                            , mkVar $ c patternMetaSort
                                             )
                                         ]
                                     }
@@ -286,8 +284,8 @@ test_userDefinedFunction =
                     ]
                 )
                 (metaSigma
-                    (Var_ $ a patternMetaSort)
-                    (Var_ $ b patternMetaSort)
+                    (mkVar $ a patternMetaSort)
+                    (mkVar $ b patternMetaSort)
                 )
         assertEqualWithExplanation
             "sigma(x,x) => g(x) vs sigma(a, b) and g(b) => h(c) + a=c,b=c"
@@ -326,9 +324,12 @@ fSymbol = SymbolOrAlias
     }
 
 metaF
-    :: CommonPurePattern Meta domain
-    -> Application Meta (CommonPurePattern Meta domain)
-metaF p = Application fSymbol [p]
+    :: CommonStepPattern Meta
+    -> CofreeF (Application Meta) (Valid Meta) (CommonStepPattern Meta)
+metaF p =
+    valid :< Application fSymbol [p]
+  where
+    valid = Valid { patternSort = patternMetaSort }
 
 
 gSymbol :: SymbolOrAlias Meta
@@ -338,9 +339,12 @@ gSymbol = SymbolOrAlias
     }
 
 metaG
-    :: CommonPurePattern Meta domain
-    -> Application Meta (CommonPurePattern Meta domain)
-metaG p = Application gSymbol [p]
+    :: CommonStepPattern Meta
+    -> CofreeF (Application Meta) (Valid Meta) (CommonStepPattern Meta)
+metaG p =
+    valid :< Application gSymbol [p]
+  where
+    valid = Valid { patternSort = patternMetaSort }
 
 hSymbol :: SymbolOrAlias Meta
 hSymbol = SymbolOrAlias
@@ -349,10 +353,12 @@ hSymbol = SymbolOrAlias
     }
 
 metaH
-    :: CommonPurePattern Meta domain
-    -> Application Meta (CommonPurePattern Meta domain)
-metaH p = Application hSymbol [p]
-
+    :: CommonStepPattern Meta
+    -> CofreeF (Application Meta) (Valid Meta) (CommonStepPattern Meta)
+metaH p =
+    valid :< Application hSymbol [p]
+  where
+    valid = Valid { patternSort = patternMetaSort }
 
 sigmaSymbol :: SymbolOrAlias Meta
 sigmaSymbol = SymbolOrAlias
@@ -361,23 +367,26 @@ sigmaSymbol = SymbolOrAlias
     }
 
 metaSigma
-    :: CommonPurePattern Meta domain
-    -> CommonPurePattern Meta domain
-    -> Application Meta (CommonPurePattern Meta domain)
-metaSigma p1 p2 = Application sigmaSymbol [p1, p2]
+    :: CommonStepPattern Meta
+    -> CommonStepPattern Meta
+    -> CofreeF (Application Meta) (Valid Meta) (CommonStepPattern Meta)
+metaSigma p1 p2 =
+    valid :< Application sigmaSymbol [p1, p2]
+  where
+    valid = Valid { patternSort = patternMetaSort }
 
-asApplication
-    :: Functor domain
-    => Application Meta (CommonPurePattern Meta domain)
-    -> CommonPurePattern Meta domain
-asApplication = asPurePattern . (mempty :<) . ApplicationPattern
+asApplicationPattern
+    :: CofreeF (Application Meta) (Valid Meta) (CommonStepPattern Meta)
+    -> CommonStepPattern Meta
+asApplicationPattern (valid :< app) =
+    asPurePattern (valid :< ApplicationPattern app)
 
 evaluateWithAxiom
     :: MetaOrObject level
     => MetadataTools level StepperAttributes
     -> EqualityRule level
     -> CommonStepPatternSimplifier level
-    -> Application level (CommonStepPattern level)
+    -> CofreeF (Application level) (Valid level) (CommonStepPattern level)
     -> IO (CommonAttemptedFunction level)
 evaluateWithAxiom
     metadataTools

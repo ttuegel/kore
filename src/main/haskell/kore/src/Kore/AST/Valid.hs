@@ -78,6 +78,8 @@ module Kore.AST.Valid
     , pattern V
     , pattern StringLiteral_
     , pattern CharLiteral_
+    -- * Re-exports
+    , module Kore.Annotation.Valid
     ) where
 
 import           Control.Applicative
@@ -280,7 +282,7 @@ applySymbol'
     -> pattern'
 applySymbol' sentence params children =
     mkApp
-        resultSort
+        resultSort'
         symbolOrAlias
         children
   where
@@ -317,7 +319,7 @@ applySymbol' sentence params children =
                         , unparseToString symbolOrAlias
                         ]
                 These var sort -> Map.insert var sort map'
-    resultSort =
+    resultSort' =
         substituteSortVariables
             substitution
             sentenceSymbolResultSort
@@ -585,7 +587,7 @@ mkTop
 mkTop = mkTop' predicateSort
 
 mkVar
-    :: (Functor domain, MetaOrObject level, SortedVariable variable)
+    :: (Functor domain, SortedVariable variable)
     => variable level
     -> PurePattern level domain variable (Valid level)
 mkVar var =
@@ -631,9 +633,7 @@ symS x s =
     SymbolOrAlias (noLocationId x) s
 
 mkAxiom'
-    ::  ( patternType ~ PurePattern level domain variable (Valid level)
-        , sortParam ~ SortVariable level
-        )
+    :: patternType ~ PurePattern level domain variable (Valid level)
     => [sortParam]
     -> patternType
     -> SentenceAxiom sortParam patternType
@@ -645,9 +645,7 @@ mkAxiom' sentenceAxiomParameters sentenceAxiomPattern =
         }
 
 mkAxiom
-    ::  ( patternType ~ PurePattern level domain variable (Valid level)
-        , sortParam ~ SortVariable level
-        )
+    :: patternType ~ PurePattern level domain variable (Valid level)
     => patternType
     -> SentenceAxiom sortParam patternType
 mkAxiom = mkAxiom' []
@@ -661,7 +659,7 @@ mkSymbol'
     -> [Sort level]
     -> Sort level
     -> SentenceSymbol level patternType
-mkSymbol' symbolConstructor symbolParams argumentSorts resultSort =
+mkSymbol' symbolConstructor symbolParams argumentSorts resultSort' =
     SentenceSymbol
         { sentenceSymbolSymbol =
             Symbol
@@ -669,7 +667,7 @@ mkSymbol' symbolConstructor symbolParams argumentSorts resultSort =
                 , symbolParams
                 }
         , sentenceSymbolSorts = argumentSorts
-        , sentenceSymbolResultSort = resultSort
+        , sentenceSymbolResultSort = resultSort'
         , sentenceSymbolAttributes = Attributes []
         }
 
@@ -693,7 +691,7 @@ mkAlias'
     -> [Variable level]
     -> patternType
     -> SentenceAlias level patternType
-mkAlias' aliasConstructor aliasParams resultSort arguments right =
+mkAlias' aliasConstructor aliasParams resultSort' arguments right =
     SentenceAlias
         { sentenceAliasAlias =
             Alias
@@ -701,7 +699,7 @@ mkAlias' aliasConstructor aliasParams resultSort arguments right =
                 , aliasParams
                 }
         , sentenceAliasSorts = argumentSorts
-        , sentenceAliasResultSort = resultSort
+        , sentenceAliasResultSort = resultSort'
         , sentenceAliasLeftPattern =
             Application
                 { applicationSymbolOrAlias =

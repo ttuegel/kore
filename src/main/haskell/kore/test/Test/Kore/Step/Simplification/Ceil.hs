@@ -11,10 +11,7 @@ import Data.Reflection
        ( give )
 
 import           Kore.AST.Pure
-import           Kore.ASTUtils.SmartConstructors
-                 ( mkBottom, mkDomainValue, mkStringLiteral, mkTop )
-import           Kore.ASTUtils.SmartPatterns
-                 ( pattern Bottom_ )
+import           Kore.AST.Valid
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )
@@ -321,7 +318,10 @@ test_ceilSimplification = give mockSymbolOrAliasSorts
                     { term =
                         mkDomainValue
                             testSort
-                            (Domain.BuiltinPattern (mkStringLiteral "a"))
+                            (Domain.BuiltinPattern
+                                $ eraseAnnotations
+                                $ mkStringLiteral "a"
+                            )
                     , predicate = makeTruePredicate
                     , substitution = mempty
                     }
