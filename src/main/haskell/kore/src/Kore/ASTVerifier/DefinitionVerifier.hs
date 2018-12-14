@@ -224,7 +224,7 @@ indexImplicitModule implicitModule = do
             [ Text.pack (show StringSort)
             -- Reserved for internal use.
             -- See TODO PREDICATE in Kore.ASTUtils.SmartConstructors
-            , "PREDICATE"
+            , "_PREDICATE"
             ]
     implicitModuleName = moduleName implicitModule
     moduleNameForError = getModuleNameForError implicitModuleName

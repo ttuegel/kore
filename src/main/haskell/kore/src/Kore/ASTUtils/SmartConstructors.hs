@@ -99,14 +99,15 @@ Add a constructor
 > data Sort level = ... | FlexibleSort
 
 to use internally as a placeholder where the predicate sort is not yet
-known. Using the sort PREDICATE{} is a kludge; the backend will melt down if the
-user tries to define a sort named PREDICATE{}.
+known. Using the sort _PREDICATE{} is a kludge; the backend will melt down if
+the user tries to define a sort named _PREDICATE{}. (At least, this is not
+actually a valid identifier in Kore.)
 
-Until this is fixed, the identifier PREDICATE is reserved in
+Until this is fixed, the identifier _PREDICATE is reserved in
 Kore.ASTVerifier.DefinitionVerifier.indexImplicitModule.
 
 -}
-predicateSort = mkSort "PREDICATE"
+predicateSort = mkSort "_PREDICATE"
 
 patternLens
     ::  forall f level domain variable1 variable2 annotation.
@@ -795,4 +796,4 @@ symS x s =
 
 -- | Placeholder. Should never appear in output of 'mk' funcs
 fixmeSort :: Sort level
-fixmeSort = mkSort "FIXME"
+fixmeSort = mkSort "_FIXME"
