@@ -338,8 +338,8 @@ test_predicate = give mockSymbolOrAliasSorts
     , testGroup "makePredicate"
         [testCase "makePredicate yields wrapPredicate"
             (traverse_ (uncurry makePredicateYieldsWrapPredicate)
-                [ ("Top", mkTop)
-                , ("Bottom", mkBottom)
+                [ ("Top", mkTopOf pa1)
+                , ("Bottom", mkBottomOf pa1)
                 , ("And", mkAnd pa1 pa2)
                 , ("Or", mkOr pa1 pa2)
                 , ("Iff", mkIff pa1 pa2)

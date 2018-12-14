@@ -35,7 +35,6 @@ import           Kore.IndexedModule.IndexedModule
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools (..), SymbolOrAliasSorts,
                  extractMetadataTools )
-import qualified Kore.Predicate.Predicate as Predicate
 import           Kore.Step.AxiomPatterns
                  ( RewriteRule )
 import           Kore.Step.BaseStep
@@ -45,13 +44,11 @@ import qualified Kore.Step.BaseStep as StepResult
 import           Kore.Step.Error
                  ( StepError )
 import           Kore.Step.ExpandedPattern
-                 ( CommonExpandedPattern, Predicated (..) )
+                 ( CommonExpandedPattern )
 import           Kore.Step.Function.Data
-import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
 import           Kore.Step.Pattern
 import           Kore.Step.Simplification.Data
 import qualified Kore.Step.Simplification.Pattern as Pattern
-import qualified Kore.Step.Simplification.PredicateSubstitution as PredicateSubstitution
 import           Kore.Step.StepperAttributes
 import           SMT
                  ( MonadSMT (..), SMT, Solver )
@@ -69,27 +66,6 @@ mkPair
     -> CommonStepPattern Object
 mkPair lSort rSort l r =
     mkApp (pairSort lSort rSort) (pairSymbol lSort rSort) [l, r]
-
-substitutionSimplifier
-    :: MetadataTools level StepperAttributes
-    -> PredicateSubstitutionSimplifier level Simplifier
-substitutionSimplifier tools =
-    PredicateSubstitution.create
-        tools
-        (StepPatternSimplifier
-            (\_ p ->
-                return
-                    ( OrOfExpandedPattern.make
-                        [ Predicated
-                            { term = mkTop
-                            , predicate = Predicate.wrapPredicate p
-                            , substitution = mempty
-                            }
-                        ]
-                    , SimplificationProof
-                    )
-            )
-        )
 
 -- | 'testSymbol' is useful for writing unit tests for symbols.
 testSymbolWithSolver

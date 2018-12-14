@@ -13,7 +13,6 @@ import qualified Kore.Step.ExpandedPattern as ExpandedPattern
 import           Kore.Step.OrOfExpandedPattern
                  ( CommonOrOfExpandedPattern )
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
-import           Kore.Step.Pattern
 import           Kore.Step.Simplification.Top
                  ( simplify )
 
@@ -25,7 +24,7 @@ test_topSimplification =
     [ testCase "Top evaluates to top"
         (assertEqualWithExplanation ""
             (OrOfExpandedPattern.make
-                [ ExpandedPattern.top ]
+                [ ExpandedPattern.top testSort ]
             )
             (evaluate
                 Top {topSort = testSort}
@@ -34,10 +33,7 @@ test_topSimplification =
     ]
 
 testSort :: Sort Object
-testSort =
-    case mkTop :: CommonStepPattern Object of
-        Top_ sort -> sort
-        _ -> error "unexpected"
+testSort = predicateSort
 
 evaluate
     ::  ( MetaOrObject level)

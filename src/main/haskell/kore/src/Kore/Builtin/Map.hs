@@ -187,7 +187,7 @@ evalLookup =
         -> Sort Object
         -> [StepPattern Object variable]
         -> Simplifier (AttemptedFunction Object variable)
-    evalLookup0 tools _ _ arguments =
+    evalLookup0 tools _ resultSort arguments =
         Builtin.getAttemptedFunction
         (do
             let (_map, _key) =
@@ -197,7 +197,8 @@ evalLookup =
                 emptyMap = do
                     _map <- expectBuiltinMap ctx _map
                     if Map.null _map
-                        then Builtin.appliedFunction ExpandedPattern.bottom
+                        then Builtin.appliedFunction
+                            (ExpandedPattern.bottom resultSort)
                         else empty
                 bothConcrete = do
                     _key <- Builtin.expectNormalConcreteTerm tools _key
@@ -205,7 +206,11 @@ evalLookup =
                     Builtin.appliedFunction $ maybeBottom $ Map.lookup _key _map
             emptyMap <|> bothConcrete
         )
-    maybeBottom = maybe ExpandedPattern.bottom ExpandedPattern.fromPurePattern
+      where
+        maybeBottom =
+            maybe
+                (ExpandedPattern.bottom resultSort)
+                ExpandedPattern.fromPurePattern
 
 -- | evaluates the map element builtin.
 evalElement :: Builtin.Function
@@ -272,7 +277,8 @@ evalConcat =
                         then
                             -- Result is ‘\bottom{}()’ when there is overlap
                             -- between the keys of the operands.
-                            Builtin.appliedFunction ExpandedPattern.bottom
+                            Builtin.appliedFunction
+                                (ExpandedPattern.bottom resultSort)
                         else
                             returnMap resultSort (Map.union _map1 _map2)
             leftIdentity <|> rightIdentity <|> bothConcrete
@@ -636,11 +642,11 @@ unifyEquals
               | not (Map.null remainder1) =
                 -- There is nothing with which to unify the
                 -- remainder of map1.
-                ExpandedPattern.bottom
+                ExpandedPattern.bottom resultSort
               | not (Map.null remainder2) =
                 -- There is nothing with which to unify the
                 -- remainder of map2.
-                ExpandedPattern.bottom
+                ExpandedPattern.bottom resultSort
               | otherwise =
                 asBuiltinMap <$> (propagatePredicates . discardProofs) intersect
               where
@@ -682,9 +688,9 @@ unifyEquals
             result
               | not (Map.null remainder2) =
                 -- There is nothing with which to unify the remainder of map2.
-                ExpandedPattern.bottom
-              | otherwise = give symbolOrAliasSorts $
-                    pure dv1 -- (DV_ resultSort (BuiltinDomainMap map1))
+                ExpandedPattern.bottom resultSort
+              | otherwise =
+                    pure dv1
                     <* concrete
                     <* frame
               where
@@ -719,4 +725,4 @@ unifyEquals
                     return (result, SimplificationProof)
             _ ->
                 -- Cannot unify a non-element Map with an element Map.
-                return (ExpandedPattern.bottom, SimplificationProof)
+                return (ExpandedPattern.bottom resultSort, SimplificationProof)

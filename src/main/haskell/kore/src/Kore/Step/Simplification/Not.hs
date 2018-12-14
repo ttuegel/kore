@@ -73,7 +73,9 @@ simplifyEvaluated
     -> (OrOfExpandedPattern level variable, SimplificationProof level)
 simplifyEvaluated simplified
   | OrOfExpandedPattern.isFalse simplified =
-    (OrOfExpandedPattern.make [ExpandedPattern.top], SimplificationProof)
+    (,)
+        (OrOfExpandedPattern.make [ExpandedPattern.top predicateSort])
+        SimplificationProof
   | OrOfExpandedPattern.isTrue simplified =
     (OrOfExpandedPattern.make [], SimplificationProof)
   | otherwise =
@@ -113,7 +115,7 @@ makeEvaluate
             , substitution = mempty
             }
         , Predicated
-            { term = mkTop
+            { term = mkTopOf term
             , predicate =
                 makeNotPredicate
                     (makeAndPredicate
@@ -138,7 +140,7 @@ makeTermNot
 -- TODO: maybe other simplifications like
 -- not ceil = floor not
 -- not forall = exists not
-makeTermNot term@(Recursive.project -> _ :< projected)
-  | BottomPattern _ <- projected = mkTop' (getSort term)
-  | TopPattern _ <- projected = mkBottom' (getSort term)
+makeTermNot term@(Recursive.project -> Valid { patternSort } :< projected)
+  | BottomPattern _ <- projected = mkTop patternSort
+  | TopPattern _ <- projected = mkBottom patternSort
   | otherwise = mkNot term

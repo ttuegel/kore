@@ -23,7 +23,6 @@ import           Kore.IndexedModule.MetadataTools
 import           Kore.Step.ExpandedPattern
                  ( ExpandedPattern, Predicated (..) )
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
-                 ( bottom, isBottom, isTop )
 import           Kore.Step.OrOfExpandedPattern
                  ( OrOfExpandedPattern )
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
@@ -167,9 +166,9 @@ makeEvaluate
     -> ExpandedPattern level variable
     -> Simplifier (ExpandedPattern level variable, SimplificationProof level)
 makeEvaluate
-    tools substitutionSimplifier first second
+    tools substitutionSimplifier first@Predicated { term } second
   | ExpandedPattern.isBottom first || ExpandedPattern.isBottom second =
-    return (ExpandedPattern.bottom, SimplificationProof)
+    return (ExpandedPattern.bottomOf term, SimplificationProof)
   | ExpandedPattern.isTop first =
     return (second, SimplificationProof)
   | ExpandedPattern.isTop second =

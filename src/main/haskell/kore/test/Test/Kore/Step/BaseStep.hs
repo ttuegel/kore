@@ -322,7 +322,7 @@ test_baseStep =
     -- sigma(x, x) -> x   vs   sigma(g(a), f(b))
     -- Expected: error because g(a) != f(b)
     , testCase "Symbol clashes." $ do
-        let expect = Right ExpandedPattern.bottom
+        let expect = Right (ExpandedPattern.bottom patternMetaSort)
         actual <-
             runStep
                 mockMetadataTools
@@ -341,7 +341,7 @@ test_baseStep =
     -- vs
     -- sigma(sigma(a, f(b)), sigma(a, b))
     , testCase "Impossible substitution." $ do
-        let expect = Right ExpandedPattern.bottom
+        let expect = Right (ExpandedPattern.bottom patternMetaSort)
         actual <-
             runStep
                 mockMetadataTools
@@ -384,7 +384,7 @@ test_baseStep =
     -- vs
     -- sigma(a, f(b)) with substitution b=a
     , testCase "Impossible substitution (ctor)." $ do
-        let expect = Right ExpandedPattern.bottom
+        let expect = Right (ExpandedPattern.bottom patternMetaSort)
         actual <-
             runStep
                 mockMetadataTools
@@ -616,7 +616,7 @@ test_baseStep =
     -- "sl2"
     -- Expected: bottom
     , testCase "Matching different string literals is bottom" $ do
-        let expect = Right ExpandedPattern.bottom
+        let expect = Right (ExpandedPattern.bottom stringMetaSort)
         actual <-
             runStep
                 mockMetadataTools
@@ -627,7 +627,7 @@ test_baseStep =
                     }
                 (RewriteRule RulePattern
                     { left = mkStringLiteral "sl1"
-                    , right = mkVar $ x1 patternMetaSort
+                    , right = mkVar $ x1 stringMetaSort
                     , requires = makeTruePredicate
                     , attributes = def
                     }

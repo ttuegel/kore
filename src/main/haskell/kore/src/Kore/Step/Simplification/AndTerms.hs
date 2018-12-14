@@ -49,7 +49,6 @@ import           Kore.Step.ExpandedPattern
                  ( ExpandedPattern, PredicateSubstitution, Predicated (..),
                  erasePredicatedTerm )
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
-                 ( Predicated (..), bottom, fromPurePattern, isBottom )
 import           Kore.Step.Pattern
 import           Kore.Step.PatternAttributes
                  ( isConstructorLikeTop )
@@ -146,7 +145,7 @@ termEqualsAnd tools substitutionSimplifier =
         equalsPredicate =
             give (MetadataTools.symbolOrAliasSorts tools)
                 ( Predicated
-                    { term = mkTop
+                    { term = mkTopOf first
                     , predicate = makeEqualsPredicate first second
                     , substitution = mempty
                     }
@@ -477,16 +476,18 @@ toExpanded
 toExpanded transformer tools first second =
     toExpanded0 <$> transformer tools first second
   where
-    toExpanded0 (Bottom_ _, _proof) =
-        (ExpandedPattern.bottom, SimplificationProof)
     toExpanded0 (term, _proof) =
-        ( Predicated
-            { term = term
-            , predicate = makeTruePredicate
-            , substitution = mempty
-            }
-        , SimplificationProof
-        )
+        case term of
+            Bottom_ _ ->
+                (ExpandedPattern.bottomOf term, SimplificationProof)
+            _ ->
+                ( Predicated
+                    { term = term
+                    , predicate = makeTruePredicate
+                    , substitution = mempty
+                    }
+                , SimplificationProof
+                )
 
 transformerLift
     :: MonadCounter m
@@ -576,11 +577,11 @@ bottomTermEquals
     second
   = case Ceil.makeEvaluateTerm tools second of
     (PredicateTrue, _proof) ->
-        return (ExpandedPattern.bottom, SimplificationProof)
+        return (ExpandedPattern.bottomOf second, SimplificationProof)
     (predicate, _proof) ->
         return
             ( Predicated
-                { term = mkTop
+                { term = mkTopOf second
                 , predicate = give (MetadataTools.symbolOrAliasSorts tools) $
                     makeNotPredicate predicate
                 , substitution = mempty
@@ -788,7 +789,7 @@ sortInjectionAndEqualsAssumesDifferentHeads
 sortInjectionAndEqualsAssumesDifferentHeads
     tools
     termMerger
-    (App_
+    first@(App_
         firstHead@SymbolOrAlias
             { symbolOrAliasConstructor = firstConstructor
             , symbolOrAliasParams = [firstOrigin, firstDestination]
@@ -814,10 +815,10 @@ sortInjectionAndEqualsAssumesDifferentHeads
             mergeSecondIntoFirst
 
           | isFirstConstructorLike || isSecondConstructorLike ->
-            return (ExpandedPattern.bottom, SimplificationProof)
+            return (ExpandedPattern.bottomOf first, SimplificationProof)
 
           | Set.null sortIntersection ->
-            return (ExpandedPattern.bottom, SimplificationProof)
+            return (ExpandedPattern.bottomOf first, SimplificationProof)
 
           | otherwise ->
             (error . unlines)
@@ -887,7 +888,7 @@ sortInjectionAndEqualsAssumesDifferentHeads
         patt
       =
         if ExpandedPattern.isBottom patt
-        then (ExpandedPattern.bottom, SimplificationProof)
+        then (ExpandedPattern.bottom destinationSort, SimplificationProof)
         else ( sortInjection originSort destinationSort <$> patt
             , SimplificationProof
             )
@@ -928,11 +929,11 @@ constructorSortInjectionAndEquals
     -> Maybe (StepPattern level variable, SimplificationProof level)
 constructorSortInjectionAndEquals
     tools
-    (App_ firstHead _)
+    first@(App_ firstHead _)
     (App_ secondHead _)
   | isConstructorSortInjection =
     assert (firstHead /= secondHead) $
-        return (mkBottom, SimplificationProof)
+        return (mkBottomOf first, SimplificationProof)
   where
     -- Are we asked to unify a constructor with a sort injection?
     isConstructorSortInjection =
@@ -959,11 +960,11 @@ constructorAndEqualsAssumesDifferentHeads
     -> Maybe (StepPattern level variable, SimplificationProof level)
 constructorAndEqualsAssumesDifferentHeads
     tools
-    (App_ firstHead _)
+    first@(App_ firstHead _)
     (App_ secondHead _)
   | isConstructor firstHead && isConstructor secondHead =
     assert (firstHead /= secondHead) $
-        return (mkBottom, SimplificationProof)
+        return (mkBottomOf first, SimplificationProof)
   where
     isConstructor = give tools StepperAttributes.isConstructor_
 constructorAndEqualsAssumesDifferentHeads _ _ _ = empty
@@ -1017,7 +1018,7 @@ domainValueAndEqualsAssumesDifferent
     second@(DV_ _ (Domain.BuiltinPattern _))
   =
     assert (first /= second) $
-        return (mkBottom, SimplificationProof)
+        return (mkBottomOf first, SimplificationProof)
 domainValueAndEqualsAssumesDifferent _ _ = empty
 
 {-| Unify two literal strings.
@@ -1038,7 +1039,7 @@ stringLiteralAndEqualsAssumesDifferent
     second@(StringLiteral_ _)
   =
     assert (first /= second) $
-        return (mkBottom, SimplificationProof)
+        return (mkBottomOf first, SimplificationProof)
 stringLiteralAndEqualsAssumesDifferent _ _ = empty
 
 {-| Unify two literal characters.
@@ -1059,7 +1060,7 @@ charLiteralAndEqualsAssumesDifferent
     second@(CharLiteral_ _)
   =
     assert (first /= second) $
-        return (mkBottom, SimplificationProof)
+        return (mkBottomOf first, SimplificationProof)
 charLiteralAndEqualsAssumesDifferent _ _ = empty
 
 {- | Unify any two function patterns.

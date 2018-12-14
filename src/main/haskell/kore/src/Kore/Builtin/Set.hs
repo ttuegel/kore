@@ -526,7 +526,7 @@ unifyEquals
       | set1 == set2 =
         return (unified, SimplificationProof)
       | otherwise =
-        return (ExpandedPattern.bottom, SimplificationProof)
+        return (ExpandedPattern.bottom resultSort, SimplificationProof)
       where
         unified =
             (<$>)
@@ -555,7 +555,7 @@ unifyEquals
         return (normalized, SimplificationProof)
 
       | otherwise =
-        return (ExpandedPattern.bottom, SimplificationProof)
+        return (ExpandedPattern.bottom resultSort, SimplificationProof)
       where
         asBuiltinDomainSet = mkDomainValue resultSort . Domain.BuiltinSet
 
@@ -577,4 +577,4 @@ unifyEquals
                     return (result, SimplificationProof)
             _ ->
                 -- Cannot unify a non-element Set with an element Set.
-                return (ExpandedPattern.bottom, SimplificationProof)
+                return (ExpandedPattern.bottom resultSort, SimplificationProof)

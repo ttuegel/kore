@@ -23,7 +23,7 @@ module Kore.AST.Valid
     , applySymbol
     , applySymbol'
     , mkBottom
-    , mkBottom'
+    , mkBottomOf
     , mkCeil
     , mkCeil'
     , mkDomainValue
@@ -42,7 +42,7 @@ module Kore.AST.Valid
     , mkOr
     , mkRewrites
     , mkTop
-    , mkTop'
+    , mkTopOf
     , mkVar
     , mkStringLiteral
     , mkCharLiteral
@@ -117,24 +117,21 @@ forceSort
     => Sort level
     -> pattern'
     -> pattern'
-forceSort forcedSort = Recursive.apo forceSortWorker
+forceSort forcedSort = Recursive.apo forceSort1
   where
-    forceSortWorker original@(Recursive.project -> valid :< pattern') =
-        (valid { patternSort = forcedSort } :<)
-            (case valid of
-                Valid { patternSort }
-                  | patternSort == forcedSort    -> Left <$> pattern'
-                  | patternSort == predicateSort -> forceSortWorkerPredicate
-                  | otherwise                    -> illSorted
-            )
+    forceSort1 original@(Recursive.project -> valid :< pattern')
+        | patternSort == forcedSort = valid' :< (Left <$> pattern')
+        | otherwise                 = valid' :< forceSort0
       where
+        Valid { patternSort } = valid
+        valid' = valid { patternSort = forcedSort }
         illSorted =
             (error . unlines)
             [ "Could not force pattern to sort '"
                 ++ unparseToString forcedSort ++ "':"
             , unparseToString original
             ]
-        forceSortWorkerPredicate =
+        forceSort0 =
             case pattern' of
                 -- Predicates: Force sort and stop.
                 BottomPattern bottom' ->
@@ -204,10 +201,9 @@ forceSort forcedSort = Recursive.apo forceSortWorker
 {- | Call the argument function with two patterns whose sorts agree.
 
 If one pattern is flexibly sorted, the result is the rigid sort of the other
-pattern. If both patterns are flexibly sorted, then the result is
-'predicateSort'. If both patterns have the same rigid sort, that is the
-result. It is an error if the patterns are rigidly sorted but do not have the
-same sort.
+pattern. If both patterns are flexibly sorted, then the result is the first
+sort. If both patterns have the same rigid sort, that is the result. It is an
+error if the patterns are rigidly sorted but do not have the same sort.
 
  -}
 makeSortsAgree
@@ -223,7 +219,7 @@ makeSortsAgree withPatterns = \pattern1 pattern2 ->
     let
         sort1 = getRigidSort pattern1
         sort2 = getRigidSort pattern2
-        sort = fromMaybe predicateSort (sort1 <|> sort2)
+        sort = fromMaybe (getSort pattern1) (sort1 <|> sort2)
         !pattern1' = forceSort sort pattern1
         !pattern2' = forceSort sort pattern2
     in
@@ -231,14 +227,43 @@ makeSortsAgree withPatterns = \pattern1 pattern2 ->
 {-# INLINE makeSortsAgree #-}
 
 getRigidSort
-    :: Traversable domain
+    ::  forall level domain variable.
+        Functor domain
     => PurePattern level domain variable (Valid level)
     -> Maybe (Sort level)
-getRigidSort pattern' =
-    case getSort pattern' of
-        sort
-          | sort == predicateSort -> Nothing
-          | otherwise -> Just sort
+getRigidSort = Recursive.fold getRigidSort1
+  where
+    getRigidSort1 (valid :< pattern') =
+        case pattern' of
+            -- Rigid patterns
+            VariablePattern _ -> rigid
+            ApplicationPattern _ -> rigid
+            DomainValuePattern _ -> rigid
+            CharLiteralPattern _ -> rigid
+            StringLiteralPattern _ -> rigid
+            -- Flexible patterns
+            BottomPattern _ -> flexible
+            TopPattern _ -> flexible
+            CeilPattern _ -> flexible
+            FloorPattern _ -> flexible
+            EqualsPattern _ -> flexible
+            InPattern _ -> flexible
+            -- Connectives
+            AndPattern and' -> connective and'
+            OrPattern or' -> connective or'
+            IffPattern iff' -> connective iff'
+            ImpliesPattern implies' -> connective implies'
+            NotPattern not' -> connective not'
+            NextPattern next' -> connective next'
+            RewritesPattern rewrites' -> connective rewrites'
+            ExistsPattern exists' -> connective exists'
+            ForallPattern forall' -> connective forall'
+      where
+        Valid { patternSort } = valid
+        rigid = Just patternSort
+        flexible = Nothing
+        connective :: Foldable f => f (Maybe (Sort level)) -> Maybe (Sort level)
+        connective con = patternSort <$ asum con
 
 mkAnd
     ::  ( Traversable domain
@@ -333,20 +358,21 @@ applySymbol
     -> pattern'
 applySymbol sentence = applySymbol' sentence []
 
-mkBottom'
+mkBottom
     :: Functor domain
     => Sort level
     -> PurePattern level domain variable (Valid level)
-mkBottom' bottomSort =
+mkBottom bottomSort =
     asPurePattern (valid :< BottomPattern bottom)
   where
     valid = Valid { patternSort = bottomSort }
     bottom = Bottom { bottomSort }
 
-mkBottom
+mkBottomOf
     :: Functor domain
     => PurePattern level domain variable (Valid level)
-mkBottom = mkBottom' predicateSort
+    -> PurePattern level domain variable (Valid level)
+mkBottomOf = mkBottom . getSort
 
 mkCeil'
     :: Functor domain
@@ -364,7 +390,7 @@ mkCeil
     :: Functor domain
     => PurePattern level domain variable (Valid level)
     -> PurePattern level domain variable (Valid level)
-mkCeil = mkCeil' predicateSort
+mkCeil child = mkCeil' (getSort child) child
 
 mkDomainValue
     :: Functor domain
@@ -408,7 +434,7 @@ mkEquals
     => pattern'
     -> pattern'
     -> pattern'
-mkEquals = mkEquals' predicateSort
+mkEquals firstChild = mkEquals' (getSort firstChild) firstChild
 
 mkExists
     :: Traversable domain
@@ -438,7 +464,7 @@ mkFloor
     :: Traversable domain
     => PurePattern level domain variable (Valid level)
     -> PurePattern level domain variable (Valid level)
-mkFloor = mkFloor' predicateSort
+mkFloor child = mkFloor' (getSort child) child
 
 mkForall
     :: Traversable domain
@@ -515,7 +541,7 @@ mkIn
     => pattern'
     -> pattern'
     -> pattern'
-mkIn = mkIn' predicateSort
+mkIn firstChild = mkIn' (getSort firstChild) firstChild
 
 mkNext
     :: Traversable domain
@@ -571,20 +597,21 @@ mkRewrites = makeSortsAgree mkRewritesWorker
         valid = Valid { patternSort = rewritesSort }
         rewrites' = Rewrites { rewritesSort, rewritesFirst, rewritesSecond }
 
-mkTop'
+mkTop
     :: Functor domain
     => Sort level
     -> PurePattern level domain variable (Valid level)
-mkTop' topSort =
+mkTop topSort =
     asPurePattern (valid :< TopPattern top)
   where
     valid = Valid { patternSort = topSort }
     top = Top { topSort }
 
-mkTop
+mkTopOf
     :: Functor domain
     => PurePattern level domain variable (Valid level)
-mkTop = mkTop' predicateSort
+    -> PurePattern level domain variable (Valid level)
+mkTopOf = mkTop . getSort
 
 mkVar
     :: (Functor domain, SortedVariable variable)

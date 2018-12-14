@@ -18,12 +18,14 @@ module Kore.Step.ExpandedPattern
     , Kore.Step.ExpandedPattern.allVariables
     , erasePredicatedTerm
     , bottom
+    , bottomOf
     , isBottom
     , isTop
     , Kore.Step.ExpandedPattern.mapVariables
     , substitutionToPredicate
     , toMLPattern
     , top
+    , topOf
     , topPredicate
     , bottomPredicate
     , Kore.Step.ExpandedPattern.fromPurePattern
@@ -216,7 +218,7 @@ toMLPattern
     simpleAnd pattern'@(Recursive.project -> valid :< projected) =
         \case
             PredicateTrue -> pattern'
-            PredicateFalse -> mkBottom' patternSort
+            PredicateFalse -> mkBottom patternSort
             predicate' ->
                 case projected of
                     TopPattern _ ->
@@ -229,10 +231,23 @@ toMLPattern
 {-|'bottom' is an expanded pattern that has a bottom condition and that
 should become Bottom when transformed to a ML pattern.
 -}
-bottom :: MetaOrObject level => ExpandedPattern level variable
-bottom =
+bottom :: MetaOrObject level => Sort level -> ExpandedPattern level variable
+bottom sort =
     Predicated
-        { term      = mkBottom
+        { term      = mkBottom sort
+        , predicate = makeFalsePredicate
+        , substitution = mempty
+        }
+
+{- | The @\\bottom@ pattern in the same sort as the given pattern.
+ -}
+bottomOf
+    :: MetaOrObject level
+    => StepPattern level variable
+    -> ExpandedPattern level variable
+bottomOf stepPattern =
+    Predicated
+        { term      = mkBottomOf stepPattern
         , predicate = makeFalsePredicate
         , substitution = mempty
         }
@@ -240,10 +255,23 @@ bottom =
 {-|'top' is an expanded pattern that has a top condition and that
 should become Top when transformed to a ML pattern.
 -}
-top :: MetaOrObject level => ExpandedPattern level variable
-top =
+top :: MetaOrObject level => Sort level -> ExpandedPattern level variable
+top sort =
     Predicated
-        { term      = mkTop
+        { term      = mkTop sort
+        , predicate = makeTruePredicate
+        , substitution = mempty
+        }
+
+{- | The @\\top@ pattern in the same sort as the given pattern.
+ -}
+topOf
+    :: MetaOrObject level
+    => StepPattern level variable
+    -> ExpandedPattern level variable
+topOf stepPattern =
+    Predicated
+        { term      = mkTopOf stepPattern
         , predicate = makeTruePredicate
         , substitution = mempty
         }
@@ -288,7 +316,7 @@ fromPurePattern
     -> ExpandedPattern level variable
 fromPurePattern term@(Recursive.project -> _ :< projected) =
     case projected of
-        BottomPattern _ -> bottom
+        BottomPattern _ -> bottomOf term
         _ ->
             Predicated
                 { term
@@ -297,10 +325,10 @@ fromPurePattern term@(Recursive.project -> _ :< projected) =
                 }
 
 topPredicate :: MetaOrObject level => PredicateSubstitution level variable
-topPredicate = top $> ()
+topPredicate = top predicateSort $> ()
 
 bottomPredicate :: MetaOrObject level => PredicateSubstitution level variable
-bottomPredicate = bottom $> ()
+bottomPredicate = bottom predicateSort $> ()
 
 {- | Transform a predicate and substitution into a predicate only.
 

@@ -16,6 +16,7 @@ import           Data.Reflection
 import           Kore.AST.Pure
 import           Kore.AST.Valid
 import qualified Kore.Domain.Builtin as Domain
+import           Kore.Implicit.ImplicitSorts
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools, SymbolOrAliasSorts )
 import           Kore.Predicate.Predicate
@@ -23,7 +24,6 @@ import           Kore.Predicate.Predicate
 import           Kore.Step.ExpandedPattern
                  ( CommonExpandedPattern, Predicated (..) )
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
-                 ( bottom )
 import           Kore.Step.Pattern
 import           Kore.Step.Simplification.AndTerms
                  ( termAnd, termUnification )
@@ -51,7 +51,7 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
                         , predicate = makeTruePredicate
                         , substitution = mempty
                         }
-            actual <- simplifyUnify mockMetadataTools fOfA mkTop
+            actual <- simplifyUnify mockMetadataTools fOfA (mkTopOf fOfA)
             assertEqualWithExplanation "" (expected, Just expected) actual
 
         , testCase "\\and{s}(\\top{s}(), f{}(a))" $ do
@@ -61,26 +61,26 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
                         , predicate = makeTruePredicate
                         , substitution = mempty
                         }
-            actual <- simplifyUnify mockMetadataTools mkTop fOfA
+            actual <- simplifyUnify mockMetadataTools (mkTopOf fOfA) fOfA
             assertEqualWithExplanation "" (expected, Just expected) actual
 
         , testCase "\\and{s}(f{}(a), \\bottom{s}())" $ do
             let expect =
-                    ( ExpandedPattern.bottom
-                    , Just ExpandedPattern.bottom
+                    ( ExpandedPattern.bottomOf fOfA
+                    , Just (ExpandedPattern.bottomOf fOfA)
                     )
-            actual <- simplifyUnify mockMetadataTools fOfA mkBottom
+            actual <- simplifyUnify mockMetadataTools fOfA (mkBottomOf fOfA)
             assertEqualWithExplanation "" expect actual
 
         , testCase "\\and{s}(\\bottom{s}(), f{}(a))" $ do
             let expect =
-                    ( ExpandedPattern.bottom
-                    , Just ExpandedPattern.bottom
+                    ( ExpandedPattern.bottomOf fOfA
+                    , Just (ExpandedPattern.bottomOf fOfA)
                     )
             actual <-
                 simplifyUnify
                     mockMetadataTools
-                    mkBottom fOfA
+                    (mkBottomOf fOfA) fOfA
             assertEqualWithExplanation "" expect actual
         ]
 
@@ -200,7 +200,9 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
             assertEqualWithExplanation "" (expect, Just expect) actual
         , testCase "different head, not subsort" $ do
             let expect =
-                    (ExpandedPattern.bottom, Just ExpandedPattern.bottom)
+                    ( ExpandedPattern.bottom Mock.topSort
+                    , Just (ExpandedPattern.bottom Mock.topSort)
+                    )
             actual <-
                 simplifyUnify
                     mockMetadataTools
@@ -253,8 +255,8 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
             assertEqualWithExplanation "" expect actual
         , testCase "different head constructors not subsort" $ do
             let expect =
-                    ( ExpandedPattern.bottom
-                    , Just ExpandedPattern.bottom
+                    ( ExpandedPattern.bottom Mock.testSort
+                    , Just (ExpandedPattern.bottom Mock.testSort)
                     )
             actual <-
                 simplifyUnify
@@ -264,8 +266,8 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
             assertEqualWithExplanation "" expect actual
         , testCase "different head constructors subsort" $ do
             let expect =
-                    ( ExpandedPattern.bottom
-                    , Just ExpandedPattern.bottom
+                    ( ExpandedPattern.bottom Mock.topSort
+                    , Just (ExpandedPattern.bottom Mock.topSort)
                     )
             actual <-
                 simplifyUnify
@@ -275,8 +277,8 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
             assertEqualWithExplanation "" expect actual
         , testCase "different head constructors common subsort" $ do
             let expect =
-                    ( ExpandedPattern.bottom
-                    , Just ExpandedPattern.bottom
+                    ( (ExpandedPattern.bottom Mock.topSort)
+                    , Just (ExpandedPattern.bottom Mock.topSort)
                     )
             actual <-
                 simplifyUnify
@@ -286,8 +288,8 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
             assertEqualWithExplanation "" expect actual
         , testCase "different head constructors common subsort reversed" $ do
             let expect =
-                    ( ExpandedPattern.bottom
-                    , Just ExpandedPattern.bottom
+                    ( (ExpandedPattern.bottom Mock.topSort)
+                    , Just (ExpandedPattern.bottom Mock.topSort)
                     )
             actual <-
                 simplifyUnify
@@ -332,8 +334,8 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
 
         , testCase "different head" $ do
             let expect =
-                    ( ExpandedPattern.bottom
-                    , Just ExpandedPattern.bottom
+                    ( ExpandedPattern.bottom Mock.testSort
+                    , Just (ExpandedPattern.bottom Mock.testSort)
                     )
             actual <-
                 simplifyUnify
@@ -345,8 +347,8 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
 
     , testCase "constructor-sortinjection and" $ do
         let expect =
-                ( ExpandedPattern.bottom
-                , Just ExpandedPattern.bottom
+                ( ExpandedPattern.bottom Mock.testSort
+                , Just (ExpandedPattern.bottom Mock.testSort)
                 )
         actual <-
             simplifyUnify
@@ -373,8 +375,8 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
 
         , testCase "different values" $ do
             let expect =
-                    ( ExpandedPattern.bottom
-                    , Just ExpandedPattern.bottom
+                    ( ExpandedPattern.bottom Mock.testSort
+                    , Just (ExpandedPattern.bottom Mock.testSort)
                     )
             actual <-
                 simplifyUnify
@@ -402,8 +404,8 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
 
         , testCase "different values" $ do
             let expect =
-                    ( ExpandedPattern.bottom
-                    , Just ExpandedPattern.bottom
+                    ( ExpandedPattern.bottom stringMetaSort
+                    , Just (ExpandedPattern.bottom stringMetaSort)
                     )
             actual <-
                 simplifyUnify
@@ -432,8 +434,8 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
 
         , testCase "different values" $ do
             let expect =
-                    ( ExpandedPattern.bottom
-                    , Just ExpandedPattern.bottom
+                    ( ExpandedPattern.bottom charMetaSort
+                    , Just (ExpandedPattern.bottom charMetaSort)
                     )
             actual <-
                 simplifyUnify
@@ -560,7 +562,7 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
             assertEqualWithExplanation "" expect actual
 
         , testCase "concrete Map, different keys" $ do
-            let expect = Just ExpandedPattern.bottom
+            let expect = Just (ExpandedPattern.bottom Mock.mapSort)
             actual <-
                 unify
                     mockMetadataTools
@@ -703,7 +705,7 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
                 term4 = Mock.builtinList [Mock.a, Mock.b]
                 expect =
                     Just Predicated
-                        { term = Mock.builtinList [Mock.a, mkBottom]
+                        { term = Mock.builtinList [Mock.a, mkBottomOf Mock.a]
                         , predicate = makeFalsePredicate
                         , substitution = mempty
                         }
@@ -728,7 +730,7 @@ test_andTermsSimplification = give mockSymbolOrAliasSorts
         , testCase "different lengths" $ do
             let term7 = Mock.builtinList [Mock.a, Mock.a]
                 term8 = Mock.builtinList [Mock.a]
-                expect = Just ExpandedPattern.bottom
+                expect = Just (ExpandedPattern.bottom Mock.listSort)
             actual <- unify mockMetadataTools term7 term8
             assertEqualWithExplanation "" expect actual
 

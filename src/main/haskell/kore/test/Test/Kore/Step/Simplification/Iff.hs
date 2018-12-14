@@ -42,18 +42,18 @@ test_iffSimplification = give mockSymbolOrAliasSorts
             -- iff(top, top) = top
             assertEqualWithExplanation "iff(top,top)"
                 (OrOfExpandedPattern.make
-                    [ ExpandedPattern.top ]
+                    [ ExpandedPattern.top Mock.testSort ]
                 )
                 (evaluate
                     (makeIff
-                        [ExpandedPattern.top]
-                        [ExpandedPattern.top]
+                        [ExpandedPattern.top Mock.testSort]
+                        [ExpandedPattern.top Mock.testSort]
                     )
                 )
             -- iff(bottom,bottom) = top
             assertEqualWithExplanation "iff(bottom,bottom)"
                 (OrOfExpandedPattern.make
-                    [ ExpandedPattern.top ]
+                    [ ExpandedPattern.top Mock.testSort ]
                 )
                 (evaluate
                     (makeIff
@@ -68,7 +68,7 @@ test_iffSimplification = give mockSymbolOrAliasSorts
                 )
                 (evaluate
                     (makeIff
-                        [ExpandedPattern.top]
+                        [ ExpandedPattern.top Mock.testSort ]
                         []
                     )
                 )
@@ -80,7 +80,7 @@ test_iffSimplification = give mockSymbolOrAliasSorts
                 (evaluate
                     (makeIff
                         []
-                        [ExpandedPattern.top]
+                        [ ExpandedPattern.top Mock.testSort ]
                     )
                 )
         )
@@ -98,7 +98,7 @@ test_iffSimplification = give mockSymbolOrAliasSorts
                 )
                 (evaluate
                     (makeIff
-                        [ExpandedPattern.top]
+                        [ ExpandedPattern.top (getSort Mock.a) ]
                         [ Predicated
                             { term = Mock.a
                             , predicate = makeTruePredicate
@@ -125,7 +125,7 @@ test_iffSimplification = give mockSymbolOrAliasSorts
                             , substitution = mempty
                             }
                         ]
-                        [ExpandedPattern.top]
+                        [ ExpandedPattern.top Mock.testSort ]
                     )
                 )
             -- iff(bottom,p) = not p
@@ -176,20 +176,20 @@ test_iffSimplification = give mockSymbolOrAliasSorts
             -- iff(top,top) = top
             assertEqualWithExplanation "iff(top,top)"
                 (OrOfExpandedPattern.make
-                    [ ExpandedPattern.top ]
+                    [ ExpandedPattern.top Mock.testSort ]
                 )
                 (makeEvaluate
-                    (ExpandedPattern.top :: CommonExpandedPattern Object)
-                    (ExpandedPattern.top :: CommonExpandedPattern Object)
+                    (ExpandedPattern.top Mock.testSort)
+                    (ExpandedPattern.top Mock.testSort)
                 )
             -- iff(bottom,bottom) = bottom
             assertEqualWithExplanation "iff(bottom,bottom)"
                 (OrOfExpandedPattern.make
-                    [ ExpandedPattern.top ]
+                    [ ExpandedPattern.top Mock.testSort ]
                 )
                 (makeEvaluate
-                    (ExpandedPattern.bottom :: CommonExpandedPattern Object)
-                    (ExpandedPattern.bottom :: CommonExpandedPattern Object)
+                    (ExpandedPattern.bottom Mock.testSort)
+                    (ExpandedPattern.bottom Mock.testSort)
                 )
             -- iff(top,bottom) = bottom
             assertEqualWithExplanation "iff(top,bottom)"
@@ -197,8 +197,8 @@ test_iffSimplification = give mockSymbolOrAliasSorts
                     []
                 )
                 (makeEvaluate
-                    (ExpandedPattern.top :: CommonExpandedPattern Object)
-                    (ExpandedPattern.bottom :: CommonExpandedPattern Object)
+                    (ExpandedPattern.top Mock.testSort)
+                    (ExpandedPattern.bottom Mock.testSort)
                 )
             -- iff(bottom,top) = bottom
             assertEqualWithExplanation "iff(bottom,top)"
@@ -206,8 +206,8 @@ test_iffSimplification = give mockSymbolOrAliasSorts
                     []
                 )
                 (makeEvaluate
-                    (ExpandedPattern.bottom :: CommonExpandedPattern Object)
-                    (ExpandedPattern.top :: CommonExpandedPattern Object)
+                    (ExpandedPattern.bottom Mock.testSort)
+                    (ExpandedPattern.top Mock.testSort)
                 )
         )
     , testCase "expanded Iff - half bool"
@@ -223,7 +223,7 @@ test_iffSimplification = give mockSymbolOrAliasSorts
                     ]
                 )
                 (makeEvaluate
-                    ExpandedPattern.top
+                    (ExpandedPattern.top Mock.testSort)
                     Predicated
                         { term = Mock.a
                         , predicate = makeTruePredicate
@@ -246,7 +246,7 @@ test_iffSimplification = give mockSymbolOrAliasSorts
                         , predicate = makeTruePredicate
                         , substitution = mempty
                         }
-                    ExpandedPattern.top
+                    (ExpandedPattern.top Mock.testSort)
                 )
             -- iff(bottom,p) = not p
             assertEqualWithExplanation "iff(bottom,p)"
@@ -259,7 +259,7 @@ test_iffSimplification = give mockSymbolOrAliasSorts
                     ]
                 )
                 (makeEvaluate
-                    ExpandedPattern.bottom
+                    (ExpandedPattern.bottom (getSort Mock.a))
                     Predicated
                         { term = Mock.a
                         , predicate = makeTruePredicate
@@ -282,7 +282,7 @@ test_iffSimplification = give mockSymbolOrAliasSorts
                         , predicate = makeTruePredicate
                         , substitution = mempty
                         }
-                    ExpandedPattern.bottom
+                    (ExpandedPattern.bottom (getSort Mock.a))
                 )
         )
     , testCase "iff with predicates and substitutions"
@@ -291,7 +291,7 @@ test_iffSimplification = give mockSymbolOrAliasSorts
         (assertEqualWithExplanation "iff(top and predicate, top and predicate)"
             (OrOfExpandedPattern.make
                 [ Predicated
-                    { term = mkTop
+                    { term = mkTop Mock.testSort
                     , predicate =
                         makeIffPredicate
                             (makeAndPredicate
@@ -308,12 +308,12 @@ test_iffSimplification = give mockSymbolOrAliasSorts
             )
             ( makeEvaluate
                 Predicated
-                    { term = mkTop
+                    { term = mkTop Mock.testSort
                     , predicate = makeCeilPredicate Mock.cf
                     , substitution = Substitution.wrap [(Mock.x, Mock.a)]
                     }
                 Predicated
-                    { term = mkTop
+                    { term = mkTop Mock.testSort
                     , predicate = makeCeilPredicate Mock.cg
                     , substitution = Substitution.wrap [(Mock.y, Mock.b)]
                     }

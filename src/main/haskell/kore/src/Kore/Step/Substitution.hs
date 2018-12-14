@@ -38,7 +38,6 @@ import           Kore.Step.ExpandedPattern
                  ( ExpandedPattern, PredicateSubstitution, Predicated (..),
                  substitutionToPredicate )
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
-                 ( bottom )
 import           Kore.Step.Simplification.Data
                  ( PredicateSubstitutionSimplifier (..) )
 import           Kore.Step.StepperAttributes
@@ -86,7 +85,7 @@ normalize
     return $ case x of
       Right (Predicated { predicate = p, substitution = s }, _) ->
           if Predicate.isFalse p
-              then ExpandedPattern.bottom
+              then (ExpandedPattern.bottomOf term)
               else Predicated term p s
       Left _ ->
           Predicated

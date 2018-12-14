@@ -102,8 +102,7 @@ import           Kore.Predicate.Predicate
 import qualified Kore.Proof.Value as Value
 import           Kore.Step.ExpandedPattern
                  ( ExpandedPattern, Predicated (..) )
-import           Kore.Step.ExpandedPattern as ExpandedPattern
-                 ( top )
+import qualified Kore.Step.ExpandedPattern as ExpandedPattern
 import           Kore.Step.Function.Data
                  ( ApplicationFunctionEvaluator (ApplicationFunctionEvaluator),
                  AttemptedFunction (..) )
@@ -738,6 +737,6 @@ unifyEqualsUnsolved SimplificationType.And a b =
         return (expanded, SimplificationProof)
 unifyEqualsUnsolved SimplificationType.Equals a b =
     return
-        ( ExpandedPattern.top {predicate = makeEqualsPredicate a b}
+        ( (ExpandedPattern.topOf a) { predicate = makeEqualsPredicate a b }
         , SimplificationProof
         )

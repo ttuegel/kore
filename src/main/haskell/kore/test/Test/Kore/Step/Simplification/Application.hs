@@ -100,7 +100,8 @@ test_applicationSimplification = give mockSymbolOrAliasSorts
 
     , testCase "Application - bottom child makes everything bottom" $ do
         -- sigma(a or b, bottom) = bottom
-        let expect = OrOfExpandedPattern.make [ ExpandedPattern.bottom ]
+        let expect =
+                OrOfExpandedPattern.make [ ExpandedPattern.bottom testSort ]
         actual <-
             evaluate
                 mockMetadataTools
@@ -462,10 +463,7 @@ makeApplication patternSort symbol patterns =
     valid = Valid { patternSort }
 
 testSort :: Sort Object
-testSort =
-    case mkBottom :: CommonStepPattern Object of
-        Bottom_ sort -> sort
-        _ -> error "unexpected"
+testSort = predicateSort
 
 evaluate
     ::  ( MetaOrObject level)

@@ -130,7 +130,7 @@ makeEvaluateNonBoolIn
 makeEvaluateNonBoolIn patt1 patt2 =
     ( OrOfExpandedPattern.make
         [ Predicated
-            { term = mkTop
+            { term = mkTopOf (term patt1)
             , predicate =
                 makeInPredicate
                     -- TODO: Wrap in 'contained' and 'container'.

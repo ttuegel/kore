@@ -189,13 +189,13 @@ simpleMetaAliasSentence :: AliasName -> SortName -> VerifiedKoreSentence
 simpleMetaAliasSentence alias sort =
     asSentence (simpleAliasSentence @Meta alias sort r)
   where
-    r = patternPureToKore $ mkTop' (simpleSort sort :: Sort Meta)
+    r = patternPureToKore $ mkTop (simpleSort sort :: Sort Meta)
 
 simpleObjectAliasSentence :: AliasName -> SortName -> VerifiedKoreSentence
 simpleObjectAliasSentence alias sort =
    asSentence (simpleAliasSentence @Object alias sort r)
   where
-    r = patternPureToKore $ mkTop' (simpleSort sort :: Sort Object)
+    r = patternPureToKore $ mkTop (simpleSort sort :: Sort Object)
 
 simpleAliasSentence
     :: AliasName
@@ -308,7 +308,7 @@ aliasSentenceWithSort (AliasName name) sort =
                     , applicationChildren = []
                     }
             , sentenceAliasRightPattern =
-                patternPureToKore $ mkTop' patternMetaSort
+                patternPureToKore $ mkTop patternMetaSort
             , sentenceAliasAttributes =
                 Attributes [] :: Attributes
             }
@@ -337,7 +337,7 @@ metaAliasSentenceWithSortParameters
                     , applicationChildren = []
                     }
             , sentenceAliasRightPattern =
-                patternPureToKore $ mkTop' sort
+                patternPureToKore $ mkTop sort
             , sentenceAliasAttributes = Attributes []
             }
             :: VerifiedKoreSentenceAlias Meta

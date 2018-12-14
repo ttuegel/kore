@@ -31,7 +31,7 @@ substitutionSimplifier tools =
                 return
                     ( OrOfExpandedPattern.make
                         [ Predicated
-                            { term = mkTop
+                            { term = mkTopOf p
                             , predicate = Predicate.wrapPredicate p
                             , substitution = mempty
                             }

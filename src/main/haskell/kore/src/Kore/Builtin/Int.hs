@@ -234,7 +234,9 @@ asPartialExpandedPattern
     -> Maybe Integer  -- ^ builtin value to render
     -> ExpandedPattern Object variable
 asPartialExpandedPattern resultSort =
-    maybe ExpandedPattern.bottom (asExpandedPattern resultSort)
+    maybe
+        (ExpandedPattern.bottom resultSort)
+        (asExpandedPattern resultSort)
 
 {- | Implement builtin function evaluation.
  -}

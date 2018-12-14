@@ -28,7 +28,7 @@ test_bottomSimplification =
     [ testCase "Bottom evaluates to bottom"
         (assertEqualWithExplanation ""
             (OrOfExpandedPattern.make
-                [ ExpandedPattern.bottom ]
+                [ ExpandedPattern.bottom Mock.testSort ]
             )
             (evaluate
                 Bottom {bottomSort = Mock.testSort}

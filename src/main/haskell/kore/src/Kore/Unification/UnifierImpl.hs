@@ -28,6 +28,7 @@ import           Data.Reflection
                  ( give )
 
 import           Kore.AST.Pure
+import           Kore.AST.Valid
 import           Kore.IndexedModule.MetadataTools
 import qualified Kore.IndexedModule.MetadataTools as MetadataTools
                  ( MetadataTools (..) )
@@ -115,13 +116,15 @@ simplifyAnds
         (ExpandedPattern level variable, UnificationProof level variable)
 simplifyAnds _ _ [] = throwError (UnificationError UnsupportedPatterns)
 simplifyAnds tools substitutionSimplifier patterns = do
-     result <- foldM
-        simplifyAnds'
-        ExpandedPattern.top
-        patterns
-     if Predicate.isFalse . ExpandedPattern.predicate $ result
-         then return ( ExpandedPattern.bottom, EmptyUnificationProof )
-         else return ( result, EmptyUnificationProof )
+    result <-
+        foldM
+            simplifyAnds'
+            (ExpandedPattern.top predicateSort)
+            patterns
+    let Predicated { term, predicate } = result
+    if Predicate.isFalse predicate
+        then return ( ExpandedPattern.bottomOf term, EmptyUnificationProof )
+        else return ( result, EmptyUnificationProof )
   where
     simplifyAnds'
         :: ExpandedPattern level variable

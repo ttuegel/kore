@@ -163,7 +163,10 @@ simplifyEvaluated
         (OrOfExpandedPattern level variable, SimplificationProof level)
 simplifyEvaluated tools substitutionSimplifier first second
   | first == second =
-    return (OrOfExpandedPattern.make [Predicated.top], SimplificationProof)
+    return
+        ( OrOfExpandedPattern.make [Predicated.top predicateSort]
+        , SimplificationProof
+        )
   -- TODO: Maybe simplify equalities with top and bottom to ceil and floor
   | otherwise =
     case ( firstPatterns, secondPatterns )
@@ -235,7 +238,7 @@ makeEvaluate
             return
                 (OrOfExpandedPattern.make
                     [ Predicated
-                        { term = mkTop
+                        { term = mkTopOf firstTerm
                         , predicate = predicate
                         , substitution = substitution
                         }
@@ -255,13 +258,17 @@ makeEvaluate
             Ceil.makeEvaluate tools
                 first
                     { term =
-                        if termsAreEqual then mkTop else firstTerm
+                        if termsAreEqual
+                        then mkTopOf firstTerm
+                        else firstTerm
                     }
         (secondCeil, _proof2) =
             Ceil.makeEvaluate tools
                 second
                     { term =
-                        if termsAreEqual then mkTop else secondTerm
+                        if termsAreEqual
+                        then mkTopOf secondTerm
+                        else secondTerm
                     }
         (firstCeilNegation, _proof3) = Not.simplifyEvaluated firstCeil
         (secondCeilNegation, _proof4) = Not.simplifyEvaluated secondCeil
@@ -316,7 +323,7 @@ makeEvaluateTermsAssumesNoBottom
     def =
         (OrOfExpandedPattern.make
             [ Predicated
-                { term = mkTop
+                { term = mkTopOf firstTerm
                 , predicate = makeEqualsPredicate firstTerm secondTerm
                 , substitution = mempty
                 }
@@ -350,7 +357,7 @@ makeEvaluateTermsAssumesNoBottomMaybe tools substitutionSimplifier first second
         return
             ( OrOfExpandedPattern.make
                 [ Predicated
-                    { term = mkTop
+                    { term = mkTopOf first
                     , predicate = predicate
                     , substitution = substitution
                     }

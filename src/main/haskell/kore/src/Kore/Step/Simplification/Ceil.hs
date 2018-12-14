@@ -105,11 +105,13 @@ makeEvaluate
     => MetadataTools level StepperAttributes
     -> ExpandedPattern level variable
     -> (OrOfExpandedPattern level variable, SimplificationProof level)
-makeEvaluate tools child
+makeEvaluate tools child@Predicated { term }
   | ExpandedPattern.isTop child =
-    (OrOfExpandedPattern.make [ExpandedPattern.top], SimplificationProof)
+    (OrOfExpandedPattern.make [ExpandedPattern.topOf term], SimplificationProof)
   | ExpandedPattern.isBottom child =
-    (OrOfExpandedPattern.make [ExpandedPattern.bottom], SimplificationProof)
+    (,)
+        (OrOfExpandedPattern.make [ExpandedPattern.bottomOf term])
+        SimplificationProof
   | otherwise = makeEvaluateNonBoolCeil tools child
 
 makeEvaluateNonBoolCeil
@@ -136,7 +138,7 @@ makeEvaluateNonBoolCeil
     in
         ( OrOfExpandedPattern.make
             [ Predicated
-                { term = mkTop
+                { term = mkTopOf term
                 , predicate = ceilPredicate
                 , substitution = substitution
                 }

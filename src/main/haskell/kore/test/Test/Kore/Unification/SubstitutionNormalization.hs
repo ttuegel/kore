@@ -50,21 +50,21 @@ test_substitutionNormalization =
         )
     , testCase "Simple substitution"
         (assertEqual ""
-            (Right [(v1 patternMetaSort, mkTop)])
+            (Right [(v1 patternMetaSort, mkTop patternMetaSort)])
             (runNormalizeSubstitution
-                [(v1 patternMetaSort, mkTop)]
+                [(v1 patternMetaSort, mkTop patternMetaSort)]
             )
         )
     , testCase "Simple unnormalized substitution"
         (assertEqual ""
             (Right
-                [ (v1 patternMetaSort, mkTop' patternMetaSort)
-                , (x1 patternMetaSort, mkTop' patternMetaSort)
+                [ (v1 patternMetaSort, mkTop patternMetaSort)
+                , (x1 patternMetaSort, mkTop patternMetaSort)
                 ]
             )
             (runNormalizeSubstitution
                 [ (v1 patternMetaSort, mkVar $ x1 patternMetaSort)
-                , (x1 patternMetaSort, mkTop' patternMetaSort)
+                , (x1 patternMetaSort, mkTop patternMetaSort)
                 ]
             )
         )
@@ -72,16 +72,20 @@ test_substitutionNormalization =
         (assertEqual ""
             (Right
                 [   ( v1 patternMetaSort
-                    , mkAnd mkTop (mkTop' patternMetaSort)
+                    , mkAnd
+                        (mkTop patternMetaSort)
+                        (mkTop patternMetaSort)
                     )
-                , (x1 patternMetaSort, mkTop' patternMetaSort)
+                , (x1 patternMetaSort, mkTop patternMetaSort)
                 ]
             )
             (runNormalizeSubstitution
                 [   ( v1 patternMetaSort
-                    , mkAnd (mkVar $ x1 patternMetaSort) mkTop
+                    , mkAnd
+                        (mkVar $ x1 patternMetaSort)
+                        (mkTop patternMetaSort)
                     )
-                ,   (x1 patternMetaSort, mkTop' patternMetaSort)
+                ,   (x1 patternMetaSort, mkTop patternMetaSort)
                 ]
             )
         )
@@ -140,8 +144,16 @@ test_substitutionNormalization =
             (assertEqual ""
                 (Right [])
                 (runNormalizeSubstitution
-                    [ (var1, mkAnd (mkVar $ x1 patternMetaSort) mkTop)
-                    , (varx1, mkAnd (mkVar $ v1 patternMetaSort) mkTop)
+                    [   ( var1
+                        , mkAnd
+                            (mkVar $ x1 patternMetaSort)
+                            (mkTop patternMetaSort)
+                        )
+                    ,   ( varx1
+                        , mkAnd
+                            (mkVar $ v1 patternMetaSort)
+                            (mkTop patternMetaSort)
+                        )
                     ]
                 )
             )

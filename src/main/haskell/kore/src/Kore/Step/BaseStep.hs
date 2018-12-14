@@ -468,7 +468,7 @@ stepWithRuleForUnifier
     return
         ( StepResult
             { rewrittenPattern = Predicated
-                { term = result `orElse` mkBottom
+                { term = result `orElse` mkBottomOf result
                 , predicate = condition
                 -- TODO(virgil): Can there be unused variables? Should we
                 -- remove them?

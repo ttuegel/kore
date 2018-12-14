@@ -31,5 +31,7 @@ simplify
     -> ( OrOfExpandedPattern level variable
        , SimplificationProof level
        )
-simplify _ =
-    (OrOfExpandedPattern.make [ExpandedPattern.top], SimplificationProof)
+simplify Top { topSort } =
+    ( OrOfExpandedPattern.make [ExpandedPattern.top topSort]
+    , SimplificationProof
+    )

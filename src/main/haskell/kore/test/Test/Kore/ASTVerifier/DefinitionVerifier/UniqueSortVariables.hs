@@ -432,11 +432,11 @@ test_uniqueSortVariables =
   where
     topS =
         patternPureToKore
-            (mkTop'
+            (mkTop
                 (simpleSort $ SortName "s" :: Sort Object)
             )
     topS1 =
         patternPureToKore
-            (mkTop'
+            (mkTop
                 (simpleSort $ SortName "s1" :: Sort Object)
             )

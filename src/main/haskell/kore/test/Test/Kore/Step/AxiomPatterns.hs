@@ -54,7 +54,7 @@ axiomPatternsUnitTests =
                 (Right $ RewriteAxiomPattern $ RewriteRule RulePattern
                     { left = varI1
                     , right = varI2
-                    , requires = wrapPredicate (mkTop' sortAInt)
+                    , requires = wrapPredicate (mkTopOf varI1)
                     , attributes = def
                     }
                 )
@@ -62,9 +62,9 @@ axiomPatternsUnitTests =
                 $ asKoreAxiomSentence $ axiomSentencePureToKore
                     (mkAxiom
                         (mkAnd
-                            mkTop
+                            (mkTopOf varI1)
                             (mkAnd
-                                mkTop
+                                (mkTopOf varI1)
                                 (mkRewrites varI1 varI2)
                             )
                         )
@@ -77,8 +77,11 @@ axiomPatternsUnitTests =
                     (asKoreAxiomSentence . axiomSentencePureToKore)
                         (mkAxiom
                             (mkAnd
-                                mkTop
-                                (mkAnd mkTop (mkRewrites varI1 varI2))
+                                (mkTopOf varI1)
+                                (mkAnd
+                                    (mkTopOf varI1)
+                                    (mkRewrites varI1 varI2)
+                                )
                             )
                         )
                 axiom2 :: VerifiedKoreSentence
@@ -86,9 +89,9 @@ axiomPatternsUnitTests =
                     (asKoreAxiomSentence . axiomSentencePureToKore)
                         (mkAxiom
                             (mkAnd
-                                mkTop
+                                (mkTop sortKItem)
                                 (mkAnd
-                                    mkTop
+                                    (mkTop sortKItem)
                                     (applyInj
                                         sortKItem
                                         (mkRewrites varI1 varI2)
@@ -124,7 +127,7 @@ axiomPatternsUnitTests =
                     [ RewriteRule RulePattern
                         { left = varI1
                         , right = varI2
-                        , requires = wrapPredicate (mkTop' sortAInt)
+                        , requires = wrapPredicate (mkTopOf varI1)
                         , attributes = def
                         }
                     ]
@@ -138,14 +141,10 @@ axiomPatternsUnitTests =
                 $ asKoreAxiomSentence $ axiomSentencePureToKore
                     (mkAxiom
                         (mkAnd
-                            mkTop
+                            (mkTop sortKItem)
                             (mkAnd
-                                mkTop
-                                (applySymbol'
-                                    symbolInj
-                                    [sortAInt, sortKItem]
-                                    [mkRewrites varI1 varI2]
-                                )
+                                (mkTop sortKItem)
+                                (applyInj sortKItem (mkRewrites varI1 varI2))
                             )
                         )
                     )
@@ -186,7 +185,7 @@ axiomPatternsIntegrationTests =
                                 )
                             )
                             varStateCell
-                    , requires = wrapPredicate (mkTop' sortTCell)
+                    , requires = wrapPredicate (mkTop sortTCell)
                     , attributes = def
                     }
                 )

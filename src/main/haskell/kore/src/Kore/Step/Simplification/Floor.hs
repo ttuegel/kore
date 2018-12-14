@@ -83,11 +83,15 @@ makeEvaluateFloor
         )
     => ExpandedPattern level variable
     -> (OrOfExpandedPattern level variable, SimplificationProof level)
-makeEvaluateFloor child
+makeEvaluateFloor child@Predicated { term }
   | ExpandedPattern.isTop child =
-    (OrOfExpandedPattern.make [ExpandedPattern.top], SimplificationProof)
+    (,)
+        (OrOfExpandedPattern.make [ExpandedPattern.topOf term])
+        SimplificationProof
   | ExpandedPattern.isBottom child =
-    (OrOfExpandedPattern.make [ExpandedPattern.bottom], SimplificationProof)
+    (,)
+        (OrOfExpandedPattern.make [ExpandedPattern.bottomOf term])
+        SimplificationProof
   | otherwise =
     makeEvaluateNonBoolFloor child
 
@@ -113,7 +117,7 @@ makeEvaluateNonBoolFloor
   =
     ( OrOfExpandedPattern.make
         [ Predicated
-            { term = mkTop
+            { term = mkTopOf term
             , predicate = makeAndPredicate (makeFloorPredicate term) predicate
             , substitution = substitution
             }

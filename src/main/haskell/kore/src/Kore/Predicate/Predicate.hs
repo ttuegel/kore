@@ -240,7 +240,7 @@ makeImpliesPredicate
     => Predicate level variable
     -> Predicate level variable
     -> Predicate level variable
-makeImpliesPredicate PredicateFalse _ = GenericPredicate mkTop
+makeImpliesPredicate PredicateFalse _ = makeTruePredicate
 makeImpliesPredicate _ t@PredicateTrue = t
 makeImpliesPredicate PredicateTrue second = second
 makeImpliesPredicate first PredicateFalse = makeNotPredicate first
@@ -279,8 +279,8 @@ makeNotPredicate
         )
     => Predicate level variable
     -> Predicate level variable
-makeNotPredicate PredicateFalse = GenericPredicate mkTop
-makeNotPredicate PredicateTrue  = GenericPredicate mkBottom
+makeNotPredicate PredicateFalse = makeTruePredicate
+makeNotPredicate PredicateTrue  = makeFalsePredicate
 makeNotPredicate (GenericPredicate predicate) =
     GenericPredicate $ mkNot predicate
 
@@ -381,7 +381,7 @@ makeTruePredicate
     ::  (MetaOrObject level)
     => Predicate level variable
 makeTruePredicate =
-    GenericPredicate mkTop
+    GenericPredicate (mkTop predicateSort)
 
 {-| 'makeFalsePredicate' produces a predicate wrapping a 'bottom'.
 -}
@@ -389,7 +389,7 @@ makeFalsePredicate
     ::  (MetaOrObject level)
     => Predicate level variable
 makeFalsePredicate =
-    GenericPredicate mkBottom
+    GenericPredicate (mkBottom predicateSort)
 
 
 

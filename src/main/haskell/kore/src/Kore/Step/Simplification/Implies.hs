@@ -78,9 +78,13 @@ simplifyEvaluatedImplies first second
   | OrOfExpandedPattern.isTrue first =
     (second, SimplificationProof)
   | OrOfExpandedPattern.isFalse first =
-    (OrOfExpandedPattern.make [ExpandedPattern.top], SimplificationProof)
+    (,)
+        (OrOfExpandedPattern.make [ExpandedPattern.top predicateSort])
+        SimplificationProof
   | OrOfExpandedPattern.isTrue second =
-    (OrOfExpandedPattern.make [ExpandedPattern.top], SimplificationProof)
+    (,)
+        (OrOfExpandedPattern.make [ExpandedPattern.top predicateSort])
+        SimplificationProof
   | OrOfExpandedPattern.isFalse second =
     Not.simplifyEvaluated first
   | otherwise =
@@ -102,13 +106,13 @@ simplifyEvaluateHalfImplies
     => OrOfExpandedPattern level variable
     -> ExpandedPattern level variable
     -> (OrOfExpandedPattern level variable, SimplificationProof level)
-simplifyEvaluateHalfImplies first second
+simplifyEvaluateHalfImplies first second@Predicated { term }
   | OrOfExpandedPattern.isTrue first =
     (OrOfExpandedPattern.make [second], SimplificationProof)
   | OrOfExpandedPattern.isFalse first =
-    (OrOfExpandedPattern.make [ExpandedPattern.top], SimplificationProof)
+    (OrOfExpandedPattern.make [ExpandedPattern.topOf term], SimplificationProof)
   | ExpandedPattern.isTop second =
-    (OrOfExpandedPattern.make [ExpandedPattern.top], SimplificationProof)
+    (OrOfExpandedPattern.make [ExpandedPattern.topOf term], SimplificationProof)
   | ExpandedPattern.isBottom second =
     Not.simplifyEvaluated first
   | otherwise =
@@ -131,13 +135,13 @@ makeEvaluateImplies
     -> ExpandedPattern level variable
     -> (OrOfExpandedPattern level variable, SimplificationProof level)
 makeEvaluateImplies
-    first second
+    first@Predicated { term } second
   | ExpandedPattern.isTop first =
     (OrOfExpandedPattern.make [second], SimplificationProof)
   | ExpandedPattern.isBottom first =
-    (OrOfExpandedPattern.make [ExpandedPattern.top], SimplificationProof)
+    (OrOfExpandedPattern.make [ExpandedPattern.topOf term], SimplificationProof)
   | ExpandedPattern.isTop second =
-    (OrOfExpandedPattern.make [ExpandedPattern.top], SimplificationProof)
+    (OrOfExpandedPattern.make [ExpandedPattern.topOf term], SimplificationProof)
   | ExpandedPattern.isBottom second =
     Not.makeEvaluate first
   | otherwise =

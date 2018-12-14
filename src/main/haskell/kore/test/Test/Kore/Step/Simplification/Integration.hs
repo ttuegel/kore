@@ -79,7 +79,7 @@ test_simplificationIntegration = give mockSymbolOrAliasSorts
                                 (mkOr
                                     (mkExists Mock.x
                                         (mkAnd
-                                            mkTop
+                                            (mkTop Mock.testSort)
                                             (mkAnd
                                                 (mkCeil
                                                     (mkAnd
@@ -89,21 +89,23 @@ test_simplificationIntegration = give mockSymbolOrAliasSorts
                                                         (Mock.constr10 Mock.a)
                                                     )
                                                 )
-                                                mkTop
+                                                (mkTop Mock.testSort)
                                             )
                                         )
                                     )
-                                    mkBottom
+                                    (mkBottom Mock.testSort)
                                 )
                             )
-                            mkTop
+                            (mkTop Mock.testSort)
                     , predicate = makeTruePredicate
                     , substitution = mempty
                     }
         assertEqualWithExplanation "" expect actual
 
     , testCase "owise condition - owise case" $ do
-        let expect = OrOfExpandedPattern.make [ExpandedPattern.top]
+        let expect =
+                OrOfExpandedPattern.make
+                    [ExpandedPattern.top Mock.testSort]
         actual <-
             evaluate
                 mockMetadataTools
@@ -117,7 +119,7 @@ test_simplificationIntegration = give mockSymbolOrAliasSorts
                                 (mkOr
                                     (mkExists Mock.x
                                         (mkAnd
-                                            mkTop
+                                            (mkTop Mock.testSort)
                                             (mkAnd
                                                 (mkCeil
                                                     (mkAnd
@@ -127,14 +129,14 @@ test_simplificationIntegration = give mockSymbolOrAliasSorts
                                                         (Mock.constr11 Mock.a)
                                                     )
                                                 )
-                                                mkTop
+                                                (mkTop Mock.testSort)
                                             )
                                         )
                                     )
-                                    mkBottom
+                                    (mkBottom Mock.testSort)
                                 )
                             )
-                            mkTop
+                            (mkTop Mock.testSort)
                     , predicate = makeTruePredicate
                     , substitution = mempty
                     }
@@ -144,7 +146,7 @@ test_simplificationIntegration = give mockSymbolOrAliasSorts
         let expect =
                 OrOfExpandedPattern.make
                     [ Predicated
-                        { term = mkTop
+                        { term = mkTop Mock.testSort
                         , predicate = makeCeilPredicate
                             (mkAnd
                                 (Mock.plain10 Mock.cf)

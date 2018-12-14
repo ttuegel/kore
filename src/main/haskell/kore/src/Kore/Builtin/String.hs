@@ -219,7 +219,7 @@ asPartialExpandedPattern
     -> Maybe String  -- ^ builtin value to render
     -> ExpandedPattern Object variable
 asPartialExpandedPattern resultSort =
-    maybe ExpandedPattern.bottom (asExpandedPattern resultSort)
+    maybe (ExpandedPattern.bottom resultSort) (asExpandedPattern resultSort)
 
 ltKeyT :: Text
 ltKeyT = "STRING.lt"
@@ -354,7 +354,7 @@ evalString2Base = Builtin.functionEvaluator evalString2Base0
                         . Int.asExpandedPattern resultSort
                         $ result
                 _                 ->
-                    Builtin.appliedFunction ExpandedPattern.bottom
+                    Builtin.appliedFunction (ExpandedPattern.bottom resultSort)
 
 evalString2Int :: Builtin.Function
 evalString2Int = Builtin.functionEvaluator evalString2Int0
@@ -375,7 +375,7 @@ evalString2Int = Builtin.functionEvaluator evalString2Int0
             _str <- expectBuiltinString findKey _str
             Builtin.appliedFunction
                 . maybe
-                    ExpandedPattern.bottom
+                    (ExpandedPattern.bottom resultSort)
                     (Int.asExpandedPattern resultSort)
                 . fmap fst . listToMaybe . readSigned readDec
                 $ _str

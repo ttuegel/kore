@@ -413,7 +413,7 @@ toExpandedPattern
         , Unparse (variable level)
         )
     => OrOfExpandedPattern level variable -> ExpandedPattern level variable
-toExpandedPattern (MultiOr []) = ExpandedPattern.bottom
+toExpandedPattern (MultiOr []) = ExpandedPattern.bottom predicateSort
 toExpandedPattern (MultiOr [patt]) = patt
 toExpandedPattern (MultiOr patts) =
     case map ExpandedPattern.toMLPattern patts of

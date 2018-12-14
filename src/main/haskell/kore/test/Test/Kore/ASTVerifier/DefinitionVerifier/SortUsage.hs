@@ -16,7 +16,7 @@ import Kore.AST.Kore
 import Kore.AST.PureToKore
 import Kore.AST.Sentence
 import Kore.AST.Valid
-       ( mkTop' )
+       ( mkTop )
 import Kore.Error
 import Kore.Implicit.ImplicitSorts
 
@@ -551,7 +551,7 @@ unfilteredTestExamplesForSort
                             aliasName
                             sort
                             sortVariables
-                            (patternPureToKore $ mkTop' sort)
+                            (patternPureToKore $ mkTop sort)
                         )
                     : additionalSentences
                     )
@@ -578,7 +578,7 @@ unfilteredTestExamplesForSort
                             sort
                             additionalSort
                             sortVariables
-                            (patternPureToKore $ mkTop' additionalSort)
+                            (patternPureToKore $ mkTop additionalSort)
                         )
                     : additionalSentences
                     )

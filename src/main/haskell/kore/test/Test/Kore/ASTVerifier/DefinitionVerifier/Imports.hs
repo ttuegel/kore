@@ -333,8 +333,8 @@ sortVisibilityTests =
             , sentenceSortAttributes = Attributes []
             }
         :: VerifiedKoreSentenceSort Object)
-    topSortPattern = patternPureToKore $ mkTop' sort
-    metaTopSortPattern = patternPureToKore $ mkTop' charMetaSort
+    topSortPattern = patternPureToKore $ mkTop sort
+    metaTopSortPattern = patternPureToKore $ mkTop charMetaSort
     sortReferenceInSort =
         SortActualSort SortActual
             { sortActualName = testId "sort2"
@@ -345,7 +345,7 @@ sortVisibilityTests =
             SentenceAxiom
                 { sentenceAxiomParameters = []
                 , sentenceAxiomPattern =
-                    patternPureToKore $ mkTop' sortReferenceInSort
+                    patternPureToKore $ mkTop sortReferenceInSort
                 , sentenceAxiomAttributes = Attributes []
                 }
     sortReferenceInSortSupportingSentences =
@@ -391,7 +391,7 @@ sortVisibilityTests =
             SentenceAxiom
                 { sentenceAxiomParameters = []
                 , sentenceAxiomPattern =
-                    patternPureToKore $ mkAnd (mkTop' sort) mkTop
+                    patternPureToKore $ mkAnd (mkTop sort) (mkTop sort)
                 , sentenceAxiomAttributes = Attributes []
                 }
     sortReferenceInNextPatternSentence =
@@ -400,7 +400,7 @@ sortVisibilityTests =
                 { sentenceAxiomParameters = []
                 , sentenceAxiomPattern =
                     patternPureToKore
-                        (mkNext (mkTop' sort))
+                        (mkNext (mkTop sort))
                 , sentenceAxiomAttributes = Attributes []
                 }
     sortReferenceInPatternInPatternSentence =
@@ -412,8 +412,8 @@ sortVisibilityTests =
                         (mkNext
                             (mkEquals'
                                 anotherSort
-                                (mkTop' sort)
-                                (mkTop' sort)
+                                (mkTop sort)
+                                (mkTop sort)
                             )
                         )
                 , sentenceAxiomAttributes = Attributes []
@@ -465,7 +465,7 @@ sortVisibilityTests =
                         , applicationChildren = []
                         }
                 , sentenceAliasRightPattern =
-                    patternPureToKore $ mkTop' sort
+                    patternPureToKore $ mkTop sort
                 , sentenceAliasAttributes = Attributes []
                 }
             :: VerifiedKoreSentenceAlias Object)
@@ -493,7 +493,7 @@ sortVisibilityTests =
                             ]
                         }
                 , sentenceAliasRightPattern =
-                    patternPureToKore $ mkTop' anotherSort
+                    patternPureToKore $ mkTop anotherSort
                 , sentenceAliasAttributes = Attributes []
                 }
             :: VerifiedKoreSentenceAlias Object)
@@ -672,7 +672,8 @@ symbolVisibilityTests =
             SentenceAxiom
                 { sentenceAxiomParameters = []
                 , sentenceAxiomPattern =
-                    patternPureToKore (mkAnd symbolPattern mkTop)
+                    patternPureToKore
+                        (mkAnd symbolPattern (mkTopOf symbolPattern))
                 , sentenceAxiomAttributes = Attributes []
                 }
     symbolReferenceInExistsPatternSentence =
@@ -840,7 +841,7 @@ aliasVisibilityTests =
                         , applicationChildren = []
                         }
                 , sentenceAliasRightPattern =
-                    patternPureToKore $ mkTop' sentenceAliasResultSort
+                    patternPureToKore $ mkTop sentenceAliasResultSort
                 , sentenceAliasAttributes = Attributes []
                 }
     defaultAliasSupportSentences = [ defaultSortDeclaration ]
@@ -874,7 +875,7 @@ aliasVisibilityTests =
                         , applicationChildren = []
                         }
                 , sentenceAliasRightPattern =
-                    patternPureToKore $ mkTop' sentenceAliasResultSort
+                    patternPureToKore $ mkTop sentenceAliasResultSort
                 , sentenceAliasAttributes = Attributes []
                 }
     aliasReferenceInAxiomSentence =
@@ -897,7 +898,7 @@ aliasVisibilityTests =
                 { sentenceAxiomParameters = []
                 , sentenceAxiomPattern =
                     patternPureToKore
-                        (mkAnd aliasPattern mkTop)
+                        (mkAnd aliasPattern (mkTopOf aliasPattern))
                 , sentenceAxiomAttributes = Attributes []
                 }
     aliasReferenceInExistsPatternSentence =
@@ -973,7 +974,7 @@ aliasVisibilityTests =
                                 }
                             ]
                         }
-                , sentenceAliasRightPattern = mkTop' sentenceAliasResultSort
+                , sentenceAliasRightPattern = mkTop sentenceAliasResultSort
                 , sentenceAliasAttributes = Attributes []
                 }
         : defaultAliasSupportSentences
@@ -1333,7 +1334,7 @@ nameDuplicationTests =
                                 , applicationChildren = []
                                 }
                         , sentenceAliasRightPattern =
-                            mkTop' (SortVariableSort sv1)
+                            mkTop (SortVariableSort sv1)
                         , sentenceAliasAttributes = Attributes []
                         }
                 ]

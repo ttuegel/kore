@@ -126,8 +126,8 @@ test_matcherEqualHeads = give mockSymbolOrAliasSorts
         let expect = Just Predicated.topPredicate
         actual <-
             match mockMetadataTools
-                mkBottom
-                mkBottom
+                (mkBottom predicateSort)
+                (mkBottom predicateSort)
         assertEqualWithExplanation "" expect actual
 
     , testCase "Ceil" $ do
@@ -322,8 +322,8 @@ test_matcherEqualHeads = give mockSymbolOrAliasSorts
         let expect = Just Predicated.topPredicate
         actual <-
             match mockMetadataTools
-                mkTop
-                mkTop
+                (mkTop predicateSort)
+                (mkTop predicateSort)
         assertEqualWithExplanation "" expect actual
 
     , testCase "Variable (quantified)" $ do

@@ -264,9 +264,9 @@ rewritesAxiom lhsName rhsName =
         ((<$>) patternPureToKore . SentenceAxiomSentence)
         (mkAxiom
             (mkAnd
-                (mkTop' mySort)
+                (mkTop mySort)
                 (mkAnd
-                    (mkTop' mySort)
+                    (mkTop mySort)
                     (mkRewrites
                         (applyToNoArgs mySort lhsName)
                         (applyToNoArgs mySort rhsName)

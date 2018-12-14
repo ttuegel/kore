@@ -300,7 +300,7 @@ test_emod =
         "emod bottom"
         emodIntSymbol
         (asPattern <$> [193, 0])
-        bottom
+        (bottom intSort)
     ]
 
 -- | Another name for asPattern.

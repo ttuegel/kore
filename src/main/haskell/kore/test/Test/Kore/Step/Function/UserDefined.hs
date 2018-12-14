@@ -102,8 +102,8 @@ test_userDefinedFunction =
 
     , testCase "Cannot apply step with unsat condition" $ do
         let expect =
-                AttemptedFunction.Applied
-                $ OrOfExpandedPattern.make [ ExpandedPattern.bottom ]
+                (AttemptedFunction.Applied . OrOfExpandedPattern.make)
+                    [ ExpandedPattern.bottom patternMetaSort ]
         actual <-
             evaluateWithAxiom
                 mockMetadataTools
@@ -118,7 +118,7 @@ test_userDefinedFunction =
                 )
                 (mockSimplifier
                     -- Evaluate Top to Bottom.
-                    [ (mkTop, ([], SimplificationProof)) ]
+                    [ (mkTop predicateSort, ([], SimplificationProof)) ]
                 )
                 (metaF (mkVar $ x patternMetaSort))
         assertEqualWithExplanation "" expect actual
@@ -165,8 +165,8 @@ test_userDefinedFunction =
 
     , testCase "Does not reevaluate the step application with incompatible condition" $ do
         let expect =
-                AttemptedFunction.Applied $ OrOfExpandedPattern.make
-                    [ExpandedPattern.bottom]
+                (AttemptedFunction.Applied . OrOfExpandedPattern.make)
+                    [ExpandedPattern.bottom patternMetaSort]
         actual <-
             evaluateWithAxiom
                 mockMetadataTools

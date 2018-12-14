@@ -48,7 +48,7 @@ mockPredicateSimplifier values =
     StepPatternSimplifier
         (mockSimplifierHelper
             (\patt -> Predicated
-                { term = mkTop
+                { term = mkTopOf patt
                 , predicate = wrapPredicate patt
                 , substitution = mempty
                 }

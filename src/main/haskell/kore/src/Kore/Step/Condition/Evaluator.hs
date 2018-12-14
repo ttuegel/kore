@@ -34,6 +34,7 @@ import           Data.Reflection
 import qualified Data.Text as Text
 
 import           Kore.AST.Pure
+import           Kore.AST.Valid
 import           Kore.ASTHelpers
                  ( ApplicationSorts (applicationSortsOperands) )
 import           Kore.Attribute.Hook
@@ -98,7 +99,7 @@ evaluate
               | otherwise -> refutePredicate predicate
     let simplified' =
             case refute of
-                Just False -> ExpandedPattern.bottom
+                Just False -> ExpandedPattern.bottom predicateSort
                 _ -> OrOfExpandedPattern.toExpandedPattern simplified
         (subst, _proof) = asPredicateSubstitution simplified'
     return (subst, SimplificationProof)

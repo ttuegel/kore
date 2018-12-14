@@ -157,22 +157,22 @@ test_string2Base =
         "string2Base decimal is bottom"
         string2BaseStringSymbol
         [asPattern "-42.3", Test.Int.asPattern 10]
-        bottom
+        (bottom intSort)
     , Test.Int.testInt
         "string2Base decimal empty string is bottom"
         string2BaseStringSymbol
         [asPattern "", Test.Int.asPattern 10]
-        bottom
+        (bottom intSort)
     , Test.Int.testInt
         "string2Base decimal non-number is bottom"
         string2BaseStringSymbol
         [asPattern "foobar", Test.Int.asPattern 10]
-        bottom
+        (bottom intSort)
     , Test.Int.testInt
         "string2Base decimal from hex is bottom"
         string2BaseStringSymbol
         [asPattern "baad", Test.Int.asPattern 10]
-        bottom
+        (bottom intSort)
 
     -- Octal
     , Test.Int.testInt
@@ -184,27 +184,27 @@ test_string2Base =
         "string2Base octal negative is bottom"
         string2BaseStringSymbol
         [asPattern "-42", Test.Int.asPattern 8]
-        bottom
+        (bottom intSort)
     , Test.Int.testInt
         "string2Base octal is bottom"
         string2BaseStringSymbol
         [asPattern "-42.3", Test.Int.asPattern 8]
-        bottom
+        (bottom intSort)
     , Test.Int.testInt
         "string2Base octal empty string is bottom"
         string2BaseStringSymbol
         [asPattern "", Test.Int.asPattern 8]
-        bottom
+        (bottom intSort)
     , Test.Int.testInt
         "string2Base octal non-number is bottom"
         string2BaseStringSymbol
         [asPattern "foobar", Test.Int.asPattern 8]
-        bottom
+        (bottom intSort)
     , Test.Int.testInt
         "string2Base octal from hex is bottom"
         string2BaseStringSymbol
         [asPattern "baad", Test.Int.asPattern 8]
-        bottom
+        (bottom intSort)
 
     -- Hexadecimal
     , Test.Int.testInt
@@ -216,22 +216,22 @@ test_string2Base =
         "string2Base hex negative is bottom"
         string2BaseStringSymbol
         [asPattern "-42", Test.Int.asPattern 16]
-        bottom
+        (bottom intSort)
     , Test.Int.testInt
         "string2Base hex is bottom"
         string2BaseStringSymbol
         [asPattern "-42.3", Test.Int.asPattern 16]
-        bottom
+        (bottom intSort)
     , Test.Int.testInt
         "string2Base hex empty string is bottom"
         string2BaseStringSymbol
         [asPattern "", Test.Int.asPattern 16]
-        bottom
+        (bottom intSort)
     , Test.Int.testInt
         "string2Base hex non-number is bottom"
         string2BaseStringSymbol
         [asPattern "foobar", Test.Int.asPattern 16]
-        bottom
+        (bottom intSort)
     , Test.Int.testInt
         "string2Base hex from hex is bottom"
         string2BaseStringSymbol
@@ -255,22 +255,22 @@ test_string2Int =
         "string2Int decimal is bottom"
         string2IntStringSymbol
         [asPattern "-42.3"]
-        bottom
+        (bottom intSort)
     , Test.Int.testInt
         "string2Int decimal empty string is bottom"
         string2IntStringSymbol
         [asPattern ""]
-        bottom
+        (bottom intSort)
     , Test.Int.testInt
         "string2Int decimal non-number is bottom"
         string2IntStringSymbol
         [asPattern "foobar"]
-        bottom
+        (bottom intSort)
     , Test.Int.testInt
         "string2Int decimal from hex is bottom"
         string2IntStringSymbol
         [asPattern "baad"]
-        bottom
+        (bottom intSort)
     ]
 
 -- | Another name for asPattern.

@@ -99,13 +99,13 @@ testDef =
                 , sentenceAxiomPattern =
                     patternPureToKore
                         (mkImplies
-                            (mkTop' sortVarS)
+                            (mkTop sortVarS)
                             (mkAnd
-                                (mkEquals' sortVarS
+                                (mkEquals
                                     (mkApp sortS gHead [])
                                     (mkApp sortS sHead [])
                                 )
-                                (mkTop' sortVarS)
+                                (mkTop sortVarS)
                             )
                         )
                 }
@@ -116,13 +116,13 @@ testDef =
                 , sentenceAxiomPattern =
                     (patternPureToKore
                         (mkImplies
-                            (mkTop' sortVarS)
+                            (mkTop sortVarS)
                             (mkAnd
-                                (mkEquals' sortVarS
-                                    (mkTop' sortS)
+                                (mkEquals
+                                    (mkTop sortS)
                                     (mkApp sortS fHead [])
                                 )
-                                (mkTop' sortVarS)
+                                (mkTop sortVarS)
                             )
                         )
                     )
@@ -134,13 +134,13 @@ testDef =
                 , sentenceAxiomPattern =
                     (patternPureToKore
                         (mkImplies
-                            (mkTop' sortVarS)
+                            (mkTop sortVarS)
                             (mkAnd
-                                (mkEquals' sortVarS
+                                (mkEquals
                                     (mkApp sortS fHead [])
                                     (mkApp sortS sHead [])
                                 )
-                                (mkTop' sortVarS)
+                                (mkTop sortVarS)
                             )
                         :: CommonStepPattern Object)
                     )
@@ -152,13 +152,13 @@ testDef =
                 , sentenceAxiomPattern =
                     (patternPureToKore
                         (mkImplies
-                            (mkTop' sortVarS)
+                            (mkTop sortVarS)
                             (mkAnd
-                                (mkEquals' sortVarS
+                                (mkEquals
                                     (mkApp sortS fHead [])
                                     (mkApp sortS tHead [])
                                 )
-                                (mkTop' sortVarS)
+                                (mkTop sortVarS)
                             )
                         :: CommonStepPattern Object)
                     )
@@ -169,7 +169,7 @@ testDef =
                 , sentenceAxiomAttributes = Attributes []
                 , sentenceAxiomPattern =
                     (patternPureToKore
-                        (mkTop' sortS
+                        (mkTop sortS
                         :: CommonStepPattern Object)
                     )
                 }
@@ -179,8 +179,8 @@ testDef =
                 , sentenceAxiomAttributes = Attributes []
                 , sentenceAxiomPattern =
                     (patternPureToKore
-                        (mkAnd (mkTop' sortS)
-                            (mkAnd (mkTop' sortS)
+                        (mkAnd (mkTop sortS)
+                            (mkAnd (mkTop sortS)
                                 (mkRewrites
                                     (mkApp sortS fHead [])
                                     (mkApp sortS tHead [])

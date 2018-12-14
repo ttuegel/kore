@@ -70,7 +70,7 @@ test_getUnit =
                 patFalse = Test.Bool.asPattern False
                 predicate = mkEquals patFalse patIn
             (===) (Test.Bool.asExpandedPattern False) =<< evaluate patIn
-            (===) ExpandedPattern.top =<< evaluate predicate
+            (===) (ExpandedPattern.top boolSort) =<< evaluate predicate
         )
 
 test_inElement :: TestTree
@@ -84,7 +84,7 @@ test_inElement =
                 patTrue = Test.Bool.asPattern True
                 predicate = mkEquals patIn patTrue
             (===) (Test.Bool.asExpandedPattern True) =<< evaluate patIn
-            (===) ExpandedPattern.top =<< evaluate predicate
+            (===) (ExpandedPattern.top boolSort) =<< evaluate predicate
         )
 
 test_inConcat :: TestTree
@@ -100,7 +100,7 @@ test_inConcat =
                 patTrue = Test.Bool.asPattern True
                 predicate = mkEquals patTrue patIn
             (===) (Test.Bool.asExpandedPattern True) =<< evaluate patIn
-            (===) ExpandedPattern.top =<< evaluate predicate
+            (===) (ExpandedPattern.top boolSort) =<< evaluate predicate
         )
 
 test_concatUnit :: TestTree
@@ -119,8 +119,8 @@ test_concatUnit =
             expect <- evaluate patValues
             (===) expect =<< evaluate patConcat1
             (===) expect =<< evaluate patConcat2
-            (===) ExpandedPattern.top =<< evaluate predicate1
-            (===) ExpandedPattern.top =<< evaluate predicate2
+            (===) (ExpandedPattern.top setSort) =<< evaluate predicate1
+            (===) (ExpandedPattern.top setSort) =<< evaluate predicate2
         )
 
 test_concatAssociates :: TestTree
@@ -133,13 +133,21 @@ test_concatAssociates =
             patSet3 <- forAll genSetPattern
             let patConcat12 = mkApp setSort concatSetSymbol [ patSet1, patSet2 ]
                 patConcat23 = mkApp setSort concatSetSymbol [ patSet2, patSet3 ]
-                patConcat12_3 = mkApp setSort concatSetSymbol [ patConcat12, patSet3 ]
-                patConcat1_23 = mkApp setSort concatSetSymbol [ patSet1, patConcat23 ]
+                patConcat12_3 =
+                    mkApp
+                        setSort
+                        concatSetSymbol
+                        [ patConcat12, patSet3 ]
+                patConcat1_23 =
+                    mkApp
+                        setSort
+                        concatSetSymbol
+                        [ patSet1, patConcat23 ]
                 predicate = mkEquals patConcat12_3 patConcat1_23
             concat12_3 <- evaluate patConcat12_3
             concat1_23 <- evaluate patConcat1_23
             (===) concat12_3 concat1_23
-            (===) ExpandedPattern.top =<< evaluate predicate
+            (===) (ExpandedPattern.top setSort) =<< evaluate predicate
         )
 
 test_difference :: TestTree
@@ -152,11 +160,14 @@ test_difference =
             let set3 = Set.difference set1 set2
                 patSet3 = asPattern set3
                 patDifference =
-                    mkApp setSort differenceSetSymbol [ asPattern set1, asPattern set2 ]
+                    mkApp
+                        setSort
+                        differenceSetSymbol
+                        [ asPattern set1, asPattern set2 ]
                 predicate = mkEquals patSet3 patDifference
             expect <- evaluate patSet3
             (===) expect =<< evaluate patDifference
-            (===) ExpandedPattern.top =<< evaluate predicate
+            (===) (ExpandedPattern.top setSort) =<< evaluate predicate
         )
 
 genSetSortedVariable
@@ -208,7 +219,7 @@ test_unifyConcreteIdem =
                 predicate = mkEquals patSet patAnd
             expect <- evaluate patSet
             (===) expect =<< evaluate patAnd
-            (===) ExpandedPattern.top =<< evaluate predicate
+            (===) (ExpandedPattern.top setSort) =<< evaluate predicate
         )
 
 test_unifyConcreteDistinct :: TestTree
@@ -224,8 +235,8 @@ test_unifyConcreteDistinct =
                 patSet2 = asPattern set2
                 conjunction = mkAnd patSet1 patSet2
                 predicate = mkEquals patSet1 conjunction
-            (===) ExpandedPattern.bottom =<< evaluate conjunction
-            (===) ExpandedPattern.bottom =<< evaluate predicate
+            (===) (ExpandedPattern.bottom setSort) =<< evaluate conjunction
+            (===) (ExpandedPattern.bottom setSort) =<< evaluate predicate
         )
 
 tree_unifyFramingVariable :: TestTree

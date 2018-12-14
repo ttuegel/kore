@@ -69,12 +69,14 @@ test_existsSimplification = give mockSymbolOrAliasSorts
 
     , testGroup "Exists - Predicates"
         [ testCase "Top" $ do
-            let expect = OrOfExpandedPattern.make [ ExpandedPattern.top ]
+            let expect =
+                    OrOfExpandedPattern.make
+                        [ ExpandedPattern.top Mock.testSort]
             actual <-
                 evaluate mockMetadataTools
                     (makeExists
                         Mock.x
-                        [ExpandedPattern.top]
+                        [ExpandedPattern.top Mock.testSort]
                     )
             assertEqualWithExplanation "" expect actual
 
@@ -84,11 +86,13 @@ test_existsSimplification = give mockSymbolOrAliasSorts
             assertEqualWithExplanation "" expect actual
 
         , testCase "Expanded Top" $ do
-            let expect = OrOfExpandedPattern.make [ ExpandedPattern.top ]
+            let expect =
+                    OrOfExpandedPattern.make
+                        [ ExpandedPattern.top Mock.testSort ]
             actual <-
                 makeEvaluate mockMetadataTools
                     Mock.x
-                    (ExpandedPattern.top :: CommonExpandedPattern Object)
+                    (ExpandedPattern.top Mock.testSort)
             assertEqualWithExplanation "" expect actual
 
         , testCase "Expanded Bottom" $ do
@@ -96,7 +100,7 @@ test_existsSimplification = give mockSymbolOrAliasSorts
             actual <-
                 makeEvaluate mockMetadataTools
                     Mock.x
-                    (ExpandedPattern.bottom :: CommonExpandedPattern Object)
+                    (ExpandedPattern.bottom Mock.testSort)
             assertEqualWithExplanation "" expect actual
         ]
 
@@ -217,12 +221,14 @@ test_existsSimplification = give mockSymbolOrAliasSorts
     , testCase "exists reevaluates" $ do
         -- exists x . (top and (f(x) = f(g(a)) and [x=g(a)])
         --    = top.s
-        let expect = OrOfExpandedPattern.make [ ExpandedPattern.top ]
+        let expect =
+                OrOfExpandedPattern.make
+                    [ ExpandedPattern.top Mock.testSort ]
         actual <-
             makeEvaluate mockMetadataTools
                 Mock.x
                 Predicated
-                    { term = mkTop
+                    { term = mkTop Mock.testSort
                     , predicate = makeEqualsPredicate fOfX (Mock.f gOfA)
                     , substitution = Substitution.wrap [(Mock.x, gOfA)]
                     }

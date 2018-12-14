@@ -64,12 +64,12 @@ test_forallSimplification = give mockSymbolOrAliasSorts
             -- forall(top) = top
             assertEqualWithExplanation "forall(top)"
                 (OrOfExpandedPattern.make
-                    [ ExpandedPattern.top ]
+                    [ ExpandedPattern.top Mock.testSort ]
                 )
                 (evaluate
                     (makeForall
                         Mock.x
-                        [ExpandedPattern.top]
+                        [ExpandedPattern.top Mock.testSort]
                     )
                 )
             -- forall(bottom) = bottom
@@ -88,17 +88,17 @@ test_forallSimplification = give mockSymbolOrAliasSorts
         (do
             -- forall(top) = top
             assertEqualWithExplanation "forall(top)"
-                ExpandedPattern.top
+                (ExpandedPattern.top Mock.testSort)
                 (makeEvaluate
                     Mock.x
-                    (ExpandedPattern.top :: CommonExpandedPattern Object)
+                    (ExpandedPattern.top Mock.testSort)
                 )
             -- forall(bottom) = bottom
             assertEqualWithExplanation "forall(bottom)"
-                ExpandedPattern.bottom
+                (ExpandedPattern.bottom Mock.testSort)
                 (makeEvaluate
                     Mock.x
-                    (ExpandedPattern.bottom :: CommonExpandedPattern Object)
+                    (ExpandedPattern.bottom Mock.testSort)
                 )
         )
     , testCase "forall applies substitution if possible"

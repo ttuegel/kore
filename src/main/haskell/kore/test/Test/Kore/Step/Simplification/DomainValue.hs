@@ -26,7 +26,6 @@ import           Kore.Step.OrOfExpandedPattern
                  ( CommonOrOfExpandedPattern )
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
                  ( make )
-import           Kore.Step.Pattern
 import           Kore.Step.Simplification.DomainValue
                  ( simplify )
 import           Kore.Step.StepperAttributes
@@ -95,13 +94,10 @@ test_domainValueSimplification =
         )
     ]
   where
-    bottom = OrOfExpandedPattern.make [ExpandedPattern.bottom]
+    bottom = OrOfExpandedPattern.make [ExpandedPattern.bottom testSort]
 
 testSort :: Sort Object
-testSort =
-    case mkBottom :: CommonStepPattern Object of
-        Bottom_ sort -> sort
-        _ -> error "unexpected"
+testSort = predicateSort
 
 mockSymbolOrAliasSorts :: SymbolOrAliasSorts Object
 mockSymbolOrAliasSorts = Mock.makeSymbolOrAliasSorts []

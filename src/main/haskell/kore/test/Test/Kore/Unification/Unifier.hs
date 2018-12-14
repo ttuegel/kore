@@ -46,7 +46,6 @@ import qualified Kore.Predicate.Predicate as Predicate
 import           Kore.Step.ExpandedPattern
                  ( ExpandedPattern, Predicated (..) )
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
-                 ( Predicated (..), bottom )
 import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
 import           Kore.Step.Pattern
 import           Kore.Step.Simplification.Data
@@ -530,7 +529,7 @@ test_unification =
         andSimplifySuccess
             (UnificationTerm aA)
             (UnificationTerm a1A)
-            (UnificationResultTerm mkBottom)
+            (UnificationResultTerm (mkBottomOf aA))
             []
             makeFalsePredicate
             EmptyUnificationProof
@@ -538,7 +537,7 @@ test_unification =
         andSimplifySuccess
             (UnificationTerm dv1)
             (UnificationTerm dv2)
-            (UnificationResultTerm mkBottom)
+            (UnificationResultTerm (mkBottomOf dv1))
             []
             makeFalsePredicate
             EmptyUnificationProof
@@ -591,7 +590,7 @@ test_unification =
         andSimplifySuccess
             (UnificationTerm (applySymbol f [aA]))
             (UnificationTerm (applySymbol f [a1A]))
-            (UnificationResultTerm mkBottom)
+            (UnificationResultTerm (mkBottom s2))
             []
             makeFalsePredicate
             EmptyUnificationProof
@@ -719,7 +718,7 @@ injUnificationTests =
         andSimplifySuccess
             (UnificationTerm aA)
             (UnificationTerm (applyInj s1 xs2))
-            (UnificationResultTerm mkBottom)
+            (UnificationResultTerm (mkBottom s1))
             []
             makeFalsePredicate
             EmptyUnificationProof
@@ -733,7 +732,7 @@ injUnificationTests =
         andSimplifySuccess
             term1
             term2
-            (UnificationResultTerm mkBottom)
+            (UnificationResultTerm (mkBottom s4))
             []
             makeFalsePredicate
             EmptyUnificationProof
@@ -742,7 +741,7 @@ injUnificationTests =
             -- TODO(traiansf): this should succeed if s1 < s2 < s3
             (UnificationTerm (applyInj s3 aA))
             (UnificationTerm (applyInj s3 xs2))
-            (UnificationResultTerm mkBottom)
+            (UnificationResultTerm (mkBottom s3))
             []
             makeFalsePredicate
             EmptyUnificationProof
@@ -763,14 +762,10 @@ simplifyPattern (UnificationTerm term) = do
         case
             OrOfExpandedPattern.extractPatterns
                 (fst simplifiedPatterns) of
-            [] -> return ExpandedPattern.bottom
+            [] -> return (ExpandedPattern.bottomOf term)
             (config : _) -> return config
     functionRegistry = Map.empty
-    expandedPattern = Predicated
-        { term
-        , predicate = makeTruePredicate
-        , substitution = mempty
-        }
+    expandedPattern = pure term
 
 makeEqualsPredicate
     :: CommonStepPattern Object

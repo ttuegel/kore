@@ -175,7 +175,7 @@ evalGet =
         -> Sort Object
         -> [StepPattern Object variable]
         -> Simplifier (AttemptedFunction Object variable)
-    evalGet0 _ _ _ = \arguments ->
+    evalGet0 _ _ resultSort = \arguments ->
         Builtin.getAttemptedFunction
         (do
             let (_list, _ix) =
@@ -185,7 +185,8 @@ evalGet =
                 emptyList = do
                     _list <- expectBuiltinList ctx _list
                     if Seq.null _list
-                        then Builtin.appliedFunction ExpandedPattern.bottom
+                        then Builtin.appliedFunction
+                            (ExpandedPattern.bottom resultSort)
                         else empty
                 bothConcrete = do
                     _list <- expectBuiltinList ctx _list
@@ -199,8 +200,11 @@ evalGet =
                         (Seq.lookup ix _list)
             emptyList <|> bothConcrete
         )
-    maybeBottom =
-        maybe ExpandedPattern.bottom ExpandedPattern.fromPurePattern
+      where
+        maybeBottom =
+            maybe
+                (ExpandedPattern.bottom resultSort)
+                ExpandedPattern.fromPurePattern
 
 evalUnit :: Builtin.Function
 evalUnit =
@@ -449,7 +453,7 @@ unifyEquals
         -> m (expanded, proof)
     unifyEqualsConcrete dvSort list1 list2
       | Seq.length list1 /= Seq.length list2 =
-        return (ExpandedPattern.bottom, SimplificationProof)
+        return (ExpandedPattern.bottom dvSort, SimplificationProof)
       | otherwise =
         do
             unified <-
@@ -475,7 +479,7 @@ unifyEquals
         prefix2
         frame2
       | Seq.length prefix2 > Seq.length list1 =
-        return (ExpandedPattern.bottom, SimplificationProof)
+        return (ExpandedPattern.bottom resultSort, SimplificationProof)
       | otherwise =
         do
             (prefixUnified, _) <- unifyEqualsConcrete resultSort prefix1 prefix2
@@ -506,7 +510,7 @@ unifyEquals
         frame2
         suffix2
       | Seq.length suffix2 > Seq.length list1 =
-        return (ExpandedPattern.bottom, SimplificationProof)
+        return (ExpandedPattern.bottom resultSort, SimplificationProof)
       | otherwise =
         do
             (prefixUnified, _) <- simplifyChild frame2 listPrefix1

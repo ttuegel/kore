@@ -85,7 +85,7 @@ test_expandedPattern =
             )
             (ExpandedPattern.toMLPattern
                 Predicated
-                    { term = mkTop' sortVariable
+                    { term = mkTop sortVariable
                     , predicate = makeEquals (var 2) (var 3)
                     , substitution = Substitution.wrap [(V 4, var 5)]
                     }
@@ -104,10 +104,10 @@ test_expandedPattern =
         )
     , testCase "Converting to a ML pattern - bottom pattern"
         (assertEqualWithExplanation ""
-            (mkBottom' sortVariable)
+            (mkBottom sortVariable)
             (give mockSymbolOrAliasSorts $ ExpandedPattern.toMLPattern
                 Predicated
-                    { term = mkBottom' sortVariable
+                    { term = mkBottom sortVariable
                     , predicate = makeEquals (var 2) (var 3)
                     , substitution = Substitution.wrap [(V 4, var 5)]
                     }
@@ -115,7 +115,7 @@ test_expandedPattern =
         )
     , testCase "Converting to a ML pattern - bottom predicate"
         (assertEqualWithExplanation ""
-            (mkBottom' sortVariable)
+            (mkBottom sortVariable)
             (give mockSymbolOrAliasSorts $ ExpandedPattern.toMLPattern
                 Predicated
                     { term = var 1

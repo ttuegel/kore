@@ -435,7 +435,7 @@ mainWithOptions
                 Just specIndexedModule ->
                     either
                         (\pat -> (ExitFailure 1, pat))
-                        (\_ -> (ExitSuccess, mkTop))
+                        (const (ExitSuccess, mkTop predicateSort))
                     <$> prove
                             stepLimit
                             indexedModule

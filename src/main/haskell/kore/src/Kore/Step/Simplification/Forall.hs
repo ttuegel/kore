@@ -96,11 +96,11 @@ makeEvaluate
     => variable level
     -> ExpandedPattern level variable
     -> (ExpandedPattern level variable, SimplificationProof level)
-makeEvaluate variable patt
+makeEvaluate variable patt@Predicated { term }
   | ExpandedPattern.isTop patt =
-    (ExpandedPattern.top, SimplificationProof)
+    (ExpandedPattern.topOf term, SimplificationProof)
   | ExpandedPattern.isBottom patt =
-    ( ExpandedPattern.bottom
+    ( ExpandedPattern.bottomOf term
     , SimplificationProof
     )
   | otherwise =

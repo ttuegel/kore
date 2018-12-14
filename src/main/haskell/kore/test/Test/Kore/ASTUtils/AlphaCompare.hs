@@ -62,8 +62,8 @@ test_alphaEqMap =
     testProperty
         "(forall a. x |-> a) = (forall b. x |-> b)"
         $ Hedgehog.property $ do
-            let forall1 = mkForall v1 $ Mock.builtinMap [(mkTop, mkVar v1)]
-                forall2 = mkForall v2 $ Mock.builtinMap [(mkTop, mkVar v2)]
+            let forall1 = mkForall v1 $ Mock.builtinMap [(mkTop s, mkVar v1)]
+                forall2 = mkForall v2 $ Mock.builtinMap [(mkTop s, mkVar v2)]
             Hedgehog.assert (alphaEq forall1 forall2)
 
 s :: Sort Object

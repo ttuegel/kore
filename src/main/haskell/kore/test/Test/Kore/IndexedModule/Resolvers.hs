@@ -36,13 +36,13 @@ objectA :: SentenceSymbol Object (CommonStepPattern Object)
 objectA = mkSymbol (testId "a") [] objectS1
 
 objectB :: SentenceAlias Object (CommonStepPattern Object)
-objectB = mkAlias (testId "b") objectS1 [] $ mkTop' objectS1
+objectB = mkAlias (testId "b") objectS1 [] $ mkTop objectS1
 
 metaA :: SentenceSymbol Meta (CommonStepPattern Meta)
 metaA = mkSymbol (testId "#a") [] charListMetaSort
 
 metaB :: SentenceAlias Meta (CommonStepPattern Meta)
-metaB = mkAlias (testId "#b") charListMetaSort [] $ mkTop' charListMetaSort
+metaB = mkAlias (testId "#b") charListMetaSort [] $ mkTop charListMetaSort
 
 testObjectModuleName :: ModuleName
 testObjectModuleName = ModuleName "TEST-OBJECT-MODULE"

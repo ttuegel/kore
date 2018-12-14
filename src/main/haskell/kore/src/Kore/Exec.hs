@@ -195,7 +195,7 @@ setUpConcreteExecution
     let
         initialPattern =
             case OrOfExpandedPattern.extractPatterns (fst simplifiedPatterns) of
-                [] -> ExpandedPattern.bottom
+                [] -> ExpandedPattern.bottomOf purePattern
                 (config : _) -> config
     executionGraph <- runStrategy' initialPattern
     execute metadataTools simplifier substitutionSimplifier executionGraph
