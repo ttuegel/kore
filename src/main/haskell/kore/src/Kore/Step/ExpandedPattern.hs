@@ -245,12 +245,7 @@ bottomOf
     :: MetaOrObject level
     => StepPattern level variable
     -> ExpandedPattern level variable
-bottomOf stepPattern =
-    Predicated
-        { term      = mkBottomOf stepPattern
-        , predicate = makeFalsePredicate
-        , substitution = mempty
-        }
+bottomOf = bottom . getSort
 
 {-|'top' is an expanded pattern that has a top condition and that
 should become Top when transformed to a ML pattern.
@@ -269,12 +264,7 @@ topOf
     :: MetaOrObject level
     => StepPattern level variable
     -> ExpandedPattern level variable
-topOf stepPattern =
-    Predicated
-        { term      = mkTopOf stepPattern
-        , predicate = makeTruePredicate
-        , substitution = mempty
-        }
+topOf = top . getSort
 
 {-| 'isTop' checks whether an ExpandedPattern is equivalent to a top Pattern.
 -}
