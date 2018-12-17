@@ -44,11 +44,8 @@ import           Kore.Step.Simplification.Data
                  ( PredicateSubstitutionSimplifier, SimplificationProof (..),
                  Simplifier )
 import qualified Kore.Step.Simplification.Iff as Iff
-                 ( makeEvaluate )
 import qualified Kore.Step.Simplification.Not as Not
-                 ( simplifyEvaluated )
 import qualified Kore.Step.Simplification.Or as Or
-                 ( simplifyEvaluated )
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 import qualified Kore.Unification.Substitution as Substitution
@@ -270,8 +267,10 @@ makeEvaluate
                         then mkTopOf secondTerm
                         else secondTerm
                     }
-        (firstCeilNegation, _proof3) = Not.simplifyEvaluated firstCeil
-        (secondCeilNegation, _proof4) = Not.simplifyEvaluated secondCeil
+        (firstCeilNegation, _proof3) =
+            Not.simplify Not { notSort = _, notChild = firstCeil }
+        (secondCeilNegation, _proof4) =
+            Not.simplify Not { notSort = _, notChild = secondCeil }
     (termEquality, _proof) <-
         makeEvaluateTermsAssumesNoBottom
             tools substitutionSimplifier firstTerm secondTerm

@@ -28,7 +28,6 @@ import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
 import           Kore.Step.Simplification.Data
                  ( SimplificationProof (..) )
 import qualified Kore.Step.Simplification.Not as Not
-                 ( makeEvaluate, simplifyEvaluated )
 import           Kore.Unparser
 
 {-|'simplify' simplifies an 'Implies' pattern with 'OrOfExpandedPattern'
@@ -59,34 +58,20 @@ simplify
     Implies
         { impliesFirst = first
         , impliesSecond = second
+        , impliesSort
         }
-  =
-    simplifyEvaluatedImplies first second
-
--- TODO: Maybe transform this to (not a) \/ b
-simplifyEvaluatedImplies
-    ::  ( MetaOrObject level
-        , SortedVariable variable
-        , Ord (variable level)
-        , Show (variable level)
-        , Unparse (variable level)
-        )
-    => OrOfExpandedPattern level variable
-    -> OrOfExpandedPattern level variable
-    -> (OrOfExpandedPattern level variable, SimplificationProof level)
-simplifyEvaluatedImplies first second
   | OrOfExpandedPattern.isTrue first =
     (second, SimplificationProof)
   | OrOfExpandedPattern.isFalse first =
-    (,)
-        (OrOfExpandedPattern.make [ExpandedPattern.top predicateSort])
-        SimplificationProof
+    ( OrOfExpandedPattern.make [ExpandedPattern.top impliesSort]
+    , SimplificationProof
+    )
   | OrOfExpandedPattern.isTrue second =
-    (,)
-        (OrOfExpandedPattern.make [ExpandedPattern.top predicateSort])
-        SimplificationProof
+    ( OrOfExpandedPattern.make [ExpandedPattern.top impliesSort]
+    , SimplificationProof
+    )
   | OrOfExpandedPattern.isFalse second =
-    Not.simplifyEvaluated first
+    Not.simplify Not { notSort = impliesSort, notChild = first }
   | otherwise =
     let
         (result, _proofs) =
@@ -114,7 +99,7 @@ simplifyEvaluateHalfImplies first second@Predicated { term }
   | ExpandedPattern.isTop second =
     (OrOfExpandedPattern.make [ExpandedPattern.topOf term], SimplificationProof)
   | ExpandedPattern.isBottom second =
-    Not.simplifyEvaluated first
+    Not.simplify Not { notSort = patternSort, notChild = first }
   | otherwise =
     -- TODO: Also merge predicate-only patterns for 'Or'
     case OrOfExpandedPattern.extractPatterns first of
@@ -123,6 +108,8 @@ simplifyEvaluateHalfImplies first second@Predicated { term }
             makeEvaluateImplies
                 (OrOfExpandedPattern.toExpandedPattern first)
                 second
+  where
+    Valid { patternSort } = extract term
 
 makeEvaluateImplies
     ::  ( MetaOrObject level

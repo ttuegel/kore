@@ -10,7 +10,6 @@ Portability : portable
 module Kore.Step.Simplification.Iff
     ( makeEvaluate
     , simplify
-    , simplifyEvaluated
     ) where
 
 import qualified Data.Functor.Foldable as Recursive
@@ -29,7 +28,6 @@ import qualified Kore.Step.OrOfExpandedPattern as OrOfExpandedPattern
 import           Kore.Step.Simplification.Data
                  ( SimplificationProof (..) )
 import qualified Kore.Step.Simplification.Not as Not
-                 ( makeEvaluate, simplifyEvaluated )
 import           Kore.Unparser
 
 {-|'simplify' simplifies an 'Iff' pattern with 'OrOfExpandedPattern'
@@ -53,33 +51,16 @@ simplify
     Iff
         { iffFirst = first
         , iffSecond = second
+        , iffSort
         }
-  =
-    simplifyEvaluated first second
-
-{-| evaluates an 'Iff' given its two 'OrOfExpandedPattern' children.
-
-See 'simplify' for detailed documentation.
--}
-simplifyEvaluated
-    ::  ( MetaOrObject level
-        , SortedVariable variable
-        , Ord (variable level)
-        , Show (variable level)
-        , Unparse (variable level)
-        )
-    => OrOfExpandedPattern level variable
-    -> OrOfExpandedPattern level variable
-    -> (OrOfExpandedPattern level variable, SimplificationProof level)
-simplifyEvaluated first second
   | OrOfExpandedPattern.isTrue first =
     (second, SimplificationProof)
   | OrOfExpandedPattern.isFalse first =
-    Not.simplifyEvaluated second
+    Not.simplify Not { notSort = iffSort, notChild = second }
   | OrOfExpandedPattern.isTrue second =
     (first, SimplificationProof)
   | OrOfExpandedPattern.isFalse second =
-    Not.simplifyEvaluated first
+    Not.simplify Not { notSort = iffSort, notChild = first }
   | otherwise =
     case ( firstPatterns, secondPatterns )
       of

@@ -10,7 +10,6 @@ Portability : portable
 module Kore.Step.Simplification.Not
     ( makeEvaluate
     , simplify
-    , simplifyEvaluated
     ) where
 
 import qualified Data.Functor.Foldable as Recursive
@@ -52,40 +51,21 @@ simplify
     ->  ( OrOfExpandedPattern level variable
         , SimplificationProof level
         )
-simplify
-    Not { notChild = child }
-  =
-    simplifyEvaluated child
-
-{-|'simplifyEvaluated' simplifies a 'Not' pattern given its
-'OrOfExpandedPattern' child.
-
-See 'simplify' for details.
--}
-simplifyEvaluated
-    ::  ( MetaOrObject level
-        , SortedVariable variable
-        , Ord (variable level)
-        , Show (variable level)
-        , Unparse (variable level)
-        )
-    => OrOfExpandedPattern level variable
-    -> (OrOfExpandedPattern level variable, SimplificationProof level)
-simplifyEvaluated simplified
-  | OrOfExpandedPattern.isFalse simplified =
-    (,)
-        (OrOfExpandedPattern.make [ExpandedPattern.top predicateSort])
-        SimplificationProof
-  | OrOfExpandedPattern.isTrue simplified =
+simplify Not { notChild, notSort }
+  | OrOfExpandedPattern.isFalse notChild =
+    ( OrOfExpandedPattern.make [ExpandedPattern.top notSort]
+    , SimplificationProof
+    )
+  | OrOfExpandedPattern.isTrue notChild =
     (OrOfExpandedPattern.make [], SimplificationProof)
   | otherwise =
-    case OrOfExpandedPattern.extractPatterns simplified of
+    case OrOfExpandedPattern.extractPatterns notChild of
         [patt] -> makeEvaluate patt
         _ ->
             ( makeFromSinglePurePattern
                 (mkNot
                     (ExpandedPattern.toMLPattern
-                        (OrOfExpandedPattern.toExpandedPattern simplified)
+                        (OrOfExpandedPattern.toExpandedPattern notChild)
                     )
                 )
             , SimplificationProof
