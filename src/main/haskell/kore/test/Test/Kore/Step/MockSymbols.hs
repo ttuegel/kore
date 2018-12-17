@@ -1428,6 +1428,13 @@ listSort =
         , sortActualSorts = []
         }
 
+setSort :: Sort Object
+setSort =
+    SortActualSort SortActual
+        { sortActualName  = testId "setSort"
+        , sortActualSorts = []
+        }
+
 subsorts :: [(Sort Object, Sort Object)]
 subsorts =
     [ (subSubSort, subSort)
@@ -1450,4 +1457,4 @@ builtinList = mkDomainValue listSort . Domain.BuiltinList . Seq.fromList
 builtinSet
     :: [ConcreteStepPattern Object]
     -> StepPattern Object variable
-builtinSet = mkDomainValue listSort . Domain.BuiltinSet . Set.fromList
+builtinSet = mkDomainValue setSort . Domain.BuiltinSet . Set.fromList
