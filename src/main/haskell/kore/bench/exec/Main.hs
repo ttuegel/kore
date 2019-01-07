@@ -28,7 +28,7 @@ import           Kore.IndexedModule.IndexedModule
                  ( IndexedModule (..), VerifiedModule,
                  makeIndexedModuleAttributesNull, mapIndexedModulePatterns )
 import           Kore.Parser.Parser
-                 ( fromKore, fromKorePattern )
+                 ( parseKoreDefinition, parseKorePattern )
 import           Kore.Step.AxiomPatterns
                  ( AxiomPatternAttributes )
 import           Kore.Step.Pattern
@@ -138,7 +138,8 @@ execBenchmark root kFile definitionFile mainModuleName test =
         kompile
         definition <- readFile $ root </> definitionFile
         let
-            parsedDefinition = either error id $ fromKore "" definition
+            parsedDefinition =
+                either error id $ parseKoreDefinition "" definition
             verifiedModules =
                 either (error . printError) id
                     $ verifyAndIndexDefinition
@@ -154,7 +155,7 @@ execBenchmark root kFile definitionFile mainModuleName test =
                     verifiedModule
         pat <- parseProgram
         let
-            parsedPattern = either error id $ fromKorePattern "" pat
+            parsedPattern = either error id $ parseKorePattern "" pat
             verifiedPattern =
                 either (error . printError) id
                 $ PatternVerifier.runPatternVerifier context

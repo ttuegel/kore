@@ -370,7 +370,8 @@ builtinFunctions =
 
  -}
 asPattern
-    :: VerifiedModule declAttrs axiomAttrs
+    :: Ord (variable Object)
+    => VerifiedModule declAttrs axiomAttrs
     -- ^ indexed module where pattern would appear
     -> Sort Object
     -> Either
@@ -382,12 +383,11 @@ asPattern indexedModule dvSort
     let applyUnit = mkApp dvSort symbolUnit []
     symbolElement <- lookupSymbolElement dvSort indexedModule
     let applyElement (key, value) =
-            mkApp dvSort symbolElement [Kore.fromConcretePurePattern key, value]
+            mkApp dvSort symbolElement [fromConcreteStepPattern key, value]
     symbolConcat <- lookupSymbolConcat dvSort indexedModule
     let applyConcat map1 map2 = mkApp dvSort symbolConcat [map1, map2]
         asPattern0 result =
-            foldr applyConcat applyUnit
-                (applyElement <$> Map.toAscList result)
+            foldr applyConcat applyUnit (applyElement <$> Map.toAscList result)
     return asPattern0
 
 {- | Render a 'Map' as an extended domain value pattern.
@@ -396,7 +396,8 @@ asPattern indexedModule dvSort
 
  -}
 asExpandedPattern
-    :: VerifiedModule declAttrs axiomAttrs
+    :: Ord (variable Object)
+    => VerifiedModule declAttrs axiomAttrs
     -- ^ dictionary of Map constructor symbols
     -> Kore.Sort Object
     -> Either
@@ -411,7 +412,8 @@ asExpandedPattern symbols resultSort =
 {- | Embed a 'Map' in a builtin domain value pattern.
  -}
 asBuiltinDomainValue
-    :: Sort Object
+    :: Ord (variable Object)
+    => Sort Object
     -> Builtin variable
     -> StepPattern Object variable
 asBuiltinDomainValue resultSort map' =
@@ -708,7 +710,7 @@ unifyEquals
         -> m (expanded, proof)
     unifyEqualsElement resultSort map1 element' key2 value2 =
         case Map.toList map1 of
-            [(Kore.fromConcretePurePattern -> key1, value1)] ->
+            [(fromConcreteStepPattern -> key1, value1)] ->
                 do
                     (key, _) <- unifyEqualsChildren key1 key2
                     (value, _) <- unifyEqualsChildren value1 value2
