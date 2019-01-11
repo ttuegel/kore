@@ -17,7 +17,7 @@ module Kore.Parser.CString
 import Data.Char
        ( chr, digitToInt, isHexDigit, isOctDigit, ord, toUpper )
 import Numeric
-       ( showHex, showOct )
+       ( showHex )
 
 import Kore.Parser.CharSet as CharSet
 
@@ -49,13 +49,11 @@ escapeAndAddChar '\r' = showString "\\r"
 escapeAndAddChar '\t' = showString "\\t"
 escapeAndAddChar '\v' = showString "\\v"
 escapeAndAddChar c
-    | code >= 32 && code < 127 = showChar c    -- printable 7-bit ASCII
-    | code <= 255 =
-        showString "\\" . zeroPad 3 (showOct code)
-    | code <= 65535 = showString "\\u" . zeroPad 4 (showHex code)
-    | otherwise =  showString "\\U" . zeroPad 8 (showHex code)
+    | c >= '\x20' && c < '\x7F' = showChar c  -- printable 7-bit ASCII
+    | c < '\x100' = showString "\\x" . zeroPad 2 (showHex $ ord c)
+    | c < '\x10000' = showString "\\u" . zeroPad 4 (showHex $ ord c)
+    | otherwise = showString "\\U" . zeroPad 8 (showHex $ ord c)
   where
-    code = ord c
     zeroPad = padLeftWithCharToLength '0'
 
 {-|Expects input string to be a properly escaped C String.
