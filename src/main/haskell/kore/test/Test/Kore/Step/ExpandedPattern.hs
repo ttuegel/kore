@@ -134,30 +134,28 @@ instance Unparse (W level) where
 instance SortedVariable V where
     sortedVariableSort _ = sortVariable
     fromVariable = error "Not implemented"
+    toVariable = error "Not implemented"
 
-instance SumEqualWithExplanation (V level)
-  where
+instance SumEqualWithExplanation (V level) where
     sumConstructorPair (V a1) (V a2) =
         SumConstructorSameWithArguments
             (EqWrap "V" a1 a2)
 
-instance EqualWithExplanation (V level)
-  where
+instance EqualWithExplanation (V level) where
     compareWithExplanation = sumCompareWithExplanation
     printWithExplanation = show
 
 instance SortedVariable W where
     sortedVariableSort _ = sortVariable
     fromVariable = error "Not implemented"
+    toVariable = error "Not implemented"
 
-instance SumEqualWithExplanation (W level)
-  where
+instance SumEqualWithExplanation (W level) where
     sumConstructorPair (W a1) (W a2) =
         SumConstructorSameWithArguments
             (EqWrap "W" (EWEString a1) (EWEString a2))
 
-instance EqualWithExplanation (W level)
-  where
+instance EqualWithExplanation (W level) where
     compareWithExplanation = sumCompareWithExplanation
     printWithExplanation = show
 
