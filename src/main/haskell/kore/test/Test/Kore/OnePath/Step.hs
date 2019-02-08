@@ -22,7 +22,6 @@ import           Data.Limit
 import qualified Data.Limit as Limit
 import           Kore.AST.Common
                  ( Variable (..) )
-import           Kore.AST.MetaOrObject
 import           Kore.AST.Valid
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools (..) )

@@ -46,7 +46,7 @@ import GHC.Generics
        ( Generic )
 
 import Kore.AST.Identifier
-import Kore.AST.MetaOrObject
+import Kore.Level
 import Kore.Sort
 import Template.Tools
        ( newDefinitionGroup )
@@ -78,7 +78,7 @@ Section 9.1.3 (Heads).
 The 'level' type parameter is used to distiguish between the meta- and object-
 versions of symbol declarations. It should verify 'MetaOrObject level'.
 -}
-data SymbolOrAlias level = SymbolOrAlias
+data SymbolOrAlias (level :: Level) = SymbolOrAlias
     { symbolOrAliasConstructor :: !(Id level)
     , symbolOrAliasParams      :: ![Sort level]
     }
@@ -115,7 +115,7 @@ instance NFData (Variable level)
     See also: 'Data.Void.Void'
 
  -}
-data Concrete level
+data Concrete (level :: Level)
     deriving (Eq, Generic, Ord, Read, Show)
 
 instance Hashable (Concrete level)
@@ -135,7 +135,7 @@ implementing 'fromVariable', i.e. we must be able to construct a
 but the reverse is not required.
 
  -}
-class SortedVariable (variable :: * -> *) where
+class SortedVariable (variable :: Level -> Type) where
     -- | The known 'Sort' of the given variable.
     sortedVariableSort :: variable level -> Sort level
     sortedVariableSort variable =
@@ -940,7 +940,7 @@ be members only of 'Pattern Meta'.
 -- NOTE: If you are adding a case to Pattern, you should add cases in:
 -- ASTUtils/SmartConstructors.hs
 -- as well as a ton of other places, probably.
-data Pattern level domain variable child where
+data Pattern (level :: Level) domain variable child where
     AndPattern
         :: !(And level child) -> Pattern level domain variable child
     ApplicationPattern
@@ -950,8 +950,8 @@ data Pattern level domain variable child where
     CeilPattern
         :: !(Ceil level child) -> Pattern level domain variable child
     DomainValuePattern
-        :: !(DomainValue Object domain child)
-        -> Pattern Object domain variable child
+        :: !(DomainValue 'Object domain child)
+        -> Pattern 'Object domain variable child
     EqualsPattern
         :: !(Equals level child) -> Pattern level domain variable child
     ExistsPattern
@@ -967,17 +967,17 @@ data Pattern level domain variable child where
     InPattern
         :: !(In level child) -> Pattern level domain variable child
     NextPattern
-        :: !(Next Object child) -> Pattern Object domain variable child
+        :: !(Next 'Object child) -> Pattern 'Object domain variable child
     NotPattern
         :: !(Not level child) -> Pattern level domain variable child
     OrPattern
         :: !(Or level child) -> Pattern level domain variable child
     RewritesPattern
-        :: !(Rewrites Object child) -> Pattern Object domain variable child
+        :: !(Rewrites 'Object child) -> Pattern 'Object domain variable child
     StringLiteralPattern
-        :: !StringLiteral -> Pattern Meta domain variable child
+        :: !StringLiteral -> Pattern 'Meta domain variable child
     CharLiteralPattern
-        :: !CharLiteral -> Pattern Meta domain variable child
+        :: !CharLiteral -> Pattern 'Meta domain variable child
     TopPattern
         :: !(Top level child) -> Pattern level domain variable child
     VariablePattern
@@ -987,8 +987,7 @@ $newDefinitionGroup
 {- dummy top-level splice to make ''Pattern available for lifting -}
 
 instance
-    ( Ord level
-    , Ord (variable level)
+    ( Ord (variable level)
     , Ord1 domain
     ) =>
     Ord1 (Pattern level domain variable)
@@ -996,8 +995,7 @@ instance
     liftCompare = $(makeLiftCompare ''Pattern)
 
 instance
-    ( Eq level
-    , Eq (variable level)
+    ( Eq (variable level)
     , Eq1 domain
     ) =>
     Eq1 (Pattern level domain variable)
@@ -1005,8 +1003,7 @@ instance
     liftEq = $(makeLiftEq ''Pattern)
 
 instance
-    ( Show level
-    , Show (variable level)
+    ( Show (variable level)
     , Show1 domain
     ) =>
     Show1 (Pattern level domain variable)
@@ -1149,14 +1146,14 @@ withSort
 {-|'dummySort' is used in error messages when we want to convert an
 'UnsortedPatternStub' to a pattern that can be displayed.
 -}
-dummySort :: MetaOrObject level => proxy level -> Sort level
+dummySort :: IsLevel level => proxy level -> Sort level
 dummySort proxy =
     SortVariableSort
         (SortVariable
             (noLocationId
-                (case isMetaOrObject proxy of
-                    IsMeta   -> "#dummy"
-                    IsObject -> "dummy"
+                (case isLevel proxy of
+                    SMeta   -> "#dummy"
+                    SObject -> "dummy"
                 )
             )
         )
@@ -1164,10 +1161,12 @@ dummySort proxy =
 {-|'getMetaOrObjectPatternType' is a helper function useful to determine
 whether a 'Pattern' is 'Object' or 'Meta'.
 -}
-getMetaOrObjectPatternType
-    :: MetaOrObject level
-    => Pattern level domain variable child -> IsMetaOrObject level
-getMetaOrObjectPatternType _ = isMetaOrObject (Proxy :: Proxy level)
+patternLevel
+    ::  forall level domain variable child.
+        IsLevel level
+    => Pattern level domain variable child
+    -> SLevel level
+patternLevel _ = isLevel (Proxy @level)
 
 {-|The 'UnifiedPatternInterface' class provides a common interface for
 algorithms providing common functionality for 'KorePattern' and 'PurePattern'.
@@ -1175,46 +1174,46 @@ algorithms providing common functionality for 'KorePattern' and 'PurePattern'.
 class UnifiedPatternInterface pat where
     -- |View a 'Meta' 'Pattern' as the parameter @pat@ of the class.
     unifyMetaPattern
-        :: Pattern Meta domain variable child
+        :: Pattern 'Meta domain variable child
         -> pat domain variable child
     unifyMetaPattern = unifyPattern
 
     -- |View an 'Object' 'Pattern' as the parameter @pat@ of the class.
     unifyObjectPattern
-        :: Pattern Object domain variable child
+        :: Pattern 'Object domain variable child
         -> pat domain variable child
     unifyObjectPattern = unifyPattern
 
     -- |View a 'Meta' or an 'Object' 'Pattern' as the parameter of the class.
     unifyPattern
-        :: MetaOrObject level
+        :: IsLevel level
         => Pattern level domain variable child
         -> pat domain variable child
     unifyPattern p =
-        case getMetaOrObjectPatternType p of
-            IsMeta   -> unifyMetaPattern p
-            IsObject -> unifyObjectPattern p
+        case patternLevel p of
+            SMeta   -> unifyMetaPattern p
+            SObject -> unifyObjectPattern p
 
     -- |Given a function appliable on all 'Meta' or 'Object' 'Pattern's,
     -- apply it on an object of the parameter @pat@ of the class.
     unifiedPatternApply
-        ::  (forall level . MetaOrObject level =>
+        ::  (forall level. IsLevel level =>
                 Pattern level domain variable child -> result
             )
         -> (pat domain variable child -> result)
 
 instance
-    forall level . MetaOrObject level =>
+    forall level. IsLevel level =>
     UnifiedPatternInterface (Pattern level)
   where
     unifyMetaPattern p =
-        case isMetaOrObject (Proxy :: Proxy level) of
-            IsMeta   -> p
-            IsObject -> error "Expecting Meta pattern"
+        case isLevel (Proxy @level) of
+            SMeta   -> p
+            SObject -> error "Expecting Meta pattern"
     unifyObjectPattern p =
-        case isMetaOrObject (Proxy :: Proxy level) of
-            IsObject -> p
-            IsMeta   -> error "Expecting Object pattern"
+        case isLevel (Proxy @level) of
+            SObject -> p
+            SMeta   -> error "Expecting Object pattern"
     unifiedPatternApply = id
 
 -- | Use the provided mapping to replace all variables in a 'Pattern' head.
@@ -1314,8 +1313,8 @@ domain values.
 
  -}
 castMetaDomainValues
-    :: Pattern Meta domain1 variable child
-    -> Pattern Meta domain2 variable child
+    :: Pattern 'Meta domain1 variable child
+    -> Pattern 'Meta domain2 variable child
 castMetaDomainValues =
     \case
         AndPattern andP -> AndPattern andP

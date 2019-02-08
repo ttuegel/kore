@@ -12,8 +12,6 @@ module Kore.Building.Implicit where
 
 import Kore.AST.Common
        ( Application (..), Pattern (..), SymbolOrAlias (..) )
-import Kore.AST.MetaOrObject
-       ( Meta )
 import Kore.Building.Patterns
 import Kore.Building.Sorts
 

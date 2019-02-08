@@ -38,11 +38,8 @@ import qualified Kore.Domain.Builtin as Domain
 -- lowest index if there are multiple occurences of `elem`.
 
 alphaEq
-    ::  ( MetaOrObject level
-        , Eq (var level)
-        , Ord (var level)
-        , EqMetaOrObject var
-        , OrdMetaOrObject var
+    ::  ( IsLevel level
+        , forall level'. Ord (var level')
         )
     => PurePattern level Domain.Builtin var annotation
     -> PurePattern level Domain.Builtin var annotation
@@ -56,9 +53,7 @@ alphaEq e1' e2' = Reader.runReader (alphaEqWorker e1' e2') ([], [])
     project = Cofree.tailF . Recursive.project
 
     alphaEqWorker
-        ::  ( Eq (var level)
-            , Ord (var level)
-            )
+        :: Ord (var level)
         => PurePattern level Domain.Builtin var annotation
         -> PurePattern level Domain.Builtin var annotation
         -> Reader ([var level], [var level]) Bool
@@ -275,8 +270,8 @@ alphaEq e1' e2' = Reader.runReader (alphaEqWorker e1' e2') ([], [])
 
     compareNext
         :: Ord (var level)
-        => Next Object (PurePattern level Domain.Builtin var annotation)
-        -> Next Object (PurePattern level Domain.Builtin var annotation)
+        => Next 'Object (PurePattern level Domain.Builtin var annotation)
+        -> Next 'Object (PurePattern level Domain.Builtin var annotation)
         -> Reader ([var level], [var level]) Bool
     compareNext
         Next
@@ -321,8 +316,8 @@ alphaEq e1' e2' = Reader.runReader (alphaEqWorker e1' e2') ([], [])
 
     compareRewrites
         :: Ord (var level)
-        => Rewrites Object (PurePattern level Domain.Builtin var annotation)
-        -> Rewrites Object (PurePattern level Domain.Builtin var annotation)
+        => Rewrites 'Object (PurePattern level Domain.Builtin var annotation)
+        -> Rewrites 'Object (PurePattern level Domain.Builtin var annotation)
         -> Reader ([var level], [var level]) Bool
     compareRewrites
         Rewrites
@@ -371,7 +366,7 @@ alphaEq e1' e2' = Reader.runReader (alphaEqWorker e1' e2') ([], [])
             _ -> return (var1 == var2)
 
     compareDomainValue
-        :: (level ~ Object, Ord (var level))
+        :: (level ~ 'Object, Ord (var level))
         => DomainValue level Domain.Builtin
             (PurePattern level Domain.Builtin var annotation)
         -> DomainValue level Domain.Builtin
@@ -391,7 +386,7 @@ alphaEq e1' e2' = Reader.runReader (alphaEqWorker e1' e2') ([], [])
       | otherwise = return False
 
     compareBuiltin
-        :: (level ~ Object, Ord (var level))
+        :: (level ~ 'Object, Ord (var level))
         => Domain.Builtin (PurePattern level Domain.Builtin var annotation)
         -> Domain.Builtin (PurePattern level Domain.Builtin var annotation)
         -> Reader ([var level], [var level]) Bool

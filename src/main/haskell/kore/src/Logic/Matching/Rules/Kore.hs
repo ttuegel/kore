@@ -12,8 +12,6 @@ import qualified Data.Set as Set
 import qualified Kore.Annotation as Annotation
 import qualified Kore.Annotation.Null as Annotation
 import           Kore.AST.Kore
-import           Kore.AST.MetaOrObject
-                 ( Meta (..) )
 import           Kore.AST.PureToKore
                  ( patternPureToKore )
 import           Kore.ASTUtils.SmartPatterns

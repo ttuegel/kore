@@ -4,7 +4,6 @@ import           Hedgehog
                  ( Property, (===) )
 import qualified Hedgehog
 
-import Kore.AST.MetaOrObject
 import Kore.Step.OrOfExpandedPattern
 
 import Test.Kore

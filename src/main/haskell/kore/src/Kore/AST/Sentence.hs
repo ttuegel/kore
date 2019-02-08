@@ -161,7 +161,7 @@ Section 9.1.6 (Declaration and Definitions).
 The 'level' type parameter is used to distiguish between the meta- and object-
 versions of symbol declarations. It should implement 'MetaOrObject level'.
 -}
-data SentenceAlias (level :: *) (patternType :: *) =
+data SentenceAlias (level :: Level) (patternType :: Type) =
     SentenceAlias
         { sentenceAliasAlias        :: !(Alias level)
         , sentenceAliasSorts        :: ![Sort level]
@@ -183,7 +183,7 @@ Section 9.1.6 (Declaration and Definitions).
 The 'level' type parameter is used to distiguish between the meta- and object-
 versions of symbol declarations. It should verify 'MetaOrObject level'.
 -}
-data SentenceSymbol (level :: *) (patternType :: *) =
+data SentenceSymbol (level :: Level) (patternType :: Type) =
     SentenceSymbol
         { sentenceSymbolSymbol     :: !(Symbol level)
         , sentenceSymbolSorts      :: ![Sort level]
@@ -231,7 +231,7 @@ instance NFData (SentenceImport pat)
 {-|'SentenceSort' corresponds to the @sort-declaration@ syntactic category
 from the Semantics of K, Section 9.1.6 (Declaration and Definitions).
 -}
-data SentenceSort (level :: *) (patternType :: *) =
+data SentenceSort (level :: Level) (patternType :: Type) =
     SentenceSort
         { sentenceSortName       :: !(Id level)
         , sentenceSortParameters :: ![SortVariable level]
@@ -288,7 +288,7 @@ Since axioms and imports exist at both meta and kore levels, we use 'Meta'
 to qualify them. In contrast, since sort declarations are not available
 at the meta level, we qualify them with 'Object'.
 -}
-data Sentence (level :: *) (sortParam :: *) (patternType :: *) where
+data Sentence (level :: Level) (sortParam :: Type) (patternType :: Type) where
     SentenceAliasSentence
         :: !(SentenceAlias level patternType)
         -> Sentence level sortParam patternType
@@ -430,7 +430,7 @@ instance Hashable sentence => Hashable (Definition sentence)
 
 instance NFData sentence => NFData (Definition sentence)
 
-class SentenceSymbolOrAlias (sentence :: * -> * -> *) where
+class SentenceSymbolOrAlias (sentence :: Level -> Type -> Type) where
     getSentenceSymbolOrAliasConstructor
         :: sentence level patternType -> Id level
     getSentenceSymbolOrAliasSortParams
@@ -546,13 +546,13 @@ type VerifiedKoreDefinition = Definition VerifiedKoreSentence
 
 constructUnifiedSentence
     ::  forall a level sortParam patternType.
-        MetaOrObject level
+        IsLevel level
     => (a -> Sentence level sortParam patternType)
     -> (a -> UnifiedSentence sortParam patternType)
 constructUnifiedSentence ctor =
-    case isMetaOrObject (Proxy :: Proxy level) of
-        IsMeta -> UnifiedMetaSentence . ctor
-        IsObject -> UnifiedObjectSentence . ctor
+    case isLevel (Proxy @level) of
+        SMeta -> UnifiedMetaSentence . ctor
+        SObject -> UnifiedObjectSentence . ctor
 
 -- |Given functions appliable to 'Meta' 'Sentence's and 'Object' 'Sentences's,
 -- builds a combined function which can be applied on 'UnifiedSentence's.
@@ -584,7 +584,7 @@ type KoreModule = Module KoreSentence
 type KoreDefinition = Definition KoreSentence
 
 instance
-    ( MetaOrObject level
+    ( IsLevel level
     , sortParam ~ UnifiedSortVariable
     ) =>
     AsSentence
@@ -594,7 +594,7 @@ instance
     asSentence = constructUnifiedSentence SentenceAliasSentence
 
 instance
-    ( MetaOrObject level
+    ( IsLevel level
     , sortParam ~ UnifiedSortVariable
     ) =>
     AsSentence
@@ -630,7 +630,7 @@ asKoreClaimSentence
 asKoreClaimSentence = constructUnifiedSentence SentenceClaimSentence
 
 instance
-    ( MetaOrObject level
+    ( IsLevel level
     , sortParam ~ UnifiedSortVariable
     ) =>
     AsSentence
@@ -689,7 +689,7 @@ type VerifiedPureSentence level =
         )
 
 instance
-    ( MetaOrObject level
+    ( IsLevel level
     , sortParam ~ SortVariable level
     ) =>
     AsSentence
@@ -703,7 +703,7 @@ instance
     asSentence = SentenceAliasSentence
 
 instance
-    ( MetaOrObject level
+    ( IsLevel level
     , sortParam ~ SortVariable level
     ) =>
     AsSentence
@@ -745,7 +745,7 @@ instance
     asSentence = SentenceAxiomSentence
 
 instance
-    ( MetaOrObject level
+    ( IsLevel level
     , sortParam ~ SortVariable level
     ) =>
     AsSentence

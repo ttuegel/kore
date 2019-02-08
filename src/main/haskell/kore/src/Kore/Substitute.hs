@@ -25,7 +25,6 @@ import Control.Monad.Counter
        ( MonadCounter )
 import Kore.AST.Common
        ( Exists (..), Forall (..), Pattern (..), SortedVariable )
-import Kore.AST.MetaOrObject
 import Kore.AST.Pure
 import Kore.Variables.Fresh
        ( FreshVariable, freshVariableSuchThat )
@@ -44,7 +43,7 @@ may appear in the right-hand side of any substitution, but this is not checked.
 substitute
     ::  forall m level domain variable attribute.
         ( FreshVariable variable
-        , MetaOrObject level
+        , IsLevel level
         , MonadCounter m
         , Ord (variable level)
         , SortedVariable variable

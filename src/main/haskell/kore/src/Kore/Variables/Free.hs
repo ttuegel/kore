@@ -76,7 +76,7 @@ freeVariables
         ( UnifiedPatternInterface patternHead
         , Functor (patternHead domain variable)
         , Foldable domain
-        , OrdMetaOrObject variable
+        , forall level. Ord (variable level)
         , Recursive patternType
         , Base patternType ~ CofreeF (patternHead domain variable) annotation
         )
@@ -91,20 +91,23 @@ freeVariables root =
         free
   where
     unlessM m go = m >>= \b -> Monad.unless b go
-    isBound v = Monad.RWS.asks (Set.member $ asUnified v)
-    recordFree v = Monad.RWS.modify' (Set.insert $ asUnified v)
+
+    isBound v = Monad.RWS.asks (Set.member v)
+
+    recordFree v = Monad.RWS.modify' (Set.insert v)
 
     freeVariables1 recursive =
         unifiedPatternApply freeVariables2
         $ Cofree.tailF $ Recursive.project recursive
 
     freeVariables2
-        :: MetaOrObject level
+        :: IsLevel level
         => Pattern level domain variable patternType
         -> RWS (Set.Set (Unified variable)) () (Set.Set (Unified variable)) ()
     freeVariables2 =
         \case
-            VariablePattern v -> unlessM (isBound v) (recordFree v)
+            VariablePattern (asUnified -> v) ->
+                unlessM (isBound v) (recordFree v)
             ExistsPattern Exists { existsVariable, existsChild } ->
                 Monad.RWS.local
                     -- record the bound variable
@@ -126,7 +129,7 @@ allVariables
         ( UnifiedPatternInterface patternHead
         , Functor (patternHead domain variable)
         , Foldable domain
-        , OrdMetaOrObject variable
+        , forall level. Ord (variable level)
         , Recursive patternType
         , Base patternType ~ CofreeF (patternHead domain variable) annotation
         )
@@ -136,24 +139,25 @@ allVariables root =
         (allVariables1 root)
         Set.empty  -- initial set of all variables
   where
-    record v = State.modify' (Set.insert $ asUnified v)
+    record v = State.modify' (Set.insert v)
 
     allVariables1 recursive =
         unifiedPatternApply allVariables2
         $ Cofree.tailF $ Recursive.project recursive
 
     allVariables2
-        :: MetaOrObject level
+        :: IsLevel level
         => Pattern level domain variable patternType
         -> State (Set.Set (Unified variable)) ()
     allVariables2 =
         \case
-            VariablePattern variable -> record variable
+            VariablePattern (asUnified -> variable) ->
+                record variable
             ExistsPattern Exists { existsVariable, existsChild } -> do
-                record existsVariable
+                record (asUnified existsVariable)
                 allVariables1 existsChild
             ForallPattern Forall { forallVariable, forallChild } -> do
-                record forallVariable
+                record (asUnified forallVariable)
                 allVariables1 forallChild
             p -> mapM_ allVariables1 p
 

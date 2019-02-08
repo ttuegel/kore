@@ -82,7 +82,7 @@ patternLens
             <*> lensChild ceilChild
 
     patternLensDomainValue
-        :: level ~ Object
+        :: level ~ 'Object
         => DomainValue level domain
             (PurePattern level domain variable1 annotation)
         -> f
@@ -208,7 +208,7 @@ allChildren = patternLens pure pure pure
 
 -- | Applies a function at an `[Int]` path.
 localInPattern
-    :: (MetaOrObject level, Traversable domain)
+    :: (IsLevel level, Traversable domain)
     => [Int]
     ->  (  PurePattern level domain variable annotation
         -> PurePattern level domain variable annotation
@@ -221,7 +221,7 @@ localInPattern path f pat = pat & inPath path %~ f
 -- The ints represent subpatterns in the obvious way:
 -- [0,1] points to b in \ceil(a /\ b), etc.
 inPath
-    :: (MetaOrObject level, Applicative f, Traversable domain)
+    :: (IsLevel level, Applicative f, Traversable domain)
     => [Int]
     ->  (  PurePattern level domain variable annotation
         -> f (PurePattern level domain variable annotation)

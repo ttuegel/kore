@@ -27,7 +27,6 @@ import           GHC.Generics
 
 import           Kore.AST.Common
                  ( Variable (..) )
-import           Kore.AST.MetaOrObject
 import           Kore.AST.Valid
 import           Kore.Debug
 import           Kore.IndexedModule.MetadataTools

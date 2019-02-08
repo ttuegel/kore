@@ -14,9 +14,11 @@ import Data.Hashable
 import GHC.Generics
        ( Generic )
 
+import Kore.Level
+
 {- | @Null@ is an empty pattern annotation
  -}
-data Null level = Null
+data Null (level :: Level) = Null
     deriving (Eq, Generic, Ord, Show)
 
 instance NFData (Null level)

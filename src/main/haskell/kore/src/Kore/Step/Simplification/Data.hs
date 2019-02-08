@@ -24,7 +24,6 @@ import qualified Control.Monad.Trans as Monad.Trans
 
 import Kore.AST.Common
        ( SortedVariable, Variable )
-import Kore.AST.MetaOrObject
 import Kore.Step.ExpandedPattern
        ( PredicateSubstitution )
 import Kore.Step.OrOfExpandedPattern

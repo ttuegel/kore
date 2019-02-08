@@ -26,7 +26,6 @@ import qualified Data.Set as Set
 
 import           Kore.AST.Common
                  ( SymbolOrAlias (..), Variable (..) )
-import           Kore.AST.MetaOrObject
 import           Kore.AST.Pure
                  ( asConcretePurePattern )
 import           Kore.AST.Valid

@@ -28,8 +28,6 @@ import           Data.Limit
 import qualified Data.Limit as Limit
 import           Kore.AST.Common
 import           Kore.AST.Identifier
-import           Kore.AST.MetaOrObject
-                 ( Meta, Object (..) )
 import           Kore.AST.Valid
 import qualified Kore.Builtin as Builtin
 import           Kore.IndexedModule.IndexedModule

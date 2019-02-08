@@ -13,7 +13,6 @@ module Kore.AST.AstWithLocation
     ) where
 
 import Kore.AST.Common
-import Kore.AST.MetaOrObject
 import Kore.AST.MLPatterns
 import Kore.AST.Sentence
 import Kore.Sort

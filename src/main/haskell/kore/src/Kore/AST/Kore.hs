@@ -38,8 +38,8 @@ module Kore.AST.Kore
     , Base, CofreeF (..)
     , module Kore.AST.Common
     , module Kore.AST.Identifier
-    , module Kore.AST.MetaOrObject
     , module Kore.Annotation.Valid
+    , module Kore.Level
     , module Kore.Sort
     ) where
 
@@ -71,8 +71,8 @@ import           Kore.AST.Common hiding
                  ( castMetaDomainValues, castVoidDomainValues, mapDomainValues,
                  mapVariables, traverseVariables )
 import           Kore.AST.Identifier
-import           Kore.AST.MetaOrObject
 import qualified Kore.Domain.Builtin as Domain
+import           Kore.Level
 import           Kore.Sort
 import           Template.Tools
                  ( newDefinitionGroup )
@@ -82,7 +82,7 @@ allow using toghether both 'Meta' and 'Object' patterns.
 -}
 data UnifiedPattern domain variable child where
     UnifiedMetaPattern
-        :: !(Pattern Meta domain variable child)
+        :: !(Pattern 'Meta domain variable child)
         -> UnifiedPattern domain variable child
 
     UnifiedObjectPattern
@@ -145,21 +145,18 @@ instance
 
 -- |View a 'Meta' or an 'Object' 'Pattern' as an 'UnifiedPattern'
 asUnifiedPattern
-    :: MetaOrObject level
+    :: IsLevel level
     => Pattern level domain variable child
     -> UnifiedPattern domain variable child
 asUnifiedPattern ph =
-    case getMetaOrObjectPatternType ph of
-        IsMeta -> UnifiedMetaPattern ph
-        IsObject -> UnifiedObjectPattern ph
+    case patternLevel ph of
+        SMeta -> UnifiedMetaPattern ph
+        SObject -> UnifiedObjectPattern ph
 
 -- |Given a function appliable on all 'Meta' or 'Object' 'Pattern's,
 -- apply it on an 'UnifiedPattern'.
 transformUnifiedPattern
-    ::  (forall level.
-            MetaOrObject level =>
-            Pattern level domain variable a -> b
-        )
+    :: (forall level. IsLevel level => Pattern level domain variable a -> b)
     -> (UnifiedPattern domain variable a -> b)
 transformUnifiedPattern f =
     \case
@@ -215,16 +212,16 @@ tree. @KorePattern@ is a 'Traversable' 'Comonad' over the type of annotations.
 
 -}
 newtype KorePattern
-    (domain :: * -> *)
-    (variable :: * -> *)
-    (annotation :: *)
+    (domain :: Type -> Type)
+    (variable :: Level -> Type)
+    (annotation :: Type)
   =
     KorePattern
         { getKorePattern :: Cofree (UnifiedPattern domain variable) annotation }
     deriving (Foldable, Functor, Generic, Traversable)
 
 instance
-    ( EqMetaOrObject variable
+    ( forall level. Eq (variable level)
     , Eq1 domain, Functor domain
     ) =>
     Eq (KorePattern domain variable annotation)
@@ -239,7 +236,7 @@ instance
     {-# INLINE (==) #-}
 
 instance
-    ( OrdMetaOrObject variable
+    ( forall level. Ord (variable level)
     , Ord1 domain, Functor domain
     ) =>
     Ord (KorePattern domain variable annotation)
@@ -255,7 +252,7 @@ instance
 
 deriving instance
     ( Show annotation
-    , ShowMetaOrObject variable
+    , forall level. Show (variable level)
     , Show1 domain
     ) =>
     Show (KorePattern domain variable annotation)
@@ -407,7 +404,7 @@ instance
 
 -- | View an annotated 'Meta' or 'Object' 'Pattern' as a 'KorePattern'
 asKorePattern
-    :: (Functor domain, MetaOrObject level)
+    :: (Functor domain, IsLevel level)
     => CofreeF
         (Pattern level domain variable)
         (annotation level)
@@ -431,7 +428,7 @@ eraseAnnotations =
 
 -- | View a 'Meta' or 'Object' 'Pattern' as a 'KorePattern'
 asCommonKorePattern
-    :: MetaOrObject level
+    :: IsLevel level
     => Pattern level Domain.Builtin Variable CommonKorePattern
     -> CommonKorePattern
 asCommonKorePattern pat = asKorePattern (mempty :< pat)

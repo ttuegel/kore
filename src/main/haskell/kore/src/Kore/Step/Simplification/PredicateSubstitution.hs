@@ -17,7 +17,6 @@ import Data.List
 
 import           Kore.AST.Common
                  ( SortedVariable )
-import           Kore.AST.MetaOrObject
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )
 import qualified Kore.Predicate.Predicate as Predicate

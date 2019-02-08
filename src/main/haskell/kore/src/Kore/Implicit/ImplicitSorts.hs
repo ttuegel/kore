@@ -10,7 +10,6 @@ Portability : POSIX
 
 module Kore.Implicit.ImplicitSorts where
 
-import Kore.AST.MetaOrObject
 import Kore.Implicit.ImplicitSortsImpl
 import Kore.MetaML.AST
 import Kore.Sort

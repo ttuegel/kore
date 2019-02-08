@@ -12,7 +12,6 @@ module Kore.Step.Simplification.Pattern
     , simplifyToOr
     ) where
 
-import           Kore.AST.MetaOrObject
 import           Kore.AST.Pure
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )

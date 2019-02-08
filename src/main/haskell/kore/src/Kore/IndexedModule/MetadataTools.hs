@@ -23,7 +23,6 @@ import           Data.Set
 import qualified Data.Set as Set
 
 import Kore.AST.Common
-import Kore.AST.MetaOrObject
 import Kore.Attribute.Subsort
 import Kore.IndexedModule.IndexedModule
 import Kore.IndexedModule.Resolvers

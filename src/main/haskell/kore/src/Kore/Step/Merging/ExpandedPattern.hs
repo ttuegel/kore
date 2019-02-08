@@ -15,7 +15,6 @@ import Data.Reflection
 
 import           Kore.AST.Common
                  ( SortedVariable )
-import           Kore.AST.MetaOrObject
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )
 import qualified Kore.Step.Condition.Evaluator as Predicate

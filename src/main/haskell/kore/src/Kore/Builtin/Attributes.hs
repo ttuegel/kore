@@ -24,7 +24,6 @@ import Data.Reflection
 
 import           Kore.AST.Common
                  ( SymbolOrAlias )
-import           Kore.AST.MetaOrObject
 import qualified Kore.Builtin.List as List
 import qualified Kore.Builtin.Map as Map
 import qualified Kore.Builtin.Set as Set

@@ -10,7 +10,6 @@ module Kore.Step.Pattern
     ( StepPattern
     , CommonStepPattern
     , ConcreteStepPattern
-    , module Kore.AST.MetaOrObject
     , module Kore.AST.Pure
     , mapVariables
     , traverseVariables
@@ -43,12 +42,12 @@ import qualified Kore.AST.Common as Base
 import           Kore.AST.Kore
                  ( KorePattern, UnifiedPattern (..), UnifiedSortVariable,
                  asUnifiedPattern )
-import           Kore.AST.MetaOrObject
 import           Kore.AST.Pure
                  ( CofreeF (..), Concrete, Pattern, PurePattern, Variable )
 import           Kore.AST.Sentence
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.Error
+import           Kore.Level
 import           Kore.Sort
 import qualified Kore.Substitute as Substitute
 import           Kore.Variables.Fresh
@@ -142,8 +141,9 @@ fromConcreteStepPattern = mapVariables (\case {})
 {- | Convert a leveled 'StepPattern' to a unified 'KorePattern'.
  -}
 toKorePattern
-    ::  ( MetaOrObject level
-        , OrdMetaOrObject variable
+    ::  forall level variable annotation
+    .   ( IsLevel level
+        , forall level'. Ord (variable level')
         , annotation ~ Valid (Unified variable)
         )
     => StepPattern level variable
@@ -151,6 +151,11 @@ toKorePattern
 toKorePattern =
     Recursive.unfold toKorePatternWorker
   where
+    toKorePatternWorker
+        :: StepPattern level variable
+        -> Base
+            (KorePattern Domain.Builtin variable (Unified annotation))
+            (StepPattern level variable)
     toKorePatternWorker (Recursive.project -> ann :< pat) =
         asUnified (Valid.mapVariables asUnified ann) :< asUnifiedPattern pat
 
@@ -162,28 +167,25 @@ if any part of the pattern is on a different level.  For lifting functions see
 
  -}
 fromKorePattern
-    ::  ( MetaOrObject level
-        , OrdMetaOrObject variable
+    ::  ( forall level'. Ord (variable level')
         , annotation ~ Valid (Unified variable)
         )
-    => level
+    => SLevel level
     -> KorePattern Domain.Builtin variable (Unified annotation)
     -> Either (Error a) (StepPattern level variable)
-fromKorePattern level =
-    Recursive.fold (extractStepPattern $ isMetaOrObject $ toProxy level)
+fromKorePattern = Recursive.fold . extractStepPattern
 
 extractStepPattern
-    ::  ( MetaOrObject level
-        , OrdMetaOrObject variable
+    ::  ( forall level'. Ord (variable level')
         , annotation ~ Valid (Unified variable)
         , result ~ StepPattern level variable
         )
-    => IsMetaOrObject level
+    => SLevel level
     -> Base
         (KorePattern Domain.Builtin variable (Unified annotation))
         (Either (Error e) result)
     -> Either (Error e) result
-extractStepPattern IsMeta = \(ann :< pat) ->
+extractStepPattern SMeta = \(ann :< pat) ->
     case pat of
         UnifiedMetaPattern mpat ->
             case ann of
@@ -193,12 +195,12 @@ extractStepPattern IsMeta = \(ann :< pat) ->
                     mann' <- Valid.traverseVariables extractMetaVariable mann
                     (return . Recursive.embed) (mann' :< mpat')
                   where
-                    extractMetaVariable = extractVariable IsMeta
+                    extractMetaVariable = extractVariable SMeta
                 UnifiedObject _ ->
                     koreFail "Unexpected object-level annotation"
         UnifiedObjectPattern _ ->
             koreFail "Unexpected object-level pattern"
-extractStepPattern IsObject = \(ann :< pat) ->
+extractStepPattern SObject = \(ann :< pat) ->
     case pat of
         UnifiedObjectPattern opat ->
             case ann of
@@ -208,23 +210,23 @@ extractStepPattern IsObject = \(ann :< pat) ->
                     oann' <- Valid.traverseVariables extractObjectVariable oann
                     (return . Recursive.embed) (oann' :< opat')
                   where
-                    extractObjectVariable = extractVariable IsObject
+                    extractObjectVariable = extractVariable SObject
                 UnifiedMeta _ ->
                     koreFail "Unexpected meta-level annotation"
         UnifiedMetaPattern _ ->
             koreFail "Unexpected meta-level pattern"
 
 extractVariable
-    :: IsMetaOrObject level
+    :: SLevel level
     -> Unified variable
     -> Either (Error e) (variable level)
 extractVariable =
     \case
-        IsMeta ->
+        SMeta ->
             \case
                 UnifiedObject _ -> koreFail "Expected meta-variable"
                 UnifiedMeta mvar -> return mvar
-        IsObject ->
+        SObject ->
             \case
                 UnifiedObject ovar -> return ovar
                 UnifiedMeta _ -> koreFail "Expected object-variable"
@@ -232,8 +234,8 @@ extractVariable =
 {- | Convert a 'Sentence' over 'StepPattern' to a 'KorePattern' sentence.
  -}
 toKoreSentence
-    ::  ( MetaOrObject level
-        , OrdMetaOrObject variable
+    ::  ( IsLevel level
+        , forall level'. Ord (variable level')
         , annotation ~ Valid (Unified variable)
         )
     => Sentence level (SortVariable level) (StepPattern level variable)
@@ -271,8 +273,8 @@ toKoreSentence (SentenceHookSentence hooked) =
 {- | Convert a 'SentenceAlias' over 'StepPattern' to a 'KorePattern' sentence.
  -}
 toKoreSentenceAlias
-    ::  ( MetaOrObject level
-        , OrdMetaOrObject variable
+    ::  ( IsLevel level
+        , forall level'. Ord (variable level')
         , annotation ~ Valid (Unified variable)
         )
     => SentenceAlias level (StepPattern level variable)
@@ -283,8 +285,8 @@ toKoreSentenceAlias = (<$>) toKorePattern
 {- | Convert a 'SentenceAxiom' over 'StepPattern' to a 'KorePattern' sentence.
  -}
 toKoreSentenceAxiom
-    ::  ( MetaOrObject level
-        , OrdMetaOrObject variable
+    ::  ( IsLevel level
+        , forall level'. Ord (variable level')
         , annotation ~ Valid (Unified variable)
         )
     => SentenceAxiom (SortVariable level) (StepPattern level variable)
@@ -301,8 +303,8 @@ toKoreSentenceAxiom = unifyAxiomParameters . (<$>) toKorePattern
 {- | Convert a 'Module' over 'StepPattern' sentences to 'KorePattern' sentences.
  -}
 toKoreModule
-    ::  ( MetaOrObject level
-        , OrdMetaOrObject variable
+    ::  ( IsLevel level
+        , forall level'. Ord (variable level')
         , annotation ~ Valid (Unified variable)
         , stepPattern ~ StepPattern level variable
         , korePattern ~ KorePattern Domain.Builtin variable (Unified annotation)
@@ -326,7 +328,7 @@ may appear in the right-hand side of any substitution, but this is not checked.
  -}
 substitute
     ::  ( FreshVariable variable
-        , MetaOrObject level
+        , IsLevel level
         , MonadCounter m
         , Ord (variable level)
         , SortedVariable variable

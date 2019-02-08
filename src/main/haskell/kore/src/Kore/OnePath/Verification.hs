@@ -26,8 +26,6 @@ import           Data.Limit
 import qualified Data.Limit as Limit
 import           Kore.AST.Common
                  ( Variable )
-import           Kore.AST.MetaOrObject
-                 ( MetaOrObject )
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )
 import           Kore.OnePath.Step
@@ -193,4 +191,3 @@ verifyClaim
         StrategyPattern.RewritePattern p : _ -> throwE p
         StrategyPattern.Stuck p : _ -> throwE p
         StrategyPattern.Bottom : _ -> error "Unexpected bottom pattern."
-

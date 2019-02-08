@@ -28,7 +28,6 @@ module Kore.Building.Sorts
 
 import qualified Data.Text as Text
 
-import Kore.AST.MetaOrObject
 import Kore.Building.AsAst
 import Kore.Implicit.ImplicitSorts
 import Kore.Sort hiding

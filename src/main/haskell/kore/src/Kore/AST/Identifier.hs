@@ -32,6 +32,9 @@ import qualified Data.Text as Text
 import           GHC.Generics
                  ( Generic )
 
+import Kore.Level
+       ( Level )
+
 {-| 'FileLocation' represents a position in a source file.
 -}
 data FileLocation = FileLocation
@@ -98,7 +101,7 @@ an opaque entity as much as possible.
 
 Note that Id comparison ignores the AstLocation.
 -}
-data Id level = Id
+data Id (level :: Level) = Id
     { getId      :: !Text
     , idLocation :: !AstLocation
     }

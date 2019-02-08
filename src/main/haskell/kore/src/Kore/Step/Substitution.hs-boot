@@ -7,7 +7,6 @@ import Control.Monad.Counter
        ( MonadCounter )
 import Kore.AST.Common
        ( SortedVariable )
-import Kore.AST.MetaOrObject
 import Kore.IndexedModule.MetadataTools
        ( MetadataTools )
 import Kore.Predicate.Predicate

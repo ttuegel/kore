@@ -31,22 +31,22 @@ import Control.Monad.Counter
 import Kore.AST.Common
        ( Variable (..) )
 import Kore.AST.Identifier
-import Kore.AST.MetaOrObject
+import Kore.Level
 
 {- | A 'FreshVariable' can be freshened, given a 'Natural' counter.
 -}
-class FreshVariable var where
+class FreshVariable (var :: Level -> Type) where
     {-|Given an existing variable, generate a fresh one of
     the same kind.
     -}
-    freshVariableWith :: MetaOrObject level => var level -> Natural -> var level
+    freshVariableWith :: IsLevel level => var level -> Natural -> var level
 
     {-|Given an existing variable and a predicate, generate a
     fresh variable of the same kind satisfying the predicate.
     By default, die in flames if the predicate is not satisfied.
     -}
     freshVariableSuchThatWith
-        :: MetaOrObject level
+        :: IsLevel level
         => var level
         -> (var level -> Bool)
         -> Natural
@@ -98,18 +98,18 @@ instance FreshVariable Variable where
         prefix, _suffix :: Text
         (prefix, _suffix) = Text.breakOnEnd variableSeparator variableId
         metaObjectPrefix =
-            case isMetaOrObject var of
-                IsObject -> ""
-                IsMeta   -> "#"
+            case isLevel var of
+                SObject -> ""
+                SMeta   -> "#"
 
 freshVariable
-    :: (FreshVariable var, MetaOrObject level, MonadCounter m)
+    :: (FreshVariable var, IsLevel level, MonadCounter m)
     => var level
     -> m (var level)
 freshVariable var = freshVariableWith var <$> increment
 
 freshVariableSuchThat
-    :: (FreshVariable var, MetaOrObject level, MonadCounter m)
+    :: (FreshVariable var, IsLevel level, MonadCounter m)
     => var level
     -> (var level -> Bool)
     -> m (var level)

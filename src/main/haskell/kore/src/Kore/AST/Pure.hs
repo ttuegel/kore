@@ -33,7 +33,7 @@ module Kore.AST.Pure
     , module Control.Comonad
     , module Kore.AST.Common
     , module Kore.AST.Identifier
-    , module Kore.AST.MetaOrObject
+    , module Kore.Level
     , module Kore.Sort
     ) where
 
@@ -72,7 +72,7 @@ import           Kore.AST.Common hiding
                  mapVariables, traverseVariables )
 import qualified Kore.AST.Common as Head
 import           Kore.AST.Identifier
-import           Kore.AST.MetaOrObject
+import           Kore.Level
 import           Kore.Sort
 import           Kore.TopBottom
                  ( TopBottom (..) )
@@ -89,18 +89,17 @@ tree. @PurePattern@ is a 'Traversable' 'Comonad' over the type of annotations.
 
 -}
 newtype PurePattern
-    (level :: *)
-    (domain :: * -> *)
-    (variable :: * -> *)
-    (annotation :: *)
+    (level :: Level)
+    (domain :: Type -> Type)
+    (variable :: Level -> Type)
+    (annotation :: Type)
   =
     PurePattern
         { getPurePattern :: Cofree (Pattern level domain variable) annotation }
     deriving (Foldable, Functor, Generic, Traversable)
 
 instance
-    ( Eq level
-    , Eq (variable level)
+    ( Eq (variable level)
     , Eq1 domain, Functor domain
     ) =>
     Eq (PurePattern level domain variable annotation)
@@ -115,8 +114,7 @@ instance
     {-# INLINE (==) #-}
 
 instance
-    ( Ord level
-    , Ord (variable level)
+    ( Ord (variable level)
     , Ord1 domain, Functor domain
     ) =>
     Ord (PurePattern level domain variable annotation)
@@ -447,8 +445,8 @@ domain values.
  -}
 castMetaDomainValues
     :: (Functor domain1, Functor domain2)
-    => PurePattern Meta domain1 variable annotation
-    -> PurePattern Meta domain2 variable annotation
+    => PurePattern 'Meta domain1 variable annotation
+    -> PurePattern 'Meta domain2 variable annotation
 castMetaDomainValues =
     Recursive.ana (castMetaDomainValuesWorker . Recursive.project)
   where

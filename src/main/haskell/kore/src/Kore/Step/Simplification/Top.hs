@@ -13,7 +13,6 @@ module Kore.Step.Simplification.Top
 
 import           Kore.AST.Common
                  ( Top (..) )
-import           Kore.AST.MetaOrObject
 import qualified Kore.Step.ExpandedPattern as ExpandedPattern
                  ( top )
 import           Kore.Step.OrOfExpandedPattern

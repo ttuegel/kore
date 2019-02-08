@@ -74,9 +74,8 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import           Kore.AST.Common
 import           Kore.AST.Identifier
-import           Kore.AST.MetaOrObject
-                 ( IsMetaOrObject (..), MetaOrObject (..), toProxy )
 import           Kore.AST.Sentence
+import           Kore.Level
 import qualified Kore.Parser.CharDict as CharDict
 import           Kore.Parser.CharSet as CharSet
 import           Kore.Parser.ParserUtils as ParserUtils
@@ -99,19 +98,19 @@ sourcePosToFileLocation
 
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
-idParser :: MetaOrObject level
-         => level  -- ^ Distinguishes between the meta and non-meta elements.
-         -> Parser (Id level)
-idParser x = do
+idParser
+    :: SLevel level
+    -> Parser (Id level)
+idParser level = do
     pos <- sourcePosToFileLocation <$> getSourcePos
-    case isMetaOrObject (toProxy x) of
-        IsObject -> do
+    case level of
+        SObject -> do
             name <- lexeme (objectIdRawParser KeywordsForbidden)
             return Id
                 { getId = Text.pack name
                 , idLocation = AstLocationFile pos
                 }
-        IsMeta -> do
+        SMeta -> do
             name <- lexeme metaIdRawParser
             return Id
                 { getId = Text.pack name

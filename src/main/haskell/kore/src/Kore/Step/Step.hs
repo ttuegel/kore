@@ -39,8 +39,6 @@ import Numeric.Natural
 
 import           Kore.AST.Common
                  ( Variable )
-import           Kore.AST.MetaOrObject
-                 ( MetaOrObject )
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )
 import           Kore.Step.AxiomPatterns

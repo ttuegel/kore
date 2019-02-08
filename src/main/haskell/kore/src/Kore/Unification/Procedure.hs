@@ -18,7 +18,6 @@ import Control.Monad.Except
 
 import           Kore.AST.Common
                  ( SortedVariable )
-import           Kore.AST.MetaOrObject
 import           Kore.AST.Valid
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )

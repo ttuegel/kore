@@ -12,7 +12,6 @@ import Control.Exception
 
 import Control.Monad.Counter
 import Kore.AST.Common
-import Kore.AST.MetaOrObject
 import Kore.Sort
 import Kore.Variables.Fresh
 

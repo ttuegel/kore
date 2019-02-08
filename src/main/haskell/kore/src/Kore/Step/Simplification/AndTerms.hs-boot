@@ -7,8 +7,6 @@ import Control.Monad.Counter
        ( MonadCounter )
 import Kore.AST.Common
        ( SortedVariable )
-import Kore.AST.MetaOrObject
-       ( MetaOrObject, OrdMetaOrObject, ShowMetaOrObject )
 import Kore.IndexedModule.MetadataTools
        ( MetadataTools )
 import Kore.Step.ExpandedPattern

@@ -73,7 +73,7 @@ BNF definition:
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
 sortVariableParser
-    :: MetaOrObject level
+    :: IsLevel level
     => level        -- ^ Distinguishes between the meta and non-meta elements.
     -> Parser (SortVariable level)
 sortVariableParser x = SortVariable <$> idParser x
@@ -100,7 +100,7 @@ BNF definition:
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
 sortParser
-    :: MetaOrObject level
+    :: IsLevel level
     => level        -- ^ Distinguishes between the meta and non-meta elements.
     -> Parser (Sort level)
 sortParser x = do
@@ -137,7 +137,7 @@ Relevant BNF definitions:
 @
 -}
 validateMetaSort
-    :: MetaOrObject level
+    :: IsLevel level
     => Id level     -- ^ The sort name
     -> [Sort level] -- ^ The sort arguments
     -> Parser ()
@@ -161,7 +161,7 @@ BNF definitions:
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
 symbolOrAliasDeclarationRawParser
-    :: MetaOrObject level
+    :: IsLevel level
     => level  -- ^ Distinguishes between the meta and non-meta elements.
     -> (Id level -> [SortVariable level] -> m level)  -- ^ Element constructor.
     -> Parser (m level)
@@ -182,7 +182,7 @@ BNF fragments:
 Always starts with @{@.
 -}
 symbolOrAliasDeclarationRemainderRawParser
-    :: MetaOrObject level
+    :: IsLevel level
     => level   -- ^ Distinguishes between the meta and non-meta elements.
     -> ([SortVariable level] -> m level)  -- ^ Element constructor.
     -> Parser (m level)
@@ -202,7 +202,7 @@ BNF definitions:
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
 aliasParser
-    :: MetaOrObject level
+    :: IsLevel level
     => level        -- ^ Distinguishes between the meta and non-meta elements.
     -> Parser (Alias level)
 aliasParser x = symbolOrAliasDeclarationRawParser x Alias
@@ -211,7 +211,7 @@ aliasParser x = symbolOrAliasDeclarationRawParser x Alias
 {-|'symbolParser' is the same as 'aliasParser', but it interprets the head
 as a symbol one.
 -}
-symbolParser :: MetaOrObject level => level -> Parser (Symbol level)
+symbolParser :: IsLevel level => level -> Parser (Symbol level)
 symbolParser x = symbolOrAliasDeclarationRawParser x Symbol
 
 {-|'unaryOperatorRemainderParser' parses the part after an unary operator's
@@ -229,7 +229,7 @@ BNF fragments:
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
 unaryOperatorRemainderParser
-    :: MetaOrObject level
+    :: IsLevel level
     => Parser child
     -> level  -- ^ Distinguishes between the meta and non-meta elements.
     -> (Sort level -> child -> m level child)
@@ -255,7 +255,7 @@ BNF fragments:
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
 binaryOperatorRemainderParser
-    :: MetaOrObject level
+    :: IsLevel level
     => Parser child
     -> level  -- ^ Distinguishes between the meta and non-meta elements.
     -> (Sort level -> child -> child -> m level child)
@@ -282,7 +282,7 @@ BNF fragments:
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
 existsForallRemainderParser
-    :: MetaOrObject level
+    :: IsLevel level
     => Parser child
     -> level  -- ^ Distinguishes between the meta and non-meta elements.
     -> (Sort level -> Variable level -> child
@@ -309,7 +309,7 @@ BNF fragments:
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
 ceilFloorRemainderParser
-    :: MetaOrObject level
+    :: IsLevel level
     => Parser child
     -> level  -- ^ Distinguishes between the meta and non-meta elements.
     -> (Sort level -> Sort level -> child -> m level child)
@@ -335,7 +335,7 @@ BNF fragments:
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
 equalsInRemainderParser
-    :: MetaOrObject level
+    :: IsLevel level
     => Parser child
     -> level  -- ^ Distinguishes between the meta and non-meta elements.
     -> (Sort level -> Sort level -> child -> child -> m level child)
@@ -361,7 +361,7 @@ BNF fragments:
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
 topBottomRemainderParser
-    :: MetaOrObject level
+    :: IsLevel level
     => level  -- ^ Distinguishes between the meta and non-meta elements.
     -> (Sort level -> m level child)  -- ^ Element constructor.
     -> Parser (m level child)
@@ -387,7 +387,7 @@ BNF fragments:
 Always starts with @{@.
 -}
 symbolOrAliasPatternRemainderParser
-    :: MetaOrObject level
+    :: IsLevel level
     => Parser child
     -> level  -- ^ Distinguishes between the meta and non-meta elements.
     -> Id level  -- ^ The already parsed prefix.
@@ -402,7 +402,7 @@ symbolOrAliasPatternRemainderParser childParser x identifier =
         )
 
 applicationParser
-    :: MetaOrObject level
+    :: IsLevel level
     => Parser child
     -> level
     -> Parser (Application level child)
@@ -423,7 +423,7 @@ BNF fragments:
 Always starts with @:@.
 -}
 variableRemainderParser
-    :: MetaOrObject level
+    :: IsLevel level
     => level  -- ^ Distinguishes between the meta and non-meta elements.
     -> Id level  -- ^ The already parsed prefix.
     -> Parser (Variable level)
@@ -447,7 +447,7 @@ BNF definitions:
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
 variableParser
-    :: MetaOrObject level
+    :: IsLevel level
     => level  -- ^ Distinguishes between the meta and non-meta elements.
     -> Parser (Variable level)
 variableParser x = idParser x >>= variableRemainderParser x
@@ -491,7 +491,7 @@ BNF definitions:
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
 variableOrTermPatternParser
-    :: MetaOrObject level
+    :: IsLevel level
     => Parser child
     -> level  -- ^ Distinguishes between the meta and non-meta elements.
     -> Parser (Pattern level Domain.Builtin Variable child)
@@ -515,7 +515,7 @@ variableOrTermPatternParser childParser x = do
 @
 -}
 headParser
-    :: MetaOrObject level
+    :: IsLevel level
     => level  -- ^ Distinguishes between the meta and non-meta elements.
     -> Parser (SymbolOrAlias level)
 headParser lvl =
@@ -636,9 +636,8 @@ BNF definitions (here cat ranges over meta and object):
 @
 -}
 leveledMLConstructorParser
-    :: MetaOrObject level
-    => Parser child
-    -> level
+    :: Parser child
+    -> SLevel level
     -> Parser (Pattern level Domain.Builtin Variable child)
 leveledMLConstructorParser childParser level = do
     void (Parser.char '\\')
@@ -673,12 +672,11 @@ required to be able to peek at the first character of the sort identifier, in
 order to determine whether we are parsing a 'Meta' or an 'Object' 'Pattern'.
 -}
 mlConstructorRemainderParser
-    :: MetaOrObject level
-    => Parser child
-    -> level
+    :: Parser child
+    -> SLevel level
     -> MLPatternType
     -> Parser (Pattern level Domain.Builtin Variable child)
-mlConstructorRemainderParser childParser x patternType =
+mlConstructorRemainderParser childParser level patternType =
     case patternType of
         AndPatternType -> AndPattern <$>
             binaryOperatorRemainderParser childParser x And
@@ -707,9 +705,9 @@ mlConstructorRemainderParser childParser x patternType =
         TopPatternType -> TopPattern <$>
             topBottomRemainderParser x Top
         DomainValuePatternType ->
-            case isMetaOrObject (toProxy x) of
-                IsMeta -> unsupportedPatternType Meta DomainValuePatternType
-                IsObject ->
+            case level of
+                SMeta -> unsupportedPatternType Meta DomainValuePatternType
+                SObject ->
                     DomainValuePattern <$>
                     (   DomainValue
                     <$> inCurlyBracesRemainderParser (sortParser Object)
@@ -717,15 +715,15 @@ mlConstructorRemainderParser childParser x patternType =
                         (Domain.BuiltinPattern <$> metaPatternParser)
                     )
         NextPatternType ->
-            case isMetaOrObject (toProxy x) of
-                IsMeta -> unsupportedPatternType Meta NextPatternType
-                IsObject ->
+            case level of
+                SMeta -> unsupportedPatternType Meta NextPatternType
+                SObject ->
                     NextPattern <$>
                     unaryOperatorRemainderParser childParser Object Next
         RewritesPatternType ->
-            case isMetaOrObject (toProxy x) of
-                IsMeta -> unsupportedPatternType Meta RewritesPatternType
-                IsObject ->
+            case level of
+                SMeta -> unsupportedPatternType Meta RewritesPatternType
+                SObject ->
                     RewritesPattern <$>
                     binaryOperatorRemainderParser
                         childParser
@@ -961,8 +959,7 @@ BNF fragment example:
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
 symbolSentenceRemainderParser
-    :: MetaOrObject level
-    => level  -- ^ Distinguishes between the meta and non-meta elements.
+    :: SLevel level  -- ^ Distinguishes between the meta and non-meta elements.
     -> Parser m  -- Head parser.
     -> (m
         -> [Sort level]
@@ -995,8 +992,8 @@ BNF fragment example:
 The @meta-@ version always starts with @#@, while the @object-@ one does not.
 -}
 aliasSentenceRemainderParser
-    :: MetaOrObject level
-    => level  -- ^ Distinguishes between the meta and non-meta elements.
+    :: IsLevel level
+    => SLevel level  -- ^ Distinguishes between the meta and non-meta elements.
     -> Parser (SentenceAlias level CommonKorePattern)
 aliasSentenceRemainderParser x
   = do
@@ -1065,7 +1062,7 @@ BNF example:
 Always starts with @{@.
 -}
 sortSentenceRemainderParser
-  :: MetaOrObject level
+  :: IsLevel level
   => level
   -> Parser (KoreSentenceSort level)
 sortSentenceRemainderParser x =
@@ -1097,23 +1094,22 @@ hookedSortSentenceRemainderParser =
     asSentence . SentenceHookedSort <$> sortSentenceRemainderParser Object
 
 leveledPatternParser
-    :: MetaOrObject level
-    => Parser child
-    -> level
+    :: Parser child
+    -> SLevel level
     -> Parser (Pattern level Domain.Builtin Variable child)
 leveledPatternParser patternParser level = do
     c <- ParserUtils.peekChar'
     case c of
         '\\' -> leveledMLConstructorParser patternParser level
-        _ -> case isMetaOrObject (toProxy level) of
-            IsMeta -> case c of
+        _ -> case level of
+            SMeta -> case c of
                 '"'  -> StringLiteralPattern <$> stringLiteralParser
                 '\'' -> CharLiteralPattern <$> charLiteralParser
                 _    -> variableOrTermPatternParser patternParser Meta
-            IsObject -> variableOrTermPatternParser patternParser Object
+            SObject -> variableOrTermPatternParser patternParser Object
 
 purePatternParser
-    :: MetaOrObject level
+    :: IsLevel level
     => level
     -> Parser (ParsedPurePattern level Domain.Builtin)
 purePatternParser level = do

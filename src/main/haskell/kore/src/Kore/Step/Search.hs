@@ -30,8 +30,6 @@ import           Data.Limit
 import qualified Data.Limit as Limit
 import           Kore.AST.Common
                  ( SortedVariable )
-import           Kore.AST.MetaOrObject
-                 ( MetaOrObject, OrdMetaOrObject, ShowMetaOrObject )
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )
 import qualified Kore.Step.Condition.Evaluator as Predicate
