@@ -10,6 +10,8 @@ Portability : POSIX
 
 module Kore.Implicit.ImplicitSorts where
 
+import qualified Data.Default as Default
+
 import Kore.AST.MetaOrObject
 import Kore.Implicit.ImplicitSortsImpl
 import Kore.MetaML.AST
@@ -139,6 +141,7 @@ predicateSortActual =
     SortActual
         { sortActualName = "_PREDICATE"
         , sortActualSorts = []
+        , sortAttributes = Default.def
         }
 
 {- | Placeholder sort for constructing new predicates.

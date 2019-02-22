@@ -14,6 +14,7 @@ import           Test.Tasty.HUnit
 
 import Kore.AST.Kore
 import Kore.AST.Sentence
+import Kore.AST.Valid
 import Kore.Parser.Lexeme
 import Kore.Parser.ParserImpl
 import Kore.Parser.ParserUtils
@@ -44,14 +45,8 @@ test_unparse =
                             { getSortVariable = testId "#Fm" :: Id Meta }
                         })
                     , asCommonKorePattern (InPattern In
-                        { inOperandSort = SortActualSort SortActual
-                            { sortActualName = testId "B" :: Id Object
-                            , sortActualSorts = []
-                            }
-                        , inResultSort = SortActualSort SortActual
-                            { sortActualName = testId "G" :: Id Object
-                            , sortActualSorts = []
-                            }
+                        { inOperandSort = mkSort (testId "B" :: Id Object)
+                        , inResultSort = mkSort (testId "G" :: Id Object)
                         , inContainedChild =
                             asCommonKorePattern $ VariablePattern Variable
                                 { variableName = testId "T" :: Id Object
@@ -132,11 +127,7 @@ test_unparse =
                 { getAttributes =
                     [ asCommonKorePattern
                         ( TopPattern Top
-                            { topSort = SortActualSort SortActual
-                                { sortActualName = testId "#CharList" :: Id Meta
-                                , sortActualSorts = []
-                                }
-                            }
+                            { topSort = mkSort (testId "#CharList" :: Id Meta) }
                         )
                     ]
                 }::Attributes

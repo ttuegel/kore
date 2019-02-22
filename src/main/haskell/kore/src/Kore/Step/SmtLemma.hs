@@ -32,7 +32,7 @@ import           Kore.Attribute.SmtLemma
 import           Kore.Attribute.Smtlib
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.IndexedModule.IndexedModule
-import           Kore.IndexedModule.MetadataTools
+import           Kore.IndexedModule.MetadataTools as MetadataTools
 import           Kore.Predicate.Predicate
 import           Kore.Step.Pattern
 import           Kore.Step.StepperAttributes
@@ -143,10 +143,10 @@ declareSMTLemmas m = SMT.liftSMT $ do
         :: Given (MetadataTools Object StepperAttributes)
         => Sort Object
         -> MaybeT SMT SExpr
-    translateSort sort@(SortActualSort (SortActual _ children)) =
-        case getSmtlib $ smtlib $ sortAttributes given sort of
+    translateSort sort@(SortActualSort (SortActual { sortActualSorts })) =
+        case getSmtlib $ smtlib $ MetadataTools.sortAttributes given sort of
             Just sExpr -> do
-                children' <- mapM translateSort children
+                children' <- mapM translateSort sortActualSorts
                 pure $ applySExpr sExpr children'
             Nothing -> mzero
     translateSort _ = mzero

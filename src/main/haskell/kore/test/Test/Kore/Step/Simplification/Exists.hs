@@ -264,11 +264,7 @@ makeExists variable patterns =
         }
 
 testSort :: Sort Object
-testSort =
-    SortActualSort SortActual
-        { sortActualName  = Id "testSort" AstLocationTest
-        , sortActualSorts = []
-        }
+testSort = mkSort (testId "testSort")
 
 evaluate
     :: MetaOrObject level

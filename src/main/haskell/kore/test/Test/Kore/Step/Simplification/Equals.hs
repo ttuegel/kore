@@ -976,11 +976,7 @@ testSort :: Sort Object
 testSort = Mock.testSort
 
 testSort2 :: Sort Object
-testSort2 =
-    SortActualSort SortActual
-        { sortActualName  = Id "testSort2" AstLocationTest
-        , sortActualSorts = []
-        }
+testSort2 = mkSort (testId "testSort2")
 
 evaluateOr
     :: MetadataTools Object StepperAttributes

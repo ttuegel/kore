@@ -80,7 +80,7 @@ sortVar1S :: Sort Object
 sortVar1S = SortVariableSort sortVar1
 
 sortS :: Sort level
-sortS = SortActualSort (SortActual (testId "S") [])
+sortS = mkSort (testId "S")
 
 fHead, gHead, sHead, tHead :: SymbolOrAlias level
 fHead = groundHead "f" AstLocationTest

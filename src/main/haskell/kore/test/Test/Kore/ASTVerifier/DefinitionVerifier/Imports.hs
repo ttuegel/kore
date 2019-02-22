@@ -5,8 +5,9 @@ module Test.Kore.ASTVerifier.DefinitionVerifier.Imports
 import Test.Tasty
        ( TestTree, testGroup )
 
-import GHC.Stack
-       ( HasCallStack )
+import qualified Data.Default as Default
+import           GHC.Stack
+                 ( HasCallStack )
 
 import Kore.AST.Kore
 import Kore.AST.Sentence
@@ -311,10 +312,8 @@ sortVisibilityTests =
         )
     ]
   where
-    sort = SortActualSort SortActual
-        { sortActualName = testId "sort1"
-        , sortActualSorts = []
-        } :: Sort Object
+    sort :: Sort Object
+    sort = mkSort (testId "sort1")
     sortDeclaration = asSentence
         (SentenceSort
             { sentenceSortName = testId "sort1"
@@ -322,10 +321,8 @@ sortVisibilityTests =
             , sentenceSortAttributes = Attributes []
             }
         :: VerifiedKoreSentenceSort Object)
-    anotherSort = SortActualSort SortActual
-        { sortActualName = testId "sort3"
-        , sortActualSorts = []
-        } :: Sort Object
+    anotherSort :: Sort Object
+    anotherSort = mkSort (testId "sort3")
     anotherSortDeclaration = asSentence
         (SentenceSort
             { sentenceSortName = testId "sort3"
@@ -339,7 +336,8 @@ sortVisibilityTests =
         SortActualSort SortActual
             { sortActualName = testId "sort2"
             , sortActualSorts = [ sort ]
-            } :: Sort Object
+            , sortAttributes = Default.def
+            }
     sortReferenceInSortSentence =
         asKoreAxiomSentence
             SentenceAxiom
@@ -985,10 +983,7 @@ aliasVisibilityTests =
 
 
 defaultSort :: Sort Object
-defaultSort = SortActualSort SortActual
-    { sortActualName = testId "sort1"
-    , sortActualSorts = []
-    }
+defaultSort = mkSort (testId "sort1")
 
 defaultSortDeclaration :: VerifiedKoreSentence
 defaultSortDeclaration = asSentence

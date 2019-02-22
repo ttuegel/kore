@@ -21,6 +21,9 @@ import           Data.List
 import qualified Data.Set as Set
 import           Data.String
                  ( fromString )
+import           Data.Text
+                 ( Text )
+import qualified Data.Text as Text
 import           Data.Text.Prettyprint.Doc as Doc
 import           Data.Text.Prettyprint.Doc.Render.String
 import           Data.Void
@@ -31,6 +34,9 @@ import qualified Kore.Annotation.Null as Annotation
 import           Kore.AST.Kore
 import           Kore.AST.Pure
 import           Kore.AST.Sentence
+import qualified Kore.Attribute.Hook.Hook as Attribute
+import qualified Kore.Attribute.Smtlib.Smtlib as Attribute
+import qualified Kore.Attribute.Sort as Attribute
 import qualified Kore.Builtin.Error as Builtin
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.Predicate.Predicate
@@ -42,6 +48,8 @@ import qualified Kore.Unification.Substitution as Substitution
 import           Kore.Unification.Unifier
 import           Kore.Unparser
                  ( escapeCharT, escapeString, escapeStringT )
+import           SimpleSMT
+                 ( showSExpr )
 
 {-# ANN module ("HLint: ignore Use record patterns" :: String) #-}
 {-
@@ -182,6 +190,9 @@ instance MetaOrObject level => PrettyPrint (Id level) where
             <> viaShow (isMetaOrObject id')
             )
 
+instance PrettyPrint Text where
+    prettyPrint _ = dquotes . pretty
+
 instance
     (PrettyPrint (a Meta), PrettyPrint (a Object))
     => PrettyPrint (Unified a)
@@ -227,11 +238,37 @@ instance MetaOrObject level => PrettyPrint (Sort level) where
         writeOneFieldStruct flags "SortActualSort" sa
 
 instance MetaOrObject level => PrettyPrint (SortActual level) where
-    prettyPrint _ sa@(SortActual _ _) =
+    prettyPrint _ sa@(SortActual _ _ _) =
         writeStructure "SortActual"
             [ writeFieldOneLine "sortActualName" sortActualName sa
             , writeListField "sortActualSorts" sortActualSorts sa
+            , writeFieldNewLine "sortAttributes" sortAttributes sa
             ]
+
+instance PrettyPrint Attribute.Sort where
+    prettyPrint _ as@(Attribute.Sort _ _) =
+        writeStructure "Attribute.Sort"
+            [ writeFieldOneLine "hook" Attribute.hook as
+            , writeFieldOneLine "smtlib" Attribute.smtlib as
+            ]
+
+instance PrettyPrint Attribute.Hook where
+    prettyPrint flags (Attribute.Hook h) =
+        betweenParentheses
+            flags
+            ("Attribute.Hook "
+            <> prettyPrint MaySkipParentheses (escapeStringT <$> h)
+            )
+
+instance PrettyPrint Attribute.Smtlib where
+    prettyPrint flags (Attribute.Smtlib s) =
+        betweenParentheses
+            flags
+            ("Attribute.Smtlib "
+            <> prettyPrint
+                MaySkipParentheses
+                (escapeStringT . Text.pack . showSExpr <$> s)
+            )
 
 instance PrettyPrint StringLiteral where
     prettyPrint flags (StringLiteral s) =

@@ -94,6 +94,7 @@ module Kore.AST.Valid
 import           Control.Applicative
 import           Control.Comonad
 import           Data.Align
+import qualified Data.Default as Default
 import           Data.Foldable
 import qualified Data.Functor.Foldable as Recursive
 import qualified Data.Map.Strict as Map
@@ -971,7 +972,12 @@ mkCharLiteral char =
     charLiteral = CharLiteral char
 
 mkSort :: Id level -> Sort level
-mkSort name = SortActualSort $ SortActual name []
+mkSort sortActualName =
+    SortActualSort SortActual
+        { sortActualName
+        , sortActualSorts = []
+        , sortAttributes = Default.def
+        }
 
 mkSortVariable :: Id level -> Sort level
 mkSortVariable name = SortVariableSort $ SortVariable name

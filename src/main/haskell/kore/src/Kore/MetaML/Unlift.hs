@@ -16,6 +16,7 @@ module Kore.MetaML.Unlift ( UnliftableFromMetaML (..) ) where
 import           Control.Applicative
 import           Control.Comonad.Trans.Cofree
                  ( CofreeF (..) )
+import qualified Data.Default as Default
 import           Data.Functor.Const
                  ( Const )
 import qualified Data.Functor.Foldable as Recursive
@@ -108,6 +109,7 @@ instance UnliftableFromMetaML (SortActual Object) where
         return SortActual
             { sortActualName = sortConstructor
             , sortActualSorts = sortParams
+            , sortAttributes = Default.def
             }
     unliftFromMeta _ = Nothing
 

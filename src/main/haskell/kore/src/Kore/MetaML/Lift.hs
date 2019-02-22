@@ -18,6 +18,7 @@ module Kore.MetaML.Lift
     ) where
 
 import qualified Control.Comonad.Trans.Cofree as Cofree
+import qualified Data.Default as Default
 import qualified Data.Functor.Foldable as Recursive
 import           Data.Text
                  ( Text )
@@ -247,6 +248,7 @@ liftSortDeclaration ss =
     actualSort = SortActualSort SortActual
         { sortActualName = sortName
         , sortActualSorts = sortParametersAsSorts
+        , sortAttributes = Default.def
         }
     helperFunctionAxiom = SentenceAxiom
         { sentenceAxiomAttributes = Attributes []

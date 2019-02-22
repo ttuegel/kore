@@ -234,7 +234,7 @@ testSubsortModule =
               })
 
     sortDecl :: Sort Object -> KoreSentence
-    sortDecl (SortActualSort (SortActual name [])) =
+    sortDecl (SortActualSort (SortActual name [] _)) =
         constructUnifiedSentence SentenceSortSentence $
           (SentenceSort
               { sentenceSortName = name

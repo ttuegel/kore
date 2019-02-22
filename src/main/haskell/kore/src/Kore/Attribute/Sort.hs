@@ -19,6 +19,8 @@ import Control.DeepSeq
        ( NFData )
 import Data.Default
        ( Default (..) )
+import Data.Hashable
+       ( Hashable )
 import GHC.Generics
        ( Generic )
 
@@ -36,6 +38,8 @@ data Sort =
     deriving (Eq, Generic, Ord, Show)
 
 Lens.makeLenses ''Sort
+
+instance Hashable Sort
 
 instance NFData Sort
 

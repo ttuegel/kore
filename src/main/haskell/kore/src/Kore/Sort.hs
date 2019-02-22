@@ -26,14 +26,16 @@ module Kore.Sort
 
 import           Control.DeepSeq
                  ( NFData )
+import qualified Data.Function as Function
 import           Data.Hashable
                  ( Hashable )
 import qualified Data.Map.Strict as Map
 import           GHC.Generics
                  ( Generic )
 
-import Kore.AST.Identifier
-import Kore.Unparser
+import           Kore.AST.Identifier
+import qualified Kore.Attribute.Sort as Attribute
+import           Kore.Unparser
 
 {-|'SortVariable' corresponds to the @object-sort-variable@ and
 @meta-sort-variable@ syntactic categories from the Semantics of K,
@@ -63,8 +65,21 @@ versions of symbol declarations. It should verify 'MetaOrObject level'.
 data SortActual level = SortActual
     { sortActualName  :: !(Id level)
     , sortActualSorts :: ![Sort level]
+    , sortAttributes  :: !Attribute.Sort
     }
-    deriving (Show, Eq, Ord, Generic)
+    deriving (Generic, Show)
+
+instance Eq (SortActual level) where
+    (==) a b =
+        Function.on (==) sortActualName a b
+        && Function.on (==) sortActualSorts a b
+    {-# INLINE (==) #-}
+
+instance Ord (SortActual level) where
+    compare a b =
+        Function.on compare sortActualName a b
+        <> Function.on compare sortActualSorts a b
+    {-# INLINE compare #-}
 
 instance Hashable (SortActual level)
 

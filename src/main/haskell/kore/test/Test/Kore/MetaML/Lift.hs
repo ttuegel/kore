@@ -8,11 +8,12 @@ import Test.Tasty
 import Test.Tasty.HUnit
        ( testCase )
 
-import Data.CallStack
-import Data.Proxy
-       ( Proxy (..) )
-import Data.Text
-       ( Text )
+import           Data.CallStack
+import qualified Data.Default as Default
+import           Data.Proxy
+                 ( Proxy (..) )
+import           Data.Text
+                 ( Text )
 
 import           Kore.AST.Builders
 import           Kore.AST.BuildersImpl
@@ -256,6 +257,7 @@ test_lift =
             { sortActualName = testId "Exp" :: Id Object
             , sortActualSorts =
                 [ SortVariableSort (SortVariable (testId "v")) ]
+            , sortAttributes = Default.def
             }
         ]
     , testLiftUnlift "Meta Pattern List"

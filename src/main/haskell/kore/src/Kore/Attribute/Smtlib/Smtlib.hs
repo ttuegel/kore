@@ -15,6 +15,8 @@ import Control.DeepSeq
        ( NFData )
 import Data.Default
        ( Default (..) )
+import Data.Hashable
+       ( Hashable )
 import GHC.Generics
        ( Generic )
 
@@ -46,6 +48,8 @@ newtype Smtlib = Smtlib { getSmtlib :: Maybe SExpr }
 
 instance Default Smtlib where
     def = Smtlib Nothing
+
+instance Hashable Smtlib
 
 instance NFData Smtlib
 

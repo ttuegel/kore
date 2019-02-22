@@ -9,6 +9,7 @@ import Test.Tasty.HUnit
        ( assertEqual, testCase )
 
 import qualified Control.Comonad.Trans.Cofree as Cofree
+import qualified Data.Default as Default
 import qualified Data.Functor.Foldable as Recursive
 
 import           Kore.AST.AstWithLocation
@@ -337,4 +338,5 @@ instance AsAst (Sort Object) SomeObjectSort where
         SortActualSort SortActual
             { sortActualName = testId "SomeObjectSort"
             , sortActualSorts = []
+            , sortAttributes = Default.def
             }

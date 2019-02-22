@@ -5,6 +5,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
        ( HasCallStack, assertEqual, assertFailure, testCase )
 
+import qualified Data.Default as Default
 import qualified Data.Set as Set
 import           Data.Text
                  ( Text )
@@ -210,11 +211,7 @@ simpleAliasSentence (AliasName name) (SortName sort) r =
             , aliasParams = []
             }
         , sentenceAliasSorts = []
-        , sentenceAliasResultSort =
-            SortActualSort SortActual
-                { sortActualName = testId sort
-                , sortActualSorts = []
-                }
+        , sentenceAliasResultSort = mkSort (testId sort)
         , sentenceAliasLeftPattern =
             Application
                 { applicationSymbolOrAlias =
@@ -247,11 +244,7 @@ simpleSymbolSentence (SymbolName name) (SortName sort) =
             , symbolParams = []
             }
         , sentenceSymbolSorts = []
-        , sentenceSymbolResultSort =
-            SortActualSort SortActual
-                { sortActualName = testId sort
-                , sortActualSorts = []
-                }
+        , sentenceSymbolResultSort = mkSort (testId sort)
         , sentenceSymbolAttributes = Attributes []
         }
 
@@ -358,11 +351,7 @@ aliasSentenceWithSortParameters (AliasName name) (SortName sort) parameters r =
             , aliasParams = parameters
             }
         , sentenceAliasSorts = []
-        , sentenceAliasResultSort =
-            SortActualSort SortActual
-                { sortActualName = testId sort
-                , sortActualSorts = []
-                }
+        , sentenceAliasResultSort = mkSort (testId sort)
         , sentenceAliasLeftPattern =
             Application
                 { applicationSymbolOrAlias =
@@ -488,11 +477,7 @@ symbolSentenceWithSortParameters
             , symbolParams = parameters
             }
         , sentenceSymbolSorts = []
-        , sentenceSymbolResultSort =
-            SortActualSort SortActual
-                { sortActualName = testId sort
-                , sortActualSorts = []
-                }
+        , sentenceSymbolResultSort = mkSort (testId sort)
         , sentenceSymbolAttributes = Attributes []
         }
 
@@ -654,6 +639,7 @@ simpleSortActual (SortName sort) =
     SortActual
         { sortActualName = testId sort
         , sortActualSorts = []
+        , sortAttributes = Default.def
         }
 
 simpleSort :: SortName -> Sort level

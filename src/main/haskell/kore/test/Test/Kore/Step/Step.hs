@@ -7,10 +7,7 @@ import Test.Tasty.HUnit
 
 import           Data.Default
                  ( def )
-import qualified Data.List as List
 import qualified Data.Map as Map
-import           Data.Ord
-                 ( comparing )
 import qualified Data.Set as Set
 
 import           Data.Limit
@@ -77,33 +74,32 @@ rewriteImplies =
 
 expectTwoAxioms :: [(ExpandedPattern Meta Variable, StepProof Meta Variable)]
 expectTwoAxioms =
-    List.sortBy (comparing fst)
-        [   ( Predicated
-                { term = mkVar (v1 patternMetaSort)
-                , predicate = makeTruePredicate
-                , substitution = mempty
-                }
-            , (mconcat . map stepProof)
-                [ StepProofVariableRenamings []
-                , StepProofUnification EmptyUnificationProof
-                , StepProofSimplification SimplificationProof
-                ]
-            )
-        ,   ( Predicated
-                { term =
-                    mkImplies
-                        (mkVar $ v1 patternMetaSort)
-                        (mkVar $ v1 patternMetaSort)
-                , predicate = makeTruePredicate
-                , substitution = mempty
-                }
-            , (mconcat . map stepProof)
-                [ StepProofVariableRenamings []
-                , StepProofUnification EmptyUnificationProof
-                , StepProofSimplification SimplificationProof
-                ]
-            )
-        ]
+    [   ( Predicated
+            { term = mkVar (v1 patternMetaSort)
+            , predicate = makeTruePredicate
+            , substitution = mempty
+            }
+        , (mconcat . map stepProof)
+            [ StepProofVariableRenamings []
+            , StepProofUnification EmptyUnificationProof
+            , StepProofSimplification SimplificationProof
+            ]
+        )
+    ,   ( Predicated
+            { term =
+                mkImplies
+                    (mkVar $ v1 patternMetaSort)
+                    (mkVar $ v1 patternMetaSort)
+            , predicate = makeTruePredicate
+            , substitution = mempty
+            }
+        , (mconcat . map stepProof)
+            [ StepProofVariableRenamings []
+            , StepProofUnification EmptyUnificationProof
+            , StepProofSimplification SimplificationProof
+            ]
+        )
+    ]
 
 actualTwoAxioms :: IO [(CommonExpandedPattern Meta, StepProof Meta Variable)]
 actualTwoAxioms =

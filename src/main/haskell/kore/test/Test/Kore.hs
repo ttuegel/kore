@@ -38,6 +38,7 @@ import qualified Hedgehog.Range as Range
 import           Control.Monad.Reader
                  ( ReaderT )
 import qualified Control.Monad.Reader as Reader
+import qualified Data.Default as Default
 import           Data.Proxy
 import           Data.Text
                  ( Text )
@@ -221,10 +222,12 @@ sortActualGen =
             SortActual
                 <$> Gen.small (idGen IsObject)
                 <*> couple (Gen.small sortGen)
+                <*> pure Default.def
         IsMeta ->
             SortActual
                 <$> Gen.element metaSortIds
                 <*> pure []
+                <*> pure Default.def
   where
     metaSortIds = testId . Text.pack . show <$> metaSortsList
 
@@ -1030,6 +1033,7 @@ sortActual name sorts =
     SortActualSort SortActual
         { sortActualName = testId name
         , sortActualSorts = sorts
+        , sortAttributes = Default.def
         }
 
 expandedPatternGen :: MetaOrObject level => Gen (CommonExpandedPattern level)

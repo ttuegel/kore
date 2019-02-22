@@ -7,6 +7,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
        ( HasCallStack )
 
+import qualified Data.Default as Default
 import qualified Data.List as List
 import           Data.Maybe
                  ( mapMaybe )
@@ -213,6 +214,7 @@ test_sortUsage =
             (SortActualSort SortActual
                 { sortActualName = testId "UnarySort"
                 , sortActualSorts = [ simpleSort additionalSortName ]
+                , sortAttributes = Default.def
                 }
             )
         )
@@ -246,6 +248,7 @@ test_sortUsage =
                 , sortActualSorts =
                     [ simpleSort additionalSortName
                     , simpleSort additionalSortName]
+                , sortAttributes = Default.def
                 }
             )
         )
@@ -746,6 +749,7 @@ unfilteredTestExamplesForObjectSort
                                 { sortActualName =
                                     testId differentAdditionalSortRawName
                                 , sortActualSorts = [sort]
+                                , sortAttributes = Default.def
                                 }
                             ]
                         )
@@ -774,4 +778,5 @@ unfilteredTestExamplesForObjectSort
             { sortActualName = testId differentAdditionalSortRawName
             , sortActualSorts =
                 [ objectVariableSort sortVariableName1 ]
+            , sortAttributes = Default.def
             }

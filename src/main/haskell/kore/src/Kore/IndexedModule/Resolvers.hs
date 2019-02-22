@@ -156,10 +156,10 @@ getSortAttributes
     => IndexedModule sortParam patternType declAtts axiomAtts
     -> Sort level
     -> declAtts
-getSortAttributes m (SortActualSort (SortActual sortId _)) =
-  case resolveSort m sortId of
-    Right (atts, _) -> atts
-    Left _ -> error $ "Sort " ++ show sortId ++ " not defined."
+getSortAttributes m (SortActualSort (SortActual { sortActualName })) =
+    case resolveSort m sortActualName of
+        Right (atts, _) -> atts
+        Left _ -> error $ "Sort " ++ show sortActualName ++ " not defined."
 getSortAttributes _ _ = error "Can't lookup attributes for sort variables"
 
 

@@ -153,6 +153,8 @@ import           Data.Bits
                  ( testBit )
 import           Data.Char
                  ( isSpace )
+import           Data.Hashable
+                 ( Hashable )
 import           Data.IORef
                  ( modifyIORef', newIORef, readIORef, writeIORef )
 import           Data.Ratio
@@ -210,6 +212,8 @@ data SExpr
     = Atom !Text
     | List ![SExpr]
     deriving (Generic, Eq, Ord, Show)
+
+instance Hashable SExpr
 
 instance NFData SExpr
 

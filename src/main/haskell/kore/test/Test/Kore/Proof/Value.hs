@@ -3,6 +3,8 @@ module Test.Kore.Proof.Value where
 import Test.Tasty
 import Test.Tasty.HUnit
 
+import qualified Data.Default as Default
+
 import           Kore.AST.Pure
 import           Kore.AST.Valid
 import qualified Kore.Domain.Builtin as Domain
@@ -73,11 +75,7 @@ zeroPattern =
         (mkStringLiteral "1")
 
 unitSort :: Sort Object
-unitSort =
-    SortActualSort SortActual
-        { sortActualName = testId "Unit"
-        , sortActualSorts = []
-        }
+unitSort = mkSort (testId "Unit")
 
 unitSymbol :: SymbolOrAlias Object
 unitSymbol =
@@ -91,6 +89,7 @@ pairSort sort =
     SortActualSort SortActual
         { sortActualName = testId "Pair"
         , sortActualSorts = [sort]
+        , sortAttributes = Default.def
         }
 
 pairSymbol :: Sort Object -> SymbolOrAlias Object

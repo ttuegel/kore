@@ -248,11 +248,7 @@ makeForall variable patterns =
         }
 
 testSort :: Sort Object
-testSort =
-    SortActualSort SortActual
-        { sortActualName  = Id "testSort" AstLocationTest
-        , sortActualSorts = []
-        }
+testSort = Mock.testSort
 
 evaluate
     :: MetaOrObject level

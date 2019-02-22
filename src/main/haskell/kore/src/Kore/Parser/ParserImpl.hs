@@ -41,6 +41,7 @@ import           Control.Arrow
                  ( (&&&) )
 import           Control.Monad
                  ( unless, void )
+import qualified Data.Default as Default
 import           Data.Maybe
                  ( isJust )
 import qualified Data.Text as Text
@@ -115,6 +116,7 @@ sortParser x = do
         return $ SortActualSort SortActual
             { sortActualName = stringNameNormalizer identifier
             , sortActualSorts = sorts
+            , sortAttributes = Default.def
             }
     stringNameNormalizer :: Id level -> Id level
     stringNameNormalizer identifier@Id {getId = i} =

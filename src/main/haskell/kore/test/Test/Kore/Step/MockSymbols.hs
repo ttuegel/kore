@@ -1263,88 +1263,40 @@ sortAttributesMapping =
     ]
 
 testSort :: Sort Object
-testSort =
-    SortActualSort SortActual
-        { sortActualName  = testId "testSort"
-        , sortActualSorts = []
-        }
+testSort = mkSort (testId "testSort")
 
 testSort0 :: Sort Object
-testSort0 =
-    SortActualSort SortActual
-        { sortActualName  = testId "testSort0"
-        , sortActualSorts = []
-        }
+testSort0 = mkSort (testId "testSort0")
 
 testSort1 :: Sort Object
-testSort1 =
-    SortActualSort SortActual
-        { sortActualName  = testId "testSort1"
-        , sortActualSorts = []
-        }
+testSort1 = mkSort (testId "testSort1")
 
 topSort :: Sort Object
-topSort =
-    SortActualSort SortActual
-        { sortActualName  = testId "topSort"
-        , sortActualSorts = []
-        }
+topSort = mkSort (testId "topSort")
 
 subSort :: Sort Object
-subSort =
-    SortActualSort SortActual
-        { sortActualName  = testId "subSort"
-        , sortActualSorts = []
-        }
+subSort = mkSort (testId "subSort")
 
 subSubSort :: Sort Object
-subSubSort =
-    SortActualSort SortActual
-        { sortActualName  = testId "subSubSort"
-        , sortActualSorts = []
-        }
+subSubSort = mkSort (testId "subSubSort")
 
 otherSort :: Sort Object
-otherSort =
-    SortActualSort SortActual
-        { sortActualName = testId "otherSort"
-        , sortActualSorts = []
-        }
+otherSort = mkSort (testId "otherSort")
 
 mapSort :: Sort Object
-mapSort =
-    SortActualSort SortActual
-        { sortActualName  = testId "mapSort"
-        , sortActualSorts = []
-        }
+mapSort = mkSort (testId "mapSort")
 
 setSort :: Sort Object
-setSort =
-    SortActualSort SortActual
-        { sortActualName  = testId "mapSort"
-        , sortActualSorts = []
-        }
+setSort = mkSort (testId "setSort")
 
 listSort :: Sort Object
-listSort =
-    SortActualSort SortActual
-        { sortActualName  = testId "listSort"
-        , sortActualSorts = []
-        }
+listSort = mkSort (testId "listSort")
 
 intSort :: Sort Object
-intSort =
-    SortActualSort SortActual
-        { sortActualName  = testId "intSort"
-        , sortActualSorts = []
-        }
+intSort = mkSort (testId "intSort")
 
 boolSort :: Sort Object
-boolSort =
-    SortActualSort SortActual
-        { sortActualName  = testId "boolSort"
-        , sortActualSorts = []
-        }
+boolSort = mkSort (testId "boolSort")
 
 subsorts :: [(Sort Object, Sort Object)]
 subsorts =

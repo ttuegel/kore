@@ -40,7 +40,7 @@ import           Kore.Attribute.Hook
 import           Kore.Attribute.Smtlib
 import qualified Kore.Builtin.Bool as Builtin.Bool
 import qualified Kore.Builtin.Int as Builtin.Int
-import           Kore.IndexedModule.MetadataTools
+import           Kore.IndexedModule.MetadataTools as MetadataTools
 import           Kore.Predicate.Predicate
 import           Kore.Step.Pattern
 import           Kore.Step.StepperAttributes
@@ -227,7 +227,7 @@ translatePredicate translateUninterpreted predicate =
         -> p
         -> Translator p SExpr
     translatePattern sort pat =
-        case getHook (sortAttributes hookTools sort) of
+        case getHook (MetadataTools.sortAttributes hookTools sort) of
             Just builtinSort
               | builtinSort == Builtin.Bool.sort -> translateBool pat
               | builtinSort == Builtin.Int.sort -> translateInt pat
@@ -254,4 +254,3 @@ runTranslator = evalTranslator . includeState
             comp' <- comp
             state <- State.get
             pure (comp', state)
-

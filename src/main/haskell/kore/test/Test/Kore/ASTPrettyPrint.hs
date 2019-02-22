@@ -80,6 +80,11 @@ test_astPrettyPrint =
             \            { runIdentity = Null :< TopPattern (Top (SortActualSort SortActual\n\
             \                { sortActualName = (Id \"#Char\" AstLocationNone) :: Id Meta\n\
             \                , sortActualSorts = []\n\
+            \                , sortAttributes =\n\
+            \                    Attribute.Sort\n\
+            \                        { hook = Attribute.Hook Nothing\n\
+            \                        , smtlib = Attribute.Smtlib Nothing\n\
+            \                        }\n\
             \                }))\n\
             \            }\n\
             \        }\n\

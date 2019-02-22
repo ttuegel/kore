@@ -206,10 +206,7 @@ mySortName :: Id Object
 mySortName = Id "MySort" AstLocationTest
 
 mySort :: Sort Object
-mySort = SortActualSort SortActual
-    { sortActualName = mySortName
-    , sortActualSorts = []
-    }
+mySort = mkSort mySortName
 
 -- | sort MySort{} []
 mySortDecl :: VerifiedKoreSentenceSort Object

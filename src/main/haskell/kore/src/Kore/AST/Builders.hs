@@ -44,6 +44,7 @@ module Kore.AST.Builders
 
 import           Control.Comonad.Trans.Cofree
                  ( CofreeF (..) )
+import qualified Data.Default as Default
 import           Data.Functor.Classes
 import           Data.Proxy
                  ( Proxy (..) )
@@ -131,6 +132,7 @@ sort_ sortType =
             , idLocation = AstLocationImplicit
             }
         , sortActualSorts = []
+        , sortAttributes = Default.def
         }
 
 -- |Given a string @name@, yields the 'UnsortedPatternStub' defining

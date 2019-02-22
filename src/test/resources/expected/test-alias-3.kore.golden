@@ -24,16 +24,31 @@ Definition
                         [ SortActualSort SortActual
                             { sortActualName = (Id "S" AstLocationNone) :: Id Object
                             , sortActualSorts = []
+                            , sortAttributes =
+                                Attribute.Sort
+                                    { hook = Attribute.Hook Nothing
+                                    , smtlib = Attribute.Smtlib Nothing
+                                    }
                             }
                         , SortActualSort SortActual
                             { sortActualName = (Id "S" AstLocationNone) :: Id Object
                             , sortActualSorts = []
+                            , sortAttributes =
+                                Attribute.Sort
+                                    { hook = Attribute.Hook Nothing
+                                    , smtlib = Attribute.Smtlib Nothing
+                                    }
                             }
                         ]
                     , sentenceSymbolReturnSort =
                         SortActualSort SortActual
                             { sortActualName = (Id "S" AstLocationNone) :: Id Object
                             , sortActualSorts = []
+                            , sortAttributes =
+                                Attribute.Sort
+                                    { hook = Attribute.Hook Nothing
+                                    , smtlib = Attribute.Smtlib Nothing
+                                    }
                             }
                     , sentenceSymbolAttributes = Attributes []
                     })
@@ -47,16 +62,31 @@ Definition
                         [ SortActualSort SortActual
                             { sortActualName = (Id "S" AstLocationNone) :: Id Object
                             , sortActualSorts = []
+                            , sortAttributes =
+                                Attribute.Sort
+                                    { hook = Attribute.Hook Nothing
+                                    , smtlib = Attribute.Smtlib Nothing
+                                    }
                             }
                         , SortActualSort SortActual
                             { sortActualName = (Id "S" AstLocationNone) :: Id Object
                             , sortActualSorts = []
+                            , sortAttributes =
+                                Attribute.Sort
+                                    { hook = Attribute.Hook Nothing
+                                    , smtlib = Attribute.Smtlib Nothing
+                                    }
                             }
                         ]
                     , sentenceAliasReturnSort =
                         SortActualSort SortActual
                             { sortActualName = (Id "S" AstLocationNone) :: Id Object
                             , sortActualSorts = []
+                            , sortAttributes =
+                                Attribute.Sort
+                                    { hook = Attribute.Hook Nothing
+                                    , smtlib = Attribute.Smtlib Nothing
+                                    }
                             }
                     , sentenceAliasLeftPattern =
                         Application
@@ -73,6 +103,11 @@ Definition
                                         SortActualSort SortActual
                                             { sortActualName = (Id "S" AstLocationNone) :: Id Object
                                             , sortActualSorts = []
+                                            , sortAttributes =
+                                                Attribute.Sort
+                                                    { hook = Attribute.Hook Nothing
+                                                    , smtlib = Attribute.Smtlib Nothing
+                                                    }
                                             }
                                     }
                                 , Variable
@@ -82,6 +117,11 @@ Definition
                                         SortActualSort SortActual
                                             { sortActualName = (Id "S" AstLocationNone) :: Id Object
                                             , sortActualSorts = []
+                                            , sortAttributes =
+                                                Attribute.Sort
+                                                    { hook = Attribute.Hook Nothing
+                                                    , smtlib = Attribute.Smtlib Nothing
+                                                    }
                                             }
                                     }
                                 ]
@@ -106,6 +146,11 @@ Definition
                                                             SortActualSort SortActual
                                                                 { sortActualName = (Id "S" AstLocationNone) :: Id Object
                                                                 , sortActualSorts = []
+                                                                , sortAttributes =
+                                                                    Attribute.Sort
+                                                                        { hook = Attribute.Hook Nothing
+                                                                        , smtlib = Attribute.Smtlib Nothing
+                                                                        }
                                                                 }
                                                         })
                                                     }
@@ -119,6 +164,11 @@ Definition
                                                             SortActualSort SortActual
                                                                 { sortActualName = (Id "S" AstLocationNone) :: Id Object
                                                                 , sortActualSorts = []
+                                                                , sortAttributes =
+                                                                    Attribute.Sort
+                                                                        { hook = Attribute.Hook Nothing
+                                                                        , smtlib = Attribute.Smtlib Nothing
+                                                                        }
                                                                 }
                                                         })
                                                     }

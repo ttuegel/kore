@@ -1,7 +1,8 @@
 module Test.Kore.Builtin.Definition where
 
-import Data.Text
-       ( Text )
+import qualified Data.Default as Default
+import           Data.Text
+                 ( Text )
 
 import           Kore.AST.Kore
 import           Kore.AST.Sentence
@@ -340,11 +341,7 @@ hookedSortDecl sort hook =
 
 -- | A sort to hook to the builtin @BOOL.Bool@.
 boolSort :: Sort Object
-boolSort =
-    SortActualSort SortActual
-        { sortActualName = testId "Bool"
-        , sortActualSorts = []
-        }
+boolSort = mkSort (testId "Bool")
 
 -- | Declare 'boolSort' in a Kore module.
 boolSortDecl :: KoreSentence
@@ -354,11 +351,7 @@ boolSortDecl = hookedSortDecl boolSort "BOOL.Bool"
 
 -- | A sort to hook to the builtin @INT.Int@.
 intSort :: Sort Object
-intSort =
-    SortActualSort SortActual
-        { sortActualName = testId "Int"
-        , sortActualSorts = []
-        }
+intSort = mkSort (testId "Int")
 
 -- | Declare 'intSort' in a Kore module.
 intSortDecl :: KoreSentence
@@ -367,36 +360,20 @@ intSortDecl = hookedSortDecl intSort "INT.Int"
 -- ** KEQUAL
 
 kSort :: Sort Object
-kSort =
-    SortActualSort SortActual
-        { sortActualName = testId "SortK"
-        , sortActualSorts = []
-        }
+kSort = mkSort (testId "SortK")
 
 kItemSort :: Sort Object
-kItemSort =
-    SortActualSort SortActual
-        { sortActualName = testId "SortKItem"
-        , sortActualSorts = []
-        }
+kItemSort = mkSort (testId "SortKItem")
 
 idSort :: Sort Object
-idSort =
-    SortActualSort SortActual
-        { sortActualName = testId "SortId"
-        , sortActualSorts = []
-        }
+idSort = mkSort (testId "SortId")
 
 
 -- ** List
 
 -- | A sort to hook to the builtin @LIST.List@.
 listSort :: Sort Object
-listSort =
-    SortActualSort SortActual
-        { sortActualName = testId "List"
-        , sortActualSorts = []
-        }
+listSort = mkSort (testId "List")
 
 -- | Declare 'listSort' in a Kore module.
 listSortDecl :: KoreSentence
@@ -404,11 +381,7 @@ listSortDecl = hookedSortDecl listSort "LIST.List"
 
 -- | Another sort with the same hook
 listSort2 :: Sort Object
-listSort2 =
-    SortActualSort SortActual
-        { sortActualName = testId "List2"
-        , sortActualSorts = []
-        }
+listSort2 = mkSort (testId "List2")
 
 -- | Declare 'listSort' in a Kore module.
 listSortDecl2 :: KoreSentence
@@ -418,11 +391,7 @@ listSortDecl2 = hookedSortDecl listSort2 "LIST.List"
 
 -- | A sort to hook to the builtin @MAP.Map@.
 mapSort :: Sort Object
-mapSort =
-    SortActualSort SortActual
-        { sortActualName = testId "Map"
-        , sortActualSorts = []
-        }
+mapSort = mkSort (testId "Map")
 
 -- | Declare 'mapSort' in a Kore module.
 mapSortDecl :: KoreSentence
@@ -435,6 +404,7 @@ pairSort lSort rSort =
     SortActualSort SortActual
         { sortActualName = testId "Pair"
         , sortActualSorts = [lSort, rSort]
+        , sortAttributes = Default.def
         }
 
 -- | Declare 'Pair' in a Kore module.
@@ -461,11 +431,7 @@ pairSortDecl =
 
 -- | A sort to hook to the builtin @SET.Set@.
 setSort :: Sort Object
-setSort =
-    SortActualSort SortActual
-        { sortActualName = testId "Set"
-        , sortActualSorts = []
-        }
+setSort = mkSort (testId "Set")
 
 -- | Declare 'setSort' in a Kore module.
 setSortDecl :: KoreSentence
@@ -475,11 +441,7 @@ setSortDecl = hookedSortDecl setSort "SET.Set"
 
 -- | A sort to hook to the builtin @STRING.String@.
 stringSort :: Sort Object
-stringSort =
-    SortActualSort SortActual
-        { sortActualName = testId "String"
-        , sortActualSorts = []
-        }
+stringSort = mkSort (testId "String")
 
 -- | Declare 'stringSort' in a Kore module.
 stringSortDecl :: KoreSentence

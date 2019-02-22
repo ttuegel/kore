@@ -50,16 +50,7 @@ test_withSort =
             (assertError
                 (assertSubstring
                     "Expecting unmatched sorts error"
-                    (  "Unmatched sorts: "
-                    ++ "SortActualSort (SortActual {sortActualName = Id "
-                    ++ "{getId = \"#PatternList\", "
-                    ++ "idLocation = AstLocationImplicit}, "
-                    ++ "sortActualSorts = []}) "
-                    ++ "and SortActualSort (SortActual {sortActualName = Id "
-                    ++ "{getId = \"#SortList\""
-                    ++ ", idLocation = AstLocationImplicit}"
-                    ++ ", sortActualSorts = []})."
-                    )
+                    "Unmatched sorts: SortActualSort (SortActual {sortActualName = Id {getId = \"#PatternList\", idLocation = AstLocationImplicit}, sortActualSorts = [], sortAttributes = Sort {hook = Hook {getHook = Nothing}, smtlib = Smtlib {getSmtlib = Nothing}}}) and SortActualSort (SortActual {sortActualName = Id {getId = \"#SortList\", idLocation = AstLocationImplicit}, sortActualSorts = [], sortAttributes = Sort {hook = Hook {getHook = Nothing}, smtlib = Smtlib {getSmtlib = Nothing}}})."
                 )
                 (withSort patternListMetaSort
                     (SortedPatternStub SortedPattern

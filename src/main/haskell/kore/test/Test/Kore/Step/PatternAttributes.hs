@@ -21,8 +21,6 @@ import           Kore.Step.PatternAttributesError
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 
-import           Test.Kore
-                 ( testId )
 import           Test.Kore.Comparators ()
 import qualified Test.Kore.IndexedModule.MockMetadataTools as Mock
                  ( makeMetadataTools )
@@ -448,8 +446,4 @@ test_patternAttributes =
     mockMetaMetadataTools = Mock.makeMetadataTools [] [] [] []
 
 testSort :: Sort Object
-testSort =
-    SortActualSort SortActual
-        { sortActualName  = testId "testSort"
-        , sortActualSorts = []
-        }
+testSort = Mock.testSort

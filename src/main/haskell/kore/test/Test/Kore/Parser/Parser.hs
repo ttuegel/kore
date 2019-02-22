@@ -3,8 +3,9 @@ module Test.Kore.Parser.Parser (test_koreParser) where
 import Test.Tasty
        ( TestTree, testGroup )
 
-import Data.Text
-       ( Text )
+import qualified Data.Default as Default
+import           Data.Text
+                 ( Text )
 
 import           Kore.AST.Builders
                  ( sort_ )
@@ -78,16 +79,13 @@ objectSortParserTests =
     parseTree (sortParser Object)
         [ success "var" $
             SortVariableSort ( SortVariable (testId "var") )
-        , success "sort1{}" $
-            SortActualSort SortActual
-                { sortActualName = testId "sort1"
-                , sortActualSorts = []
-                }
+        , success "sort1{}" $ mkSort (testId "sort1")
         , success "sort1{sort2}" $
             SortActualSort SortActual
                 { sortActualName = testId "sort1"
                 , sortActualSorts =
                     [ SortVariableSort ( SortVariable (testId "sort2") ) ]
+                , sortAttributes = Default.def
                 }
         , success "sort1{sort2, sort3}" $
             SortActualSort SortActual
@@ -96,6 +94,7 @@ objectSortParserTests =
                     [ SortVariableSort ( SortVariable (testId "sort2") )
                     , SortVariableSort ( SortVariable (testId "sort3") )
                     ]
+                , sortAttributes = Default.def
                 }
         , success "sort1{sort2{sort3}}" $
             SortActualSort SortActual
@@ -105,8 +104,10 @@ objectSortParserTests =
                         { sortActualName = testId "sort2"
                         , sortActualSorts =
                             [ SortVariableSort (SortVariable (testId "sort3")) ]
+                        , sortAttributes = Default.def
                         }
                     ]
+                , sortAttributes = Default.def
                 }
         , FailureWithoutMessage ["var1, var2", "var1{var1 var2}"]
         ]
@@ -149,6 +150,7 @@ objectSortListParserTests =
                 { sortActualName = testId "sort1"
                 , sortActualSorts =
                     [ sortVariableSort "sort2" ]
+                , sortAttributes = Default.def
                 }
             , sortVariableSort "var"
             ]
@@ -349,6 +351,7 @@ variableParserTests =
                     SortActualSort SortActual
                         { sortActualName = testId "s1"
                         , sortActualSorts = [ sortVariableSort "s2" ]
+                        , sortAttributes = Default.def
                         }
                 , variableCounter = mempty
                 }
@@ -393,6 +396,7 @@ applicationPatternParserTests =
                     SortActualSort SortActual
                         { sortActualName = testId "s1"
                         , sortActualSorts = [ sortVariableSort "s2" ]
+                        , sortAttributes = Default.def
                         }
                 , variableCounter = mempty
                 }
@@ -803,6 +807,7 @@ variablePatternParserTests =
                 , variableSort = SortActualSort SortActual
                     { sortActualName=testId "s1"
                     , sortActualSorts = [ sortVariableSort "s2" ]
+                    , sortAttributes = Default.def
                     }
                 , variableCounter = mempty
                 }
