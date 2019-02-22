@@ -52,13 +52,14 @@ import           GHC.Generics
                  ( Generic )
 import           Numeric.Natural
 
-import Data.Sup
-import Kore.AST.Identifier
-import Kore.AST.MetaOrObject
-import Kore.Sort
-import Kore.Unparser
-import Template.Tools
-       ( newDefinitionGroup )
+import qualified Control.Lens.TH.Rules as Lens
+import           Data.Sup
+import           Kore.AST.Identifier
+import           Kore.AST.MetaOrObject
+import           Kore.Sort
+import           Kore.Unparser
+import           Template.Tools
+                 ( newDefinitionGroup )
 
 {-|'StringLiteral' corresponds to the @string@ literal from the Semantics of K,
 Section 9.1.1 (Lexicon).
@@ -134,6 +135,8 @@ data Variable level = Variable
     , variableSort :: !(Sort level)
     }
     deriving (Show, Eq, Ord, Generic)
+
+Lens.makeLenses ''Variable
 
 instance Hashable (Variable level)
 
@@ -309,7 +312,7 @@ data And level child = And
     }
     deriving (Functor, Foldable, Traversable, Generic)
 
-$newDefinitionGroup
+Lens.makeLenses ''And
 
 instance Eq1 (And level) where
     liftEq = $(makeLiftEq ''And)
@@ -356,7 +359,7 @@ data Application level child = Application
     }
     deriving (Functor, Foldable, Traversable, Generic)
 
-$newDefinitionGroup
+Lens.makeLenses ''Application
 
 instance Eq1 (Application level) where
     liftEq = $(makeLiftEq ''Application)
@@ -401,7 +404,7 @@ This represents the ⌈BottomPattern⌉ Matching Logic construct.
 newtype Bottom level child = Bottom { bottomSort :: Sort level }
     deriving (Functor, Foldable, Show, Traversable, Generic)
 
-$newDefinitionGroup
+Lens.makeLenses ''Bottom
 
 instance Eq1 (Bottom level) where
     liftEq = $(makeLiftEq ''Bottom)
@@ -446,7 +449,7 @@ data Ceil level child = Ceil
     }
     deriving (Functor, Foldable, Traversable, Generic)
 
-$newDefinitionGroup
+Lens.makeLenses ''Ceil
 
 instance Eq1 (Ceil level) where
     liftEq = $(makeLiftEq ''Ceil)
@@ -497,7 +500,7 @@ data DomainValue level domain child = DomainValue
     }
     deriving (Foldable, Functor, Generic, Traversable)
 
-$newDefinitionGroup
+Lens.makeLenses ''DomainValue
 
 instance Eq1 domain => Eq1 (DomainValue level domain) where
     liftEq = $(makeLiftEq ''DomainValue)
@@ -551,7 +554,7 @@ data Equals level child = Equals
     }
     deriving (Functor, Foldable, Traversable, Generic)
 
-$newDefinitionGroup
+Lens.makeLenses ''Equals
 
 instance Eq1 (Equals level) where
     liftEq = $(makeLiftEq ''Equals)
@@ -606,7 +609,7 @@ data Exists level v child = Exists
     }
     deriving (Functor, Foldable, Traversable, Generic)
 
-$newDefinitionGroup
+Lens.makeLenses ''Exists
 
 instance Eq (var lvl) => Eq1 (Exists lvl var) where
     liftEq = $(makeLiftEq ''Exists)
@@ -661,7 +664,7 @@ data Floor level child = Floor
     }
     deriving (Functor, Foldable, Traversable, Generic)
 
-$newDefinitionGroup
+Lens.makeLenses ''Floor
 
 instance Eq1 (Floor level) where
     liftEq = $(makeLiftEq ''Floor)
@@ -709,7 +712,7 @@ data Forall level v child = Forall
     }
     deriving (Functor, Foldable, Traversable, Generic)
 
-$newDefinitionGroup
+Lens.makeLenses ''Forall
 
 instance Eq (var lvl) => Eq1 (Forall lvl var) where
     liftEq = $(makeLiftEq ''Forall)
@@ -762,7 +765,7 @@ data Iff level child = Iff
     }
     deriving (Functor, Foldable, Traversable, Generic)
 
-$newDefinitionGroup
+Lens.makeLenses ''Iff
 
 instance Eq1 (Iff level) where
     liftEq = $(makeLiftEq ''Iff)
@@ -810,7 +813,7 @@ data Implies level child = Implies
     }
     deriving (Functor, Foldable, Traversable, Generic)
 
-$newDefinitionGroup
+Lens.makeLenses ''Implies
 
 instance Eq1 (Implies level) where
     liftEq = $(makeLiftEq ''Implies)
@@ -864,7 +867,7 @@ data In level child = In
     }
     deriving (Functor, Foldable, Traversable, Generic)
 
-$newDefinitionGroup
+Lens.makeLenses ''In
 
 instance Eq1 (In level) where
     liftEq = $(makeLiftEq ''In)
@@ -918,7 +921,7 @@ data Next level child = Next
     }
     deriving (Functor, Foldable, Traversable, Generic)
 
-$newDefinitionGroup
+Lens.makeLenses ''Next
 
 instance Eq1 (Next level) where
     liftEq = $(makeLiftEq ''Next)
@@ -965,7 +968,7 @@ data Not level child = Not
     }
     deriving (Functor, Foldable, Traversable, Generic)
 
-$newDefinitionGroup
+Lens.makeLenses ''Not
 
 instance Eq1 (Not level) where
     liftEq = $(makeLiftEq ''Not)
@@ -1013,7 +1016,7 @@ data Or level child = Or
     }
     deriving (Functor, Foldable, Traversable, Generic)
 
-$newDefinitionGroup
+Lens.makeLenses ''Or
 
 instance Eq1 (Or level) where
     liftEq = $(makeLiftEq ''Or)
@@ -1062,7 +1065,7 @@ data Rewrites level child = Rewrites
     }
     deriving (Functor, Foldable, Traversable, Generic)
 
-$newDefinitionGroup
+Lens.makeLenses ''Rewrites
 
 instance Eq1 (Rewrites level) where
     liftEq = $(makeLiftEq ''Rewrites)
@@ -1106,7 +1109,7 @@ This represents the ⌈TopPattern⌉ Matching Logic construct.
 newtype Top level child = Top { topSort :: Sort level}
     deriving (Functor, Foldable, Show, Traversable, Generic)
 
-$newDefinitionGroup
+Lens.makeLenses ''Top
 
 instance Eq1 (Top level) where
     liftEq = $(makeLiftEq ''Top)
