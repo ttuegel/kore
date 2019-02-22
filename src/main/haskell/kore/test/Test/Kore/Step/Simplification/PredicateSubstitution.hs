@@ -281,7 +281,6 @@ mockMetadataTools =
     Mock.makeMetadataTools
         Mock.attributesMapping
         Mock.headTypeMapping
-        Mock.sortAttributesMapping
         Mock.subsorts
 
 runSimplifier
@@ -344,4 +343,3 @@ simpleEvaluator ((from, to) : ps) patt
         )
   | otherwise =
     simpleEvaluator ps patt
-

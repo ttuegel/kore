@@ -16,6 +16,7 @@ module Kore.AST.Valid
     (
     -- * Utility functions for dealing with sorts
       getSort
+    , getSortAttributes
     , forceSort
     , predicateSort
     , localInPattern
@@ -108,6 +109,7 @@ import           Kore.Annotation.Valid as Valid
 import           Kore.AST.Lens
 import           Kore.AST.Pure
 import           Kore.AST.Sentence
+import qualified Kore.Attribute.Sort as Attribute
 import           Kore.Implicit.ImplicitSorts
 import           Kore.Unparser
                  ( Unparse, renderDefault, unparseToString )
@@ -119,6 +121,15 @@ getSort
     => PurePattern level domain variable (Valid (variable level) level)
     -> Sort level
 getSort (extract -> Valid { patternSort }) = patternSort
+
+getSortAttributes
+    :: Functor domain
+    => PurePattern level domain variable (Valid (variable level) level)
+    -> Maybe Attribute.Sort
+getSortAttributes purePattern =
+    case getSort purePattern of
+        SortActualSort SortActual { sortAttributes } -> Just sortAttributes
+        _ -> Nothing
 
 -- | Attempts to modify p to have sort s.
 forceSort

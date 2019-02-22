@@ -27,6 +27,7 @@ import           Kore.AST.Valid as Valid
 import           Kore.ASTVerifier.DefinitionVerifier
                  ( AttributesVerification (..), verifyAndIndexDefinition )
 import qualified Kore.Attribute.Null as Attribute
+import qualified Kore.Attribute.Sort as Attribute
 import qualified Kore.Builtin as Builtin
 import           Kore.Error
 import           Kore.IndexedModule.IndexedModule
@@ -377,10 +378,13 @@ parseAxiom str =
 
 extractIndexedModule
     :: Text
-    -> Either
-        (Error a)
-        (Map.Map ModuleName (VerifiedModule Attribute.Null Attribute.Null))
-    -> VerifiedModule Attribute.Null Attribute.Null
+    ->  Either
+            (Error a)
+            (Map.Map
+                ModuleName
+                (VerifiedModule Attribute.Null Attribute.Sort Attribute.Null)
+            )
+    -> VerifiedModule Attribute.Null Attribute.Sort Attribute.Null
 extractIndexedModule name eModules =
     case eModules of
         Left err -> error (printError err)

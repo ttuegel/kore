@@ -1204,7 +1204,6 @@ mockMetaMetadataTools :: MetadataTools Meta StepperAttributes
 mockMetaMetadataTools = MetadataTools
     { symAttributes = mockStepperAttributes
     , symbolOrAliasType = const HeadType.Symbol
-    , sortAttributes = undefined
     , isSubsortOf = const $ const False
     , subsorts = Set.singleton
     }
@@ -1214,7 +1213,6 @@ mockMetadataTools =
     Mock.makeMetadataTools
         Mock.attributesMapping
         Mock.headTypeMapping
-        Mock.sortAttributesMapping
         Mock.subsorts
 
 sigmaSymbol :: SymbolOrAlias Meta

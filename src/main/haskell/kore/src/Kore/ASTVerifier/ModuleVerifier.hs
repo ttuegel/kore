@@ -21,6 +21,7 @@ import           Kore.AST.Sentence
 import           Kore.ASTVerifier.AttributesVerifier
 import           Kore.ASTVerifier.Error
 import qualified Kore.ASTVerifier.SentenceVerifier as SentenceVerifier
+import qualified Kore.Attribute.Sort as Attribute
 import qualified Kore.Builtin as Builtin
 import           Kore.Error
 import           Kore.IndexedModule.IndexedModule
@@ -45,7 +46,7 @@ verifyUniqueNames existingNames koreModule =
 verifyModule
     :: AttributesVerification declAtts axiomAtts
     -> Builtin.Verifiers
-    -> KoreIndexedModule declAtts axiomAtts
+    -> KoreIndexedModule declAtts Attribute.Sort axiomAtts
     -> Either (Error VerifyError) (Module VerifiedKoreSentence)
 verifyModule attributesVerification builtinVerifiers indexedModule =
     withContext

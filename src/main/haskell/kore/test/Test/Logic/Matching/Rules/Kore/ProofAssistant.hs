@@ -23,6 +23,7 @@ import           Kore.AST.Sentence
 import           Kore.ASTVerifier.DefinitionVerifier
                  ( AttributesVerification (..), verifyAndIndexDefinition )
 import qualified Kore.Attribute.Null as Attribute
+import qualified Kore.Attribute.Sort as Attribute
 import           Kore.Building.AsAst
 import           Kore.Building.Patterns
 import           Kore.Building.Sorts
@@ -2766,14 +2767,17 @@ runAction proof (description, action) =
         Left err -> Left (description ++ " : " ++ err)
         result   -> result
 
-defaultIndexedModule :: VerifiedModule Attribute.Null Attribute.Null
+defaultIndexedModule
+    :: VerifiedModule Attribute.Null Attribute.Sort Attribute.Null
 defaultIndexedModule =
     case defaultIndexedModuleWithError of
         Left err -> error (printError err)
         Right m  -> m
 
 defaultIndexedModuleWithError
-    :: Either (Error MLError) (VerifiedModule Attribute.Null Attribute.Null)
+    ::  Either
+            (Error MLError)
+            (VerifiedModule Attribute.Null Attribute.Sort Attribute.Null)
 defaultIndexedModuleWithError = do
     modules <-
         castError

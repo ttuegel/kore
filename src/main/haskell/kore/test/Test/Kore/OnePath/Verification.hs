@@ -341,7 +341,6 @@ test_onePathVerification =
         Mock.makeMetadataTools
             Mock.attributesMapping
             Mock.headTypeMapping
-            Mock.sortAttributesMapping
             Mock.subsorts
 
 simpleAxiom

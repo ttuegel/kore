@@ -12,6 +12,7 @@ import           Kore.Attribute.Functional
 import           Kore.Attribute.Hook
 import           Kore.Attribute.Injective
 import           Kore.Attribute.Smtlib
+import qualified Kore.Attribute.Sort as Attribute
 import qualified Kore.Builtin.Set as Set
 import           Kore.Step.Pattern
 
@@ -339,23 +340,39 @@ hookedSortDecl sort hook =
 
 -- ** Bool
 
+boolHook :: Text
+boolHook = "BOOL.Bool"
+
 -- | A sort to hook to the builtin @BOOL.Bool@.
 boolSort :: Sort Object
-boolSort = mkSort (testId "Bool")
+boolSort =
+    SortActualSort SortActual
+        { sortActualName = testId "Bool"
+        , sortActualSorts = []
+        , sortAttributes = Default.def { Attribute.hook = Hook (Just boolHook) }
+        }
 
 -- | Declare 'boolSort' in a Kore module.
 boolSortDecl :: KoreSentence
-boolSortDecl = hookedSortDecl boolSort "BOOL.Bool"
+boolSortDecl = hookedSortDecl boolSort boolHook
 
 -- ** Int
 
+intHook :: Text
+intHook = "INT.Int"
+
 -- | A sort to hook to the builtin @INT.Int@.
 intSort :: Sort Object
-intSort = mkSort (testId "Int")
+intSort =
+    SortActualSort SortActual
+        { sortActualName = testId "Int"
+        , sortActualSorts = []
+        , sortAttributes = Default.def { Attribute.hook = Hook (Just intHook) }
+        }
 
 -- | Declare 'intSort' in a Kore module.
 intSortDecl :: KoreSentence
-intSortDecl = hookedSortDecl intSort "INT.Int"
+intSortDecl = hookedSortDecl intSort intHook
 
 -- ** KEQUAL
 

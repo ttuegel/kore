@@ -29,6 +29,7 @@ import           Kore.AST.MetaOrObject
                  ( Meta, Object (..) )
 import           Kore.AST.Valid
 import qualified Kore.Attribute.Axiom as Attribute
+import qualified Kore.Attribute.Sort as Attribute
 import qualified Kore.Builtin as Builtin
 import           Kore.IndexedModule.IndexedModule
                  ( VerifiedModule )
@@ -119,7 +120,7 @@ data Execution =
 
 -- | Symbolic execution
 exec
-    :: VerifiedModule StepperAttributes Attribute.Axiom
+    :: VerifiedModule StepperAttributes Attribute.Sort Attribute.Axiom
     -- ^ The main module
     -> ([Rewrite] -> [Strategy (Prim Rewrite)])
     -- ^ The strategy to use for execution; see examples in "Kore.Step.Step"
@@ -137,7 +138,7 @@ exec indexedModule strategy purePattern = do
 
 -- | Symbolic search
 search
-    :: VerifiedModule StepperAttributes Attribute.Axiom
+    :: VerifiedModule StepperAttributes Attribute.Sort Attribute.Axiom
     -- ^ The main module
     -> ([Rewrite] -> [Strategy (Prim Rewrite)])
     -- ^ The strategy to use for execution; see examples in "Kore.Step.Step"
@@ -176,9 +177,9 @@ search verifiedModule strategy purePattern searchPattern searchConfig = do
 -- | Proving a spec given as a module containing rules to be proven
 prove
     :: Limit Natural
-    -> VerifiedModule StepperAttributes Attribute.Axiom
+    -> VerifiedModule StepperAttributes Attribute.Sort Attribute.Axiom
     -- ^ The main module
-    -> VerifiedModule StepperAttributes Attribute.Axiom
+    -> VerifiedModule StepperAttributes Attribute.Sort Attribute.Axiom
     -- ^ The spec module
     -> Simplifier (Either (CommonStepPattern Object) ())
 prove limit definitionModule specModule = do
@@ -217,7 +218,7 @@ prove limit definitionModule specModule = do
 
 -- | Construct an execution graph for the given input pattern.
 execute
-    :: VerifiedModule StepperAttributes Attribute.Axiom
+    :: VerifiedModule StepperAttributes Attribute.Sort Attribute.Axiom
     -- ^ The main module
     -> ([Rewrite] -> [Strategy (Prim Rewrite)])
     -- ^ The strategy to use for execution; see examples in "Kore.Step.Step"
@@ -260,7 +261,7 @@ execute verifiedModule strategy inputPattern
 
 -- | Collect various rules and simplifiers in preparation to execute.
 initialize
-    :: VerifiedModule StepperAttributes Attribute.Axiom
+    :: VerifiedModule StepperAttributes Attribute.Sort Attribute.Axiom
     -> MetadataTools Object StepperAttributes
     -> Simplifier Initialized
 initialize verifiedModule tools =

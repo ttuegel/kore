@@ -389,7 +389,6 @@ mockMetadataTools :: MetadataTools Meta StepperAttributes
 mockMetadataTools = MetadataTools
     { symAttributes = const Mock.constructorFunctionalAttributes
     , symbolOrAliasType = const HeadType.Symbol
-    , sortAttributes = const Mock.constructorFunctionalAttributes
     , isSubsortOf = const $ const False
     , subsorts = Set.singleton
     }

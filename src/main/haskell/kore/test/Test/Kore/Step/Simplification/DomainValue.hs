@@ -96,7 +96,7 @@ test_domainValueSimplification =
     bottom = OrOfExpandedPattern.make [ExpandedPattern.bottom]
 
 mockMetadataTools :: MetadataTools Object StepperAttributes
-mockMetadataTools = Mock.makeMetadataTools [] [] [] []
+mockMetadataTools = Mock.makeMetadataTools [] [] []
 
 evaluate
     :: (MetaOrObject Object)

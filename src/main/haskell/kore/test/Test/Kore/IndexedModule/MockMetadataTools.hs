@@ -33,14 +33,12 @@ import           Kore.Step.StepperAttributes
 makeMetadataTools
     :: [(SymbolOrAlias level, StepperAttributes)]
     -> [(SymbolOrAlias level, HeadType)]
-    -> [(Sort level, StepperAttributes)]
     -> [(Sort level, Sort level)]
     -> MetadataTools level StepperAttributes
-makeMetadataTools attr headTypes sortTypes isSubsortOf =
+makeMetadataTools attr headTypes isSubsortOf =
     MetadataTools
         { symAttributes = attributesFunction attr
         , symbolOrAliasType = headTypeFunction headTypes
-        , sortAttributes = functionAttributesFunction sortTypes
         -- TODO(Vladimir): fix the inconsistency that both 'subsorts' and
         -- 'isSubsortOf' only work with direct (non-transitive) relationships.
         -- For now, we can manually add the relationships for tests.
@@ -60,13 +58,6 @@ headTypeFunction
     -> SymbolOrAlias level
     -> HeadType
 headTypeFunction = caseBasedFunction
-
-functionAttributesFunction
-    :: HasCallStack
-    => [(Sort level, StepperAttributes)]
-    -> Sort level
-    -> StepperAttributes
-functionAttributesFunction = caseBasedFunction
 
 caseBasedFunction
     :: (Eq a, Show a, HasCallStack)

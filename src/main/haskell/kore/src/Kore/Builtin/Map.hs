@@ -360,7 +360,7 @@ builtinFunctions =
  -}
 asPattern
     :: Ord (variable Object)
-    => VerifiedModule declAttrs axiomAttrs
+    => VerifiedModule declAttrs sortAttrs axiomAttrs
     -- ^ indexed module where pattern would appear
     -> Sort Object
     -> Either
@@ -386,7 +386,7 @@ asPattern indexedModule dvSort
  -}
 asExpandedPattern
     :: Ord (variable Object)
-    => VerifiedModule declAttrs axiomAttrs
+    => VerifiedModule declAttrs sortAttrs axiomAttrs
     -- ^ dictionary of Map constructor symbols
     -> Kore.Sort Object
     -> Either
@@ -433,7 +433,7 @@ asBuiltinDomainValue resultSort map' =
  -}
 lookupSymbolUnit
     :: Sort Object
-    -> VerifiedModule declAttrs axiomAttrs
+    -> VerifiedModule declAttrs sortAttrs axiomAttrs
     -> Either (Kore.Error e) (SymbolOrAlias Object)
 lookupSymbolUnit = Builtin.lookupSymbol unitKey
 
@@ -441,7 +441,7 @@ lookupSymbolUnit = Builtin.lookupSymbol unitKey
  -}
 lookupSymbolUpdate
     :: Sort Object
-    -> VerifiedModule declAttrs axiomAttrs
+    -> VerifiedModule declAttrs sortAttrs axiomAttrs
     -> Either (Kore.Error e) (SymbolOrAlias Object)
 lookupSymbolUpdate = Builtin.lookupSymbol updateKey
 
@@ -449,7 +449,7 @@ lookupSymbolUpdate = Builtin.lookupSymbol updateKey
  -}
 lookupSymbolLookup
     :: Sort Object
-    -> VerifiedModule declAttrs axiomAttrs
+    -> VerifiedModule declAttrs sortAttrs axiomAttrs
     -> Either (Kore.Error e) (SymbolOrAlias Object)
 lookupSymbolLookup = Builtin.lookupSymbol lookupKey
 
@@ -457,7 +457,7 @@ lookupSymbolLookup = Builtin.lookupSymbol lookupKey
  -}
 lookupSymbolElement
     :: Sort Object
-    -> VerifiedModule declAttrs axiomAttrs
+    -> VerifiedModule declAttrs sortAttrs axiomAttrs
     -> Either (Kore.Error e) (SymbolOrAlias Object)
 lookupSymbolElement = Builtin.lookupSymbol elementKey
 
@@ -465,7 +465,7 @@ lookupSymbolElement = Builtin.lookupSymbol elementKey
  -}
 lookupSymbolConcat
     :: Sort Object
-    -> VerifiedModule declAttrs axiomAttrs
+    -> VerifiedModule declAttrs sortAttrs axiomAttrs
     -> Either (Kore.Error e) (SymbolOrAlias Object)
 lookupSymbolConcat = Builtin.lookupSymbol concatKey
 
@@ -473,7 +473,7 @@ lookupSymbolConcat = Builtin.lookupSymbol concatKey
  -}
 lookupSymbolInKeys
     :: Sort Object
-    -> VerifiedModule declAttrs axiomAttrs
+    -> VerifiedModule declAttrs sortAttrs axiomAttrs
     -> Either (Kore.Error e) (SymbolOrAlias Object)
 lookupSymbolInKeys = Builtin.lookupSymbol in_keysKey
 
@@ -481,7 +481,7 @@ lookupSymbolInKeys = Builtin.lookupSymbol in_keysKey
  -}
 lookupSymbolKeys
     :: Sort Object
-    -> VerifiedModule declAttrs axiomAttrs
+    -> VerifiedModule declAttrs sortAttrs axiomAttrs
     -> Either (Kore.Error e) (SymbolOrAlias Object)
 lookupSymbolKeys = Builtin.lookupSymbol keysKey
 

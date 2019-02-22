@@ -18,12 +18,12 @@ module Kore.Step.TranslateSMT
 
 import           Control.Applicative
                  ( Alternative (..) )
+import           Control.Comonad
 import qualified Control.Comonad.Trans.Cofree as Cofree
 import           Control.Error
                  ( MaybeT )
 import           Control.Monad.Counter
                  ( CounterT, evalCounterT )
-import           Control.Monad.Except
 import           Control.Monad.Morph as Morph
 import           Control.Monad.State.Strict
                  ( StateT, evalStateT )
@@ -36,15 +36,14 @@ import           Data.Reflection
 
 import           Kore.AST.Kore
 import           Kore.AST.Valid
-import           Kore.Attribute.Hook
 import           Kore.Attribute.Smtlib
+import qualified Kore.Attribute.Sort as Attribute
 import qualified Kore.Builtin.Bool as Builtin.Bool
 import qualified Kore.Builtin.Int as Builtin.Int
 import           Kore.IndexedModule.MetadataTools as MetadataTools
 import           Kore.Predicate.Predicate
 import           Kore.Step.Pattern
 import           Kore.Step.StepperAttributes
-import qualified Kore.Step.StepperAttributes as StepperAttributes
 import           SMT
                  ( SExpr (..), SMT )
 import qualified SMT
@@ -115,13 +114,7 @@ translatePredicate translateUninterpreted predicate =
             <$> translatePredicatePattern andFirst
             <*> translatePredicatePattern andSecond
 
-    translatePredicateEquals
-        Equals
-            { equalsOperandSort
-            , equalsFirst
-            , equalsSecond
-            }
-      =
+    translatePredicateEquals Equals { equalsFirst, equalsSecond } =
         SMT.eq
             <$> translatePredicateEqualsChild equalsFirst
             <*> translatePredicateEqualsChild equalsSecond
@@ -130,7 +123,7 @@ translatePredicate translateUninterpreted predicate =
             -- Attempt to translate patterns in builtin sorts, or failing that,
             -- as predicates.
             (<|>)
-                (translatePattern equalsOperandSort child)
+                (translatePattern child)
                 (translatePredicatePattern child)
 
     translatePredicateIff Iff { iffFirst, iffSecond } =
@@ -168,7 +161,7 @@ translatePredicate translateUninterpreted predicate =
                 return $ SMT.int $ Builtin.Int.extractIntDomainValue
                     "while translating dv to SMT.int" dv
             ApplicationPattern app ->
-                translateApplication app
+                translateApplication (extract pat) app
             _ -> empty
 
     -- | Translate a functional pattern in the builtin Bool sort for SMT.
@@ -191,7 +184,7 @@ translatePredicate translateUninterpreted predicate =
                 -- will fail to translate.
                 SMT.not <$> translateBool notChild
             ApplicationPattern app ->
-                translateApplication app
+                translateApplication (extract pat) app
             _ -> empty
 
     translateApplication
@@ -199,45 +192,42 @@ translatePredicate translateUninterpreted predicate =
             , Ord (variable Object)
             , p ~ StepPattern Object variable
             )
-        => Application Object p
+        => Valid (variable Object) Object
+        -> Application Object p
         -> Translator p SExpr
     translateApplication
-        Application
-            { applicationSymbolOrAlias
-            , applicationChildren
-            }
-      = case getSmtlib (symAttributes smtTools applicationSymbolOrAlias) of
+        Valid { patternSort }
+        Application { applicationChildren }
+      = case getSmtlib of
             Nothing -> empty
-            Just sExpr -> shortenSExpr <$>
-                applySExpr sExpr
-                    <$> zipWithM translatePattern
-                        applicationChildrenSorts
-                        applicationChildren
+            Just sExpr ->
+                shortenSExpr
+                <$> applySExpr sExpr
+                <$> traverse translatePattern applicationChildren
         where
-        smtTools :: MetadataTools Object Smtlib
-        smtTools = StepperAttributes.smtlib <$> given
-
-        applicationChildrenSorts = getSort <$> applicationChildren
+        getSmtlib
+          | SortActualSort sortActual <- patternSort = do
+            let SortActual { sortAttributes } = sortActual
+                Attribute.Sort { smtlib } = sortAttributes
+            Attribute.getSmtlib smtlib
+          | otherwise = Nothing
 
     translatePattern
-        ::  ( Given (MetadataTools Object StepperAttributes)
-            , p ~ StepPattern Object variable
-            )
-        => Sort Object
-        -> p
-        -> Translator p SExpr
-    translatePattern sort pat =
-        case getHook (MetadataTools.sortAttributes hookTools sort) of
+        :: StepPattern Object variable
+        -> Translator (StepPattern Object variable) SExpr
+    translatePattern pat =
+        case getHook of
             Just builtinSort
               | builtinSort == Builtin.Bool.sort -> translateBool pat
               | builtinSort == Builtin.Int.sort -> translateInt pat
-            _ -> case Cofree.tailF $ Recursive.project pat of
-                    ApplicationPattern app ->
-                        translateApplication app
+            _ -> case Recursive.project pat of
+                    valid :< ApplicationPattern app ->
+                        translateApplication valid app
                     _ -> empty
       where
-        hookTools :: MetadataTools Object Hook
-        hookTools = StepperAttributes.hook <$> given
+        getHook = do
+            Attribute.Sort { hook = Attribute.Hook h } <- getSortAttributes pat
+            h
 
 -- ----------------------------------------------------------------
 -- Translator

@@ -29,6 +29,7 @@ import qualified Kore.Attribute.Axiom as Attribute
 import           Kore.Attribute.Overload
 import           Kore.Attribute.Simplification
                  ( Simplification (..) )
+import qualified Kore.Attribute.Sort as Attribute
 import           Kore.IndexedModule.IndexedModule
 import           Kore.Step.AxiomPatterns
                  ( EqualityRule (EqualityRule),
@@ -57,7 +58,7 @@ extractFunctionAxioms
     ::  forall level.
         MetaOrObject level
     => level
-    -> VerifiedModule StepperAttributes Attribute.Axiom
+    -> VerifiedModule StepperAttributes Attribute.Sort Attribute.Axiom
     -> Map (AxiomIdentifier level) [EqualityRule level Variable]
 extractFunctionAxioms level =
     \imod ->
@@ -69,7 +70,7 @@ extractFunctionAxioms level =
     -- | Update the map of function axioms with all the axioms in one module.
     extractModuleAxioms
         :: Map (AxiomIdentifier level) [EqualityRule level Variable]
-        -> VerifiedModule StepperAttributes Attribute.Axiom
+        -> VerifiedModule StepperAttributes Attribute.Sort Attribute.Axiom
         -> Map (AxiomIdentifier level) [EqualityRule level Variable]
     extractModuleAxioms axioms imod =
         Foldable.foldl' extractSentenceAxiom axioms sentences

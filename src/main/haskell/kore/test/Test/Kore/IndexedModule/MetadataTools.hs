@@ -19,6 +19,7 @@ import qualified Kore.Attribute.Axiom as Attribute
 import           Kore.Attribute.Constructor
 import           Kore.Attribute.Functional
 import qualified Kore.Attribute.Null as Attribute
+import qualified Kore.Attribute.Sort as Attribute
 import           Kore.Attribute.Subsort
                  ( subsortAttribute )
 import qualified Kore.Builtin as Builtin
@@ -103,7 +104,8 @@ testDefinition =
                 ]
             }
 
-testVerifiedModule :: VerifiedModule StepperAttributes Attribute.Axiom
+testVerifiedModule
+    :: VerifiedModule StepperAttributes Attribute.Sort Attribute.Axiom
 testVerifiedModule =
     case
         verifyAndIndexDefinition
@@ -189,7 +191,9 @@ testSubsorts =
     test name cond = testCase name (assertBool "" cond)
     testSubsort name list = testCase name . assertEqual "" (Set.fromList list)
     moduleIndex ::
-        Map.Map ModuleName (VerifiedModule Attribute.Null Attribute.Null)
+        Map.Map
+            ModuleName
+            (VerifiedModule Attribute.Null Attribute.Sort Attribute.Null)
     Right moduleIndex =
         verifyAndIndexDefinition
             DoNotVerifyAttributes

@@ -37,11 +37,11 @@ import           System.IO
 
 import           Kore.AST.Kore
 import           Kore.ASTVerifier.PatternVerifier as PatternVerifier
+import qualified Kore.Attribute.Sort as Attribute
 import qualified Kore.Builtin as Builtin
 import           Kore.Error
 import           Kore.IndexedModule.IndexedModule
-                 ( VerifiedModule, makeIndexedModuleAttributesNull,
-                 mapIndexedModulePatterns )
+                 ( VerifiedModule, mapIndexedModulePatterns )
 import qualified Paths_kore as MetaData
                  ( version )
 
@@ -175,7 +175,7 @@ clockSomethingIO description something = do
 
 -- | Verify that a Kore pattern is well-formed and print timing information.
 mainPatternVerify
-    :: VerifiedModule declAttrs axiomAttrs
+    :: VerifiedModule declAttrs Attribute.Sort axiomAttrs
     -- ^ Module containing definitions visible in the pattern
     -> CommonKorePattern -- ^ Parsed pattern to check well-formedness
     -> IO VerifiedKorePattern
@@ -190,7 +190,7 @@ mainPatternVerify verifiedModule patt = do
         mapIndexedModulePatterns eraseAnnotations verifiedModule
     context =
         PatternVerifier.Context
-            { indexedModule = makeIndexedModuleAttributesNull indexedModule
+            { indexedModule
             , declaredSortVariables = Set.empty
             , declaredVariables = emptyDeclaredVariables
             , builtinDomainValueVerifiers = domainValueVerifiers

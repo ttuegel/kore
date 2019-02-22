@@ -30,6 +30,7 @@ import           Kore.AST.Sentence
 import qualified Kore.Attribute.Axiom as Attribute
 import           Kore.Attribute.SmtLemma
 import           Kore.Attribute.Smtlib
+import qualified Kore.Attribute.Sort as Attribute
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.IndexedModule.IndexedModule
 import           Kore.IndexedModule.MetadataTools as MetadataTools
@@ -58,6 +59,7 @@ declareSMTLemmas
             param
             (KorePattern dom Variable (Unified (Valid (Unified Variable))))
             StepperAttributes
+            Attribute.Sort
             Attribute.Axiom
     -> m ()
 declareSMTLemmas m = SMT.liftSMT $ do
@@ -67,7 +69,7 @@ declareSMTLemmas m = SMT.liftSMT $ do
   where
     declareSort
         :: (Given (MetadataTools Object StepperAttributes))
-        => ( StepperAttributes
+        => ( Attribute.Sort
            , SentenceSort
                 Object
                 (KorePattern
@@ -78,7 +80,7 @@ declareSMTLemmas m = SMT.liftSMT $ do
            )
         -> SMT ()
     declareSort (atts, _) =
-        case getSmtlib $ smtlib atts of
+        case Attribute.getSmtlib (Attribute.smtlib atts) of
             Just (SMT.List (SMT.Atom name : sortArgs)) -> do
                 _ <- SMT.declareSort name (length sortArgs)
                 pure ()
@@ -143,12 +145,17 @@ declareSMTLemmas m = SMT.liftSMT $ do
         :: Given (MetadataTools Object StepperAttributes)
         => Sort Object
         -> MaybeT SMT SExpr
-    translateSort sort@(SortActualSort (SortActual { sortActualSorts })) =
-        case getSmtlib $ smtlib $ MetadataTools.sortAttributes given sort of
+    translateSort (SortActualSort sortActual) =
+        case getSmtlib of
             Just sExpr -> do
                 children' <- mapM translateSort sortActualSorts
                 pure $ applySExpr sExpr children'
             Nothing -> mzero
+      where
+        SortActual { sortActualSorts, sortAttributes } = sortActual
+        getSmtlib = do
+            let Attribute.Sort { smtlib } = sortAttributes
+            Attribute.getSmtlib smtlib
     translateSort _ = mzero
 
 getRight :: Alternative m => Either a b -> m b

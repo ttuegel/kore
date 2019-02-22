@@ -21,6 +21,7 @@ import           Kore.ASTVerifier.DefinitionVerifier
 import qualified Kore.Attribute.Axiom as Attribute
 import           Kore.Attribute.Simplification
                  ( simplificationSymbol )
+import qualified Kore.Attribute.Sort as Attribute
 import qualified Kore.Builtin as Builtin
 import           Kore.Error
                  ( printError )
@@ -269,7 +270,8 @@ testDef =
                 }
         ]
 
-testIndexedModule :: VerifiedModule StepperAttributes Attribute.Axiom
+testIndexedModule
+    :: VerifiedModule StepperAttributes Attribute.Sort Attribute.Axiom
 testIndexedModule =
     let
         attributesVerification = defaultAttributesVerification Proxy Proxy

@@ -38,6 +38,7 @@ import           Kore.ASTVerifier.ModuleVerifier
 import qualified Kore.Attribute.Null as Attribute
 import           Kore.Attribute.Parser
                  ( ParseAttributes (..) )
+import qualified Kore.Attribute.Sort as Attribute
 import qualified Kore.Builtin as Builtin
 import           Kore.Error
 import           Kore.Implicit.ImplicitKore
@@ -83,7 +84,12 @@ verifyAndIndexDefinition
     => AttributesVerification declAtts axiomAtts
     -> Builtin.Verifiers
     -> KoreDefinition
-    -> Either (Error VerifyError) (Map.Map ModuleName (VerifiedModule declAtts axiomAtts))
+    ->  Either
+            (Error VerifyError)
+            (Map.Map
+                ModuleName
+                (VerifiedModule declAtts Attribute.Sort axiomAtts)
+            )
 verifyAndIndexDefinition attributesVerification builtinVerifiers definition = do
     (indexedModules, _defaultNames) <-
         verifyAndIndexDefinitionWithBase
@@ -103,14 +109,14 @@ verifyAndIndexDefinitionWithBase
     :: forall declAtts axiomAtts
     .  (ParseAttributes declAtts, ParseAttributes axiomAtts)
     => Maybe
-        ( Map.Map ModuleName (VerifiedModule declAtts axiomAtts)
+        ( Map.Map ModuleName (VerifiedModule declAtts Attribute.Sort axiomAtts)
         , Map.Map Text AstLocation
         )
     -> AttributesVerification declAtts axiomAtts
     -> Builtin.Verifiers
     -> KoreDefinition
     -> Either (Error VerifyError)
-        ( Map.Map ModuleName (VerifiedModule declAtts axiomAtts)
+        ( Map.Map ModuleName (VerifiedModule declAtts Attribute.Sort axiomAtts)
         , Map.Map Text AstLocation
         )
 verifyAndIndexDefinitionWithBase
@@ -143,7 +149,10 @@ verifyAndIndexDefinitionWithBase
             :: [KoreModule]
             -> Either
                 (Error VerifyError)
-                (Map.Map ModuleName (KoreIndexedModule declAtts axiomAtts))
+                (Map.Map
+                    ModuleName
+                    (KoreIndexedModule declAtts Attribute.Sort axiomAtts)
+                )
         indexModules modules =
             castError $ foldM
                 (indexModuleIfNeeded
@@ -178,7 +187,10 @@ verifyAndIndexDefinitionWithBase
             :: [Module VerifiedKoreSentence]
             -> Either
                 (Error VerifyError)
-                (Map.Map ModuleName (VerifiedModule declAtts axiomAtts))
+                (Map.Map
+                    ModuleName
+                    (VerifiedModule declAtts Attribute.Sort axiomAtts)
+                )
         indexVerifiedModules modules =
             castError $ foldM
                 (indexModuleIfNeeded
@@ -218,8 +230,15 @@ indexImplicitModule
     => Module (UnifiedSentence sortParam patternType)
     -> Either
         (Error VerifyError)
-        ( Map ModuleName (IndexedModule sortParam patternType declAtts axAtts)
-        , ImplicitIndexedModule sortParam patternType declAtts axAtts
+        ( Map
+            ModuleName
+            (IndexedModule sortParam patternType declAtts Attribute.Sort axAtts)
+        , ImplicitIndexedModule
+            sortParam
+            patternType
+            declAtts
+            Attribute.Sort
+            axAtts
         , Map Text AstLocation
         )
 indexImplicitModule implicitModule = do
@@ -267,7 +286,9 @@ verifyNormalKoreDefinition
     => AttributesVerification declAtts axiomAtts
     -> Builtin.Verifiers
     -> KoreDefinition
-    -> Either (Error VerifyError) (VerifiedModule declAtts axiomAtts)
+    ->  Either
+            (Error VerifyError)
+            (VerifiedModule declAtts Attribute.Sort axiomAtts)
 verifyNormalKoreDefinition
     attributesVerification
     builtinVerifiers
@@ -291,7 +312,9 @@ verifyImplicitKoreDefinition
     => AttributesVerification declAtts axiomAtts
     -> Builtin.Verifiers
     -> KoreDefinition
-    -> Either (Error VerifyError) (VerifiedModule declAtts axiomAtts)
+    ->  Either
+            (Error VerifyError)
+            (VerifiedModule declAtts Attribute.Sort axiomAtts)
 verifyImplicitKoreDefinition
     attributesVerification
     builtinVerifiers
@@ -324,8 +347,12 @@ extractSingleModuleNameFromDefinition definition =
 
 findModule
     :: ModuleName
-    -> Map.Map ModuleName (IndexedModule param pat declAtts axiomAtts)
-    -> Either (Error VerifyError) (IndexedModule param pat declAtts axiomAtts)
+    ->  Map.Map
+            ModuleName
+            (IndexedModule param pat declAtts Attribute.Sort axiomAtts)
+    ->  Either
+            (Error VerifyError)
+            (IndexedModule param pat declAtts Attribute.Sort axiomAtts)
 findModule name modules =
     case Map.lookup name modules of
         Just a -> return a

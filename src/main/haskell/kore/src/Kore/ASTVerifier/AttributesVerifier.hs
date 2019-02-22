@@ -81,7 +81,7 @@ verifyAttributePattern =
 
  -}
 verifySortHookAttribute
-    :: KoreIndexedModule declAtts axiomAtts
+    :: KoreIndexedModule declAtts sortAtts axiomAtts
     -> AttributesVerification declAtts axiomAtts
     -> Attributes
     -> Either (Error VerifyError) Hook

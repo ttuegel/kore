@@ -248,7 +248,6 @@ test_existsSimplification =
         Mock.makeMetadataTools
             Mock.attributesMapping
             Mock.headTypeMapping
-            Mock.sortAttributesMapping
             Mock.subsorts
 
 makeExists

@@ -698,7 +698,7 @@ lookupSymbol
     -- ^ builtin name
     -> Sort Object
     -- ^ the hooked sort
-    -> VerifiedModule declAtts axiomAtts
+    -> VerifiedModule declAtts sortAtts axiomAtts
     -> Either (Error e) (SymbolOrAlias Object)
 lookupSymbol builtinName builtinSort indexedModule
   = do

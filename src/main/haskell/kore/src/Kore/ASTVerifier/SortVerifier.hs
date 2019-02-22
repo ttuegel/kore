@@ -1,4 +1,3 @@
-{-# LANGUAGE GADTs #-}
 {-|
 Module      : Kore.ASTVerifier.SortVerifier
 Description : Tools for verifying the wellformedness of a Kore 'Sort'.
@@ -8,16 +7,70 @@ Maintainer  : virgil.serbanuta@runtimeverification.com
 Stability   : experimental
 Portability : POSIX
 -}
-module Kore.ASTVerifier.SortVerifier (verifySort) where
+module Kore.ASTVerifier.SortVerifier
+    ( verifySort
+    , verifySort'
+    ) where
 
 import qualified Data.Set as Set
 
-import Kore.AST.Error
-import Kore.AST.Kore
-import Kore.AST.Sentence
-import Kore.ASTVerifier.Error
-import Kore.Error
-import Kore.IndexedModule.IndexedModule
+import           Kore.AST.Error
+import           Kore.AST.Kore
+import           Kore.AST.Sentence
+import           Kore.ASTVerifier.Error
+import qualified Kore.Attribute.Sort as Attribute
+import           Kore.Error
+import           Kore.IndexedModule.IndexedModule
+
+{- | Verify a Kore 'Sort' and update its attributes. -}
+verifySort'
+    :: (MetaOrObject level, MonadError (Error VerifyError) m)
+    => (Id level -> m (Attribute.Sort, SortDescription level dom))
+    -- ^ Provides a sortMetaSorts description.
+    -> Set.Set UnifiedSortVariable
+    -- ^ Sort variables visible here.
+    -> Sort level
+    -> m (Sort level)
+verifySort' lookupSort declaredSortVariables sort =
+    case sort of
+        SortVariableSort variable -> do
+            koreFailWithLocationsWhen
+                (not (unifiedVariable `Set.member` declaredSortVariables))
+                [variableId]
+                ("Sort variable '" ++ variableIdForError ++ "' not declared.")
+            return sort
+          where
+            variableId = getSortVariable variable
+            variableIdForError = getIdForError variableId
+            unifiedVariable = asUnified variable
+        SortActualSort actual -> do
+            actual' <-
+                withLocationAndContext sortActualName
+                    ("sort '" ++ getIdForError sortActualName ++ "'")
+                    $ do
+                        (sortAttrs, sortDescr) <- lookupSort sortActualName
+                        let lookupSortDescr = fmap snd . lookupSort
+                        verifySortMatchesDeclaration
+                            lookupSortDescr
+                            declaredSortVariables
+                            actual
+                            sortDescr
+                        return actual { sortAttributes = sortAttrs }
+            koreFailWithLocationsWhen
+                (sortIsMeta && sortActualSorts /= [])
+                [sortActualName]
+                $ concat
+                    [ "Malformed meta sort '"
+                    , getIdForError sortActualName
+                    , "' with non-empty Parameter sorts."
+                    ]
+            return (SortActualSort actual')
+          where
+            SortActual { sortActualName, sortActualSorts } = actual
+            sortIsMeta =
+                case asUnified sort of
+                    UnifiedObject _ -> False
+                    UnifiedMeta _ -> True
 
 {-|'verifySort' verifies the welformedness of a Kore 'Sort'. -}
 verifySort

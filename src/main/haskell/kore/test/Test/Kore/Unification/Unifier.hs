@@ -212,7 +212,6 @@ tools :: MetadataTools Object StepperAttributes
 tools = MetadataTools
     { symAttributes = mockStepperAttributes
     , symbolOrAliasType = const HeadType.Symbol
-    , sortAttributes = undefined
     , isSubsortOf = const $ const False
     , subsorts = Set.singleton
     }

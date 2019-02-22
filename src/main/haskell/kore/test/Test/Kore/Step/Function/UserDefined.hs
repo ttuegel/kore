@@ -1,4 +1,6 @@
-module Test.Kore.Step.Function.UserDefined (test_userDefinedFunction) where
+module Test.Kore.Step.Function.UserDefined
+    ( test_userDefinedFunction
+ ) where
 
 import Test.Tasty
        ( TestTree )
@@ -219,7 +221,6 @@ mockMetadataTools =
     Mock.makeMetadataTools
         Mock.attributesMapping
         Mock.headTypeMapping
-        Mock.sortAttributesMapping
         Mock.subsorts
 
 evaluateWithAxiom

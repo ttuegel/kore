@@ -8,7 +8,8 @@ Stability   : experimental
 Portability : POSIX
 -}
 module Kore.IndexedModule.IndexedModule
-    ( ImplicitIndexedModule (ImplicitIndexedModule)
+    ( ImplicitIndexedModule
+    , pattern ImplicitIndexedModule
     , IndexedModule
         -- the IndexedModule data constructor not included in the list on
         -- purpose.
@@ -88,7 +89,7 @@ All 'IndexedModule' instances should either be returned by
 'indexedModuleWithMetaSorts' or they should start from an instance created by
 'indexedModuleWithDefaultImports'.
 -}
-data IndexedModule param pat declAtts axiomAtts =
+data IndexedModule param pat declAtts sortAtts axiomAtts =
     IndexedModule
     { indexedModuleName          :: !ModuleName
     , indexedModuleMetaAliasSentences
@@ -100,9 +101,9 @@ data IndexedModule param pat declAtts axiomAtts =
     , indexedModuleObjectSymbolSentences
         :: !(Map.Map (Id Object) (declAtts, SentenceSymbol Object pat))
     , indexedModuleObjectSortDescriptions
-        :: !(Map.Map (Id Object) (declAtts, SentenceSort Object pat))
+        :: !(Map.Map (Id Object) (sortAtts, SentenceSort Object pat))
     , indexedModuleMetaSortDescriptions
-        :: !(Map.Map (Id Meta) (declAtts, SentenceSort Meta pat))
+        :: !(Map.Map (Id Meta) (sortAtts, SentenceSort Meta pat))
     , indexedModuleAxioms
         :: ![(axiomAtts, SentenceAxiom param pat)]
     , indexedModuleClaims
@@ -111,7 +112,7 @@ data IndexedModule param pat declAtts axiomAtts =
     , indexedModuleImports
         :: ![( declAtts
              , Attributes
-             , IndexedModule param pat declAtts axiomAtts
+             , IndexedModule param pat declAtts sortAtts axiomAtts
              )
             ]
     , indexedModuleHookedIdentifiers
@@ -131,8 +132,13 @@ data IndexedModule param pat declAtts axiomAtts =
 
 -- |Strip module of its parsed attributes, replacing them with 'Attribute.Null'
 makeIndexedModuleAttributesNull
-    :: IndexedModule sortParam patternType1 declAttributes axiomAttributes
-    -> IndexedModule sortParam patternType1 Attribute.Null Attribute.Null
+    :: IndexedModule sortParam patternType1 declAttrs sortAtts axiomAttrs
+    ->  IndexedModule
+            sortParam
+            patternType1
+            Attribute.Null
+            Attribute.Null
+            Attribute.Null
 makeIndexedModuleAttributesNull
     IndexedModule
     { indexedModuleName = name
@@ -176,10 +182,11 @@ makeIndexedModuleAttributesNull
 instance
     ( NFData sortParam
     , NFData patternType
-    , NFData declAttributes
-    , NFData axiomAttributes
+    , NFData declAtts
+    , NFData sortAtts
+    , NFData axiomAtts
     ) =>
-    NFData (IndexedModule sortParam patternType declAttributes axiomAttributes)
+    NFData (IndexedModule sortParam patternType declAtts sortAtts axiomAtts)
 
 -- |Convenient notation for retrieving a sentence from a
 -- @(attributes,sentence)@ pair format.
@@ -188,8 +195,8 @@ getIndexedSentence = snd
 
 mapIndexedModulePatterns
     :: (patternType1 -> patternType2)
-    -> IndexedModule sortParam patternType1 declAttributes axiomAttributes
-    -> IndexedModule sortParam patternType2 declAttributes axiomAttributes
+    -> IndexedModule sortParam patternType1 declAtts sortAtts axiomAtts
+    -> IndexedModule sortParam patternType2 declAtts sortAtts axiomAtts
 mapIndexedModulePatterns mapping indexedModule =
     indexedModule
         { indexedModuleMetaAliasSentences =
@@ -234,7 +241,8 @@ type VerifiedModule =
     IndexedModule UnifiedSortVariable VerifiedKorePattern
 
 indexedModuleRawSentences
-    :: IndexedModule param pat atts atts' -> [UnifiedSentence param pat]
+    :: IndexedModule param pat declAtts sortAtts axiomAtts
+    -> [UnifiedSentence param pat]
 indexedModuleRawSentences im =
     map (constructUnifiedSentence SentenceAliasSentence . getIndexedSentence)
         (Map.elems (indexedModuleMetaAliasSentences im))
@@ -284,23 +292,32 @@ indexedModuleRawSentences im =
         | otherwise =
             constructUnifiedSentence SentenceSymbolSentence symbolSentence
 
+newtype Implicit a = Implicit a
+
 {-|'ImplicitIndexedModule' is the type for the 'IndexedModule' containing
 things that are implicitly defined.
 -}
-newtype ImplicitIndexedModule param pat declAtts axiomAtts =
-    ImplicitIndexedModule (IndexedModule param pat declAtts axiomAtts)
+type ImplicitIndexedModule param pat declAtts sortAtts axiomAtts =
+    Implicit (IndexedModule param pat declAtts sortAtts axiomAtts)
 
-type KoreImplicitIndexedModule =
+pattern ImplicitIndexedModule
+    :: IndexedModule param pat declAtts sortAtts axiomAtts
+    -> ImplicitIndexedModule param pat declAtts sortAtts axiomAtts
+pattern ImplicitIndexedModule indexedModule = Implicit indexedModule
+{-# COMPLETE ImplicitIndexedModule #-}
+
+type KoreImplicitIndexedModule declAtts sortAtts axiomAtts =
     ImplicitIndexedModule
         UnifiedSortVariable
         CommonKorePattern
+        declAtts
+        sortAtts
+        axiomAtts
 
 emptyIndexedModule
-    ::  ( Default parsedDeclAttributes
-        , Default parsedAxiomAttributes
-        )
+    :: (Default declAtts, Default sortAtts, Default axiomAtts)
     => ModuleName
-    -> IndexedModule param pat parsedDeclAttributes parsedAxiomAttributes
+    -> IndexedModule param pat declAtts sortAtts axiomAtts
 emptyIndexedModule name =
     IndexedModule
     { indexedModuleName = name
@@ -322,12 +339,15 @@ emptyIndexedModule name =
 name and containing the implicit definitions module.
 -}
 indexedModuleWithDefaultImports
-    ::  ( Default declAttrs
-        , Default axiomAttrs
+    ::  ( Default declAtts
+        , Default sortAtts
+        , Default axiomAtts
+        , indexed
+            ~ IndexedModule sortParam patternType declAtts sortAtts axiomAtts
         )
     => ModuleName
-    -> Maybe (ImplicitIndexedModule sortParam patternType declAttrs axiomAttrs)
-    -> IndexedModule sortParam patternType declAttrs axiomAttrs
+    -> Maybe (Implicit indexed)
+    -> indexed
 indexedModuleWithDefaultImports name defaultImport =
     (emptyIndexedModule name)
         { indexedModuleImports =
@@ -343,12 +363,14 @@ indexedModuleWithDefaultImports name defaultImport =
 the module is already in the 'IndexedModule' map.
 -}
 indexModuleIfNeeded
-    ::  ( ParseAttributes declAttrs
-        , ParseAttributes axiomAttrs
+    ::  ( ParseAttributes declAtts
+        , ParseAttributes sortAtts
+        , ParseAttributes axiomAtts
         , sentence ~ UnifiedSentence sortParam patternType
-        , indexed ~ IndexedModule sortParam patternType declAttrs axiomAttrs
+        , indexed
+            ~ IndexedModule sortParam patternType declAtts sortAtts axiomAtts
         )
-    => Maybe (ImplicitIndexedModule sortParam patternType declAttrs axiomAttrs)
+    => Maybe (Implicit indexed)
     -- ^ Module containing the implicit Kore definitions
     -> Map.Map ModuleName (Module sentence)
     -- ^ Map containing all defined modules, used for resolving imports.
@@ -371,12 +393,14 @@ indexModuleIfNeeded
             implicitModule Set.empty nameToModule indexedModules koreModule
 
 internalIndexModuleIfNeeded
-    ::  ( ParseAttributes declAttrs
-        , ParseAttributes axiomAttrs
+    ::  ( ParseAttributes declAtts
+        , ParseAttributes sortAtts
+        , ParseAttributes axiomAtts
         , sentence ~ UnifiedSentence sortParam patternType
-        , indexed ~ IndexedModule sortParam patternType declAttrs axiomAttrs
+        , indexed
+            ~ IndexedModule sortParam patternType declAtts sortAtts axiomAtts
         )
-    => Maybe (ImplicitIndexedModule sortParam patternType declAttrs axiomAttrs)
+    => Maybe (Implicit indexed)
     -> Set.Set ModuleName
     -> Map.Map ModuleName (Module sentence)
     -> Map.Map ModuleName indexed
@@ -427,11 +451,13 @@ internalIndexModuleIfNeeded
 
 indexModuleKoreSentence
     ::  ( ParseAttributes declAttrs
+        , ParseAttributes sortAttrs
         , ParseAttributes axiomAttrs
         , sentence ~ UnifiedSentence sortParam patternType
-        , indexed ~ IndexedModule sortParam patternType declAttrs axiomAttrs
+        , indexed
+            ~ IndexedModule sortParam patternType declAttrs sortAttrs axiomAttrs
         )
-    => Maybe (ImplicitIndexedModule sortParam patternType declAttrs axiomAttrs)
+    => Maybe (Implicit indexed)
     -> Set.Set ModuleName
     -> Map.Map ModuleName (Module sentence)
     -> (Map.Map ModuleName indexed, indexed)
@@ -444,11 +470,13 @@ indexModuleKoreSentence a b c d =
 
 indexModuleMetaSentence
     ::  ( ParseAttributes declAttrs
+        , ParseAttributes sortAttrs
         , ParseAttributes axiomAttrs
         , sentence ~ UnifiedSentence sortParam patternType
-        , indexed ~ IndexedModule sortParam patternType declAttrs axiomAttrs
+        , indexed
+            ~ IndexedModule sortParam patternType declAttrs sortAttrs axiomAttrs
         )
-    => Maybe (ImplicitIndexedModule sortParam patternType declAttrs axiomAttrs)
+    => Maybe (Implicit indexed)
     -> Set.Set ModuleName
     -> Map.Map ModuleName (Module sentence)
     -> (Map.Map ModuleName indexed, indexed)
@@ -580,11 +608,13 @@ indexModuleMetaSentence
 
 indexModuleObjectSentence
     ::  ( ParseAttributes declAttrs
+        , ParseAttributes sortAttrs
         , ParseAttributes axiomAttrs
         , sentence ~ UnifiedSentence sortParam patternType
-        , indexed ~ IndexedModule sortParam patternType declAttrs axiomAttrs
+        , indexed
+            ~ IndexedModule sortParam patternType declAttrs sortAttrs axiomAttrs
         )
-    => Maybe (ImplicitIndexedModule sortParam patternType declAttrs axiomAttrs)
+    => Maybe (Implicit indexed)
     -> Set.Set ModuleName
     -> Map.Map ModuleName (Module sentence)
     -> (Map.Map ModuleName indexed, indexed)
@@ -743,11 +773,13 @@ indexModuleObjectSentence
 
 indexImportedModule
     ::  ( ParseAttributes declAttrs
+        , ParseAttributes sortAttrs
         , ParseAttributes axiomAttrs
         , sentence ~ UnifiedSentence sortParam patternType
-        , indexed ~ IndexedModule sortParam patternType declAttrs axiomAttrs
+        , indexed
+            ~ IndexedModule sortParam patternType declAttrs sortAttrs axiomAttrs
         )
-    => Maybe (ImplicitIndexedModule sortParam patternType declAttrs axiomAttrs)
+    => Maybe (Implicit indexed)
     -> Set.Set ModuleName
     -> Map.Map ModuleName (Module sentence)
     -> Map.Map ModuleName indexed
@@ -799,7 +831,7 @@ parseAttributes =
 
  -}
 hookedObjectSymbolSentences
-    :: IndexedModule sorts pat declAtts axiomAtts
+    :: IndexedModule sorts pat declAtts sortAtts axiomAtts
     -> Map.Map (Id Object) (declAtts, SentenceSymbol Object pat)
 hookedObjectSymbolSentences
     IndexedModule
@@ -812,7 +844,7 @@ hookedObjectSymbolSentences
         indexedModuleHookedIdentifiers
 
 indexedModuleSubsorts
-    :: IndexedModule param pat declAtts axiomAtts
+    :: IndexedModule param pat declAtts sortAtts axiomAtts
     -> [Subsort]
 indexedModuleSubsorts imod =
     case internalIndexedModuleSubsorts imod of
@@ -822,7 +854,7 @@ indexedModuleSubsorts imod =
             ++ show err
 
 internalIndexedModuleSubsorts
-    :: IndexedModule param pat declAtts axiomAtts
+    :: IndexedModule param pat declAtts sortAtts axiomAtts
     -> Either (Error IndexModuleError) [Subsort]
 internalIndexedModuleSubsorts imod = do
     let
@@ -844,8 +876,8 @@ modules once.
 
  -}
 indexedModulesInScope
-    :: IndexedModule param pat declAtts axiomAtts
-    -> Map ModuleName (IndexedModule param pat declAtts axiomAtts)
+    :: IndexedModule param pat declAtts sortAtts axiomAtts
+    -> Map ModuleName (IndexedModule param pat declAtts sortAtts axiomAtts)
 indexedModulesInScope =
     \imod -> execState (resolveModule imod) Map.empty
   where

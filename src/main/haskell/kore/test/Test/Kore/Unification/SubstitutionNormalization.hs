@@ -208,14 +208,12 @@ runNormalizeSubstitutionObject substitution =
         Mock.makeMetadataTools
             Mock.attributesMapping
             Mock.headTypeMapping
-            Mock.sortAttributesMapping
             Mock.subsorts
 
 mockMetadataTools :: MetaOrObject level => MetadataTools level StepperAttributes
 mockMetadataTools = MetadataTools
     { symAttributes = const Mock.functionalAttributes
     , symbolOrAliasType = const HeadType.Symbol
-    , sortAttributes = const Mock.functionalAttributes
     , isSubsortOf = const $ const False
     , subsorts = Set.singleton
     }

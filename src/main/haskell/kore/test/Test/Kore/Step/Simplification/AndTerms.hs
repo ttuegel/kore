@@ -763,11 +763,10 @@ mockMetadataTools =
     Mock.makeMetadataTools
         Mock.attributesMapping
         Mock.headTypeMapping
-        Mock.sortAttributesMapping
         Mock.subsorts
 
 mockMetaMetadataTools :: MetadataTools Meta StepperAttributes
-mockMetaMetadataTools = Mock.makeMetadataTools [] [] [] []
+mockMetaMetadataTools = Mock.makeMetadataTools [] [] []
 
 aDomainValue :: CommonStepPattern Object
 aDomainValue =

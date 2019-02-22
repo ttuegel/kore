@@ -330,7 +330,6 @@ test_applicationSimplification =
         Mock.makeMetadataTools
             Mock.attributesMapping
             Mock.headTypeMapping
-            Mock.sortAttributesMapping
             Mock.subsorts
 
 simplificationEvaluator

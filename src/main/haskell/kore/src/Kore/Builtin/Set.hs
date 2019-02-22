@@ -375,7 +375,7 @@ See also: 'sort'
  -}
 asPattern
     :: Ord (variable Object)
-    => VerifiedModule declAttrs axiomAttrs
+    => VerifiedModule declAttrs sortAttrs axiomAttrs
     -- ^ indexed module where pattern would appear
     -> Sort Object
     -> Either
@@ -401,7 +401,7 @@ asPattern indexedModule dvSort = do
  -}
 asExpandedPattern
     :: Ord (variable Object)
-    => VerifiedModule declAttrs axiomAttrs
+    => VerifiedModule declAttrs sortAttrs axiomAttrs
     -- ^ dictionary of Map constructor symbols
     -> Sort Object
     -> Either
@@ -438,7 +438,7 @@ sizeKey = "SET.size"
  -}
 lookupSymbolUnit
     :: Sort Object
-    -> VerifiedModule declAttrs axiomAttrs
+    -> VerifiedModule declAttrs sortAttrs axiomAttrs
     -> Either (Kore.Error e) (SymbolOrAlias Object)
 lookupSymbolUnit = Builtin.lookupSymbol unitKey
 
@@ -446,7 +446,7 @@ lookupSymbolUnit = Builtin.lookupSymbol unitKey
  -}
 lookupSymbolElement
     :: Sort Object
-    -> VerifiedModule declAttrs axiomAttrs
+    -> VerifiedModule declAttrs sortAttrs axiomAttrs
     -> Either (Kore.Error e) (SymbolOrAlias Object)
 lookupSymbolElement = Builtin.lookupSymbol elementKey
 
@@ -454,7 +454,7 @@ lookupSymbolElement = Builtin.lookupSymbol elementKey
  -}
 lookupSymbolConcat
     :: Sort Object
-    -> VerifiedModule declAttrs axiomAttrs
+    -> VerifiedModule declAttrs sortAttrs axiomAttrs
     -> Either (Kore.Error e) (SymbolOrAlias Object)
 lookupSymbolConcat = Builtin.lookupSymbol concatKey
 
@@ -462,7 +462,7 @@ lookupSymbolConcat = Builtin.lookupSymbol concatKey
  -}
 lookupSymbolIn
     :: Sort Object
-    -> VerifiedModule declAttrs axiomAttrs
+    -> VerifiedModule declAttrs sortAttrs axiomAttrs
     -> Either (Kore.Error e) (SymbolOrAlias Object)
 lookupSymbolIn = Builtin.lookupSymbol inKey
 
@@ -470,7 +470,7 @@ lookupSymbolIn = Builtin.lookupSymbol inKey
  -}
 lookupSymbolDifference
     :: Sort Object
-    -> VerifiedModule declAttrs axiomAttrs
+    -> VerifiedModule declAttrs sortAttrs axiomAttrs
     -> Either (Kore.Error e) (SymbolOrAlias Object)
 lookupSymbolDifference = Builtin.lookupSymbol differenceKey
 

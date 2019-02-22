@@ -318,7 +318,6 @@ test_mergeAndNormalizeSubstitutions =
         Mock.makeMetadataTools
             Mock.attributesMapping
             Mock.headTypeMapping
-            Mock.sortAttributesMapping
             []
 
     normalize

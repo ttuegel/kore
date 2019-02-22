@@ -23,6 +23,7 @@ module Kore.ASTVerifier.PatternVerifier
     ) where
 
 import           Control.Comonad
+import qualified Control.Lens as Lens
 import qualified Control.Monad as Monad
 import           Control.Monad.Reader
                  ( MonadReader, ReaderT, runReaderT )
@@ -47,7 +48,7 @@ import           Kore.AST.Sentence
 import           Kore.ASTHelpers
 import           Kore.ASTVerifier.Error
 import           Kore.ASTVerifier.SortVerifier
-import qualified Kore.Attribute.Null as Attribute
+import qualified Kore.Attribute.Sort as Attribute
 import qualified Kore.Builtin as Builtin
 import qualified Kore.Domain.Builtin as Domain
 import           Kore.Error
@@ -69,11 +70,13 @@ emptyDeclaredVariables = DeclaredVariables
     }
 
 data Context =
+    forall declAtts axiomAtts.
     Context
         { declaredVariables :: !DeclaredVariables
         , declaredSortVariables :: !(Set UnifiedSortVariable)
         -- ^ The sort variables in scope.
-        , indexedModule :: !(KoreIndexedModule Attribute.Null Attribute.Null)
+        , indexedModule
+            :: !(KoreIndexedModule declAtts Attribute.Sort axiomAtts)
         -- ^ The indexed Kore module containing all definitions in scope.
         , builtinDomainValueVerifiers
             :: !(Builtin.DomainValueVerifiers VerifiedKorePattern)
@@ -268,12 +271,12 @@ verifyAliasLeftPattern leftPattern = do
         :: Variable level
         -> PatternVerifier (Variable level, Unified (Valid (Unified Variable)))
     expectVariable var = do
-        verifyVariableDeclaration var
+        var' <- verifyVariableDeclaration var
         let
-            patternSort = variableSort var
-            freeVariables = Set.singleton (asUnified var)
+            patternSort = variableSort var'
+            freeVariables = Set.singleton (asUnified var')
             valid = Valid { patternSort, freeVariables }
-        return (var, asUnified valid)
+        return (var', asUnified valid)
 
 {- | Verify that a Kore pattern is well-formed.
 
@@ -415,11 +418,13 @@ verifyPatternHead =
   where
     transCofreeF fg (a :< fb) = a :< fg fb
 
-verifyPatternSort :: MetaOrObject level => Sort level -> PatternVerifier ()
+verifyPatternSort
+    :: MetaOrObject level
+    => Sort level
+    -> PatternVerifier (Sort level)
 verifyPatternSort patternSort = do
-    Context { declaredSortVariables } <- Reader.ask
-    _ <- verifySort lookupSortDeclaration declaredSortVariables patternSort
-    return ()
+    Context { indexedModule, declaredSortVariables } <- Reader.ask
+    verifySort' (resolveSort indexedModule) declaredSortVariables patternSort
 
 unifiedFreeVariables :: Unified (Valid variable) -> Set variable
 unifiedFreeVariables = transformUnified Valid.freeVariables
@@ -429,18 +434,18 @@ verifyOperands
         , Traversable operator
         , valid ~ Valid (Unified Variable) level
         )
-    => (forall a. operator a -> Sort level)
+    => (forall a. Lens.Lens' (operator a) (Sort level))
     -> operator (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF operator valid VerifiedKorePattern)
-verifyOperands operandSort = \operator -> do
-    let patternSort = operandSort operator
+verifyOperands lensOperandSort = \operator -> do
+    sorted <- lensOperandSort verifyPatternSort operator
+    let patternSort = Lens.view lensOperandSort operator
         expectedSort = Just (asUnified patternSort)
-    verifyPatternSort patternSort
     let verifyChildWithSort verify = do
             child <- verify
             assertExpectedSort expectedSort (extract child)
             return child
-    verified <- traverse verifyChildWithSort operator
+    verified <- traverse verifyChildWithSort sorted
     let freeVariables =
             Foldable.foldl'
                 Set.union
@@ -456,7 +461,7 @@ verifyAnd
         )
     => logical (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF logical valid VerifiedKorePattern)
-verifyAnd = verifyOperands andSort
+verifyAnd = verifyOperands lensAndSort
 
 verifyOr
     ::  ( logical ~ Or level
@@ -465,7 +470,7 @@ verifyOr
         )
     => logical (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF logical valid VerifiedKorePattern)
-verifyOr = verifyOperands orSort
+verifyOr = verifyOperands lensOrSort
 
 verifyIff
     ::  ( logical ~ Iff level
@@ -474,7 +479,7 @@ verifyIff
         )
     => logical (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF logical valid VerifiedKorePattern)
-verifyIff = verifyOperands iffSort
+verifyIff = verifyOperands lensIffSort
 
 verifyImplies
     ::  ( logical ~ Implies level
@@ -483,7 +488,7 @@ verifyImplies
         )
     => logical (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF logical valid VerifiedKorePattern)
-verifyImplies = verifyOperands impliesSort
+verifyImplies = verifyOperands lensImpliesSort
 
 verifyBottom
     ::  ( logical ~ Bottom level
@@ -492,7 +497,7 @@ verifyBottom
         )
     => logical (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF logical valid VerifiedKorePattern)
-verifyBottom = verifyOperands bottomSort
+verifyBottom = verifyOperands lensBottomSort
 
 verifyTop
     ::  ( logical ~ Top level
@@ -501,7 +506,7 @@ verifyTop
         )
     => logical (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF logical valid VerifiedKorePattern)
-verifyTop = verifyOperands topSort
+verifyTop = verifyOperands lensTopSort
 
 verifyNot
     ::  ( logical ~ Not level
@@ -510,7 +515,7 @@ verifyNot
         )
     => logical (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF logical valid VerifiedKorePattern)
-verifyNot = verifyOperands notSort
+verifyNot = verifyOperands lensNotSort
 
 verifyRewrites
     ::  ( logical ~ Rewrites Object
@@ -518,21 +523,31 @@ verifyRewrites
         )
     => logical (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF logical valid VerifiedKorePattern)
-verifyRewrites = verifyOperands rewritesSort
+verifyRewrites = verifyOperands lensRewritesSort
+
+verifyNext
+    ::  ( operator ~ Next Object
+        , valid ~ Valid (Unified Variable) Object
+        )
+    => operator (PatternVerifier VerifiedKorePattern)
+    -> PatternVerifier (CofreeF operator valid VerifiedKorePattern)
+verifyNext = verifyOperands lensNextSort
 
 verifyPredicate
     ::  ( MetaOrObject level
         , Traversable predicate
         , valid ~ Valid (Unified Variable) level
         )
-    => (forall a. predicate a -> Sort level)  -- ^ Operand sort
-    -> (forall a. predicate a -> Sort level)  -- ^ Result sort
+    => (forall a. Lens.Lens' (predicate a) (Sort level))  -- ^ Operand sort
+    -> (forall a. Lens.Lens' (predicate a) (Sort level))  -- ^ Result sort
     -> predicate (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF predicate valid VerifiedKorePattern)
-verifyPredicate operandSort resultSort = \predicate -> do
-    let patternSort = resultSort predicate
-    verifyPatternSort patternSort
-    Valid { freeVariables } :< verified <- verifyOperands operandSort predicate
+verifyPredicate lensOperandSort lensResultSort = \predicate -> do
+    sorted  <- lensOperandSort verifyPatternSort predicate
+    sorted' <- lensResultSort verifyPatternSort sorted
+    let patternSort = Lens.view lensResultSort sorted'
+    Valid { freeVariables } :< verified <-
+        verifyOperands lensOperandSort predicate
     return (Valid { patternSort, freeVariables } :< verified)
 {-# INLINE verifyPredicate #-}
 
@@ -543,7 +558,7 @@ verifyCeil
         )
     => predicate (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF predicate valid VerifiedKorePattern)
-verifyCeil = verifyPredicate ceilOperandSort ceilResultSort
+verifyCeil = verifyPredicate lensCeilOperandSort lensCeilResultSort
 
 verifyFloor
     ::  ( predicate ~ Floor level
@@ -552,7 +567,7 @@ verifyFloor
         )
     => predicate (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF predicate valid VerifiedKorePattern)
-verifyFloor = verifyPredicate floorOperandSort floorResultSort
+verifyFloor = verifyPredicate lensFloorOperandSort lensFloorResultSort
 
 verifyEquals
     ::  ( predicate ~ Equals level
@@ -561,7 +576,7 @@ verifyEquals
         )
     => predicate (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF predicate valid VerifiedKorePattern)
-verifyEquals = verifyPredicate equalsOperandSort equalsResultSort
+verifyEquals = verifyPredicate lensEqualsOperandSort lensEqualsResultSort
 
 verifyIn
     ::  ( predicate ~ In level
@@ -570,15 +585,7 @@ verifyIn
         )
     => predicate (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF predicate valid VerifiedKorePattern)
-verifyIn = verifyPredicate inOperandSort inResultSort
-
-verifyNext
-    ::  ( operator ~ Next Object
-        , valid ~ Valid (Unified Variable) Object
-        )
-    => operator (PatternVerifier VerifiedKorePattern)
-    -> PatternVerifier (CofreeF operator valid VerifiedKorePattern)
-verifyNext = verifyOperands nextSort
+verifyIn = verifyPredicate lensInOperandSort lensInResultSort
 
 verifyPatternsWithSorts
     :: ( Comonad pat, valid ~ Valid (Unified Variable) )
@@ -632,23 +639,20 @@ verifyBinder
         , Traversable binder
         , valid ~ Valid (Unified Variable) level
         )
-    => (forall a. binder a -> Sort level)
-    -> (forall a. binder a -> Variable level)
+    => (forall a. Lens.Lens' (binder a) (Sort level))
+    -> (forall a. Lens.Lens' (binder a) (Variable level))
     -> binder (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF binder valid VerifiedKorePattern)
-verifyBinder binderSort binderVariable = \binder -> do
-    let variable = binderVariable binder
-        patternSort = binderSort binder
-    verifyVariableDeclaration variable
-    verifyPatternSort patternSort
+verifyBinder lensBinderSort lensBinderVariable = \binder -> do
+    binder' <- lensBinderVariable verifyVariableDeclaration binder
     let withQuantifiedVariable ctx@Context { declaredVariables } =
             ctx
                 { declaredVariables =
                     addDeclaredVariable
-                        variable
+                        (Lens.view lensBinderVariable binder')
                         declaredVariables
                 }
-    Reader.local withQuantifiedVariable (verifyOperands binderSort binder)
+    Reader.local withQuantifiedVariable (verifyOperands lensBinderSort binder')
 {-# INLINE verifyBinder #-}
 
 verifyExists
@@ -658,7 +662,7 @@ verifyExists
         )
     => binder (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF binder valid VerifiedKorePattern)
-verifyExists = verifyBinder existsSort existsVariable
+verifyExists = verifyBinder lensExistsSort lensExistsVariable
 
 verifyForall
     ::  ( binder ~ Forall level Variable
@@ -667,7 +671,7 @@ verifyForall
         )
     => binder (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF binder valid VerifiedKorePattern)
-verifyForall = verifyBinder forallSort forallVariable
+verifyForall = verifyBinder lensForallSort lensForallVariable
 
 verifyVariable
     ::  ( MetaOrObject level
@@ -694,16 +698,21 @@ verifyDomainValue
         )
     => base (PatternVerifier VerifiedKorePattern)
     -> PatternVerifier (CofreeF base valid VerifiedKorePattern)
-verifyDomainValue dv@DomainValue { domainValueSort, domainValueChild = _ } = do
-    let patternSort = domainValueSort
+verifyDomainValue domainValue0 = do
+    domainValue1 <- lensDomainValueSort verifyPatternSort domainValue0
+    domainValue2 <- sequence domainValue1
     Context { builtinDomainValueVerifiers, indexedModule } <- Reader.ask
-    verifyPatternSort patternSort
-    let lookupSortDeclaration' sortId = do
+    let -- Look up a sort declaration without the PatternVerifier context.
+        lookupSortDeclaration' sortId = do
             (_, sortDecl) <- resolveSort indexedModule sortId
             return sortDecl
-    dv' <- sequence dv
-    verified <- PatternVerifier $ Reader.lift $ Builtin.verifyDomainValue
-                    builtinDomainValueVerifiers lookupSortDeclaration' dv'
+    verified <-
+        PatternVerifier
+        $ Reader.lift
+        $ Builtin.verifyDomainValue
+            builtinDomainValueVerifiers
+            lookupSortDeclaration'
+            domainValue2
     let freeVariables =
             Foldable.foldl'
                 Set.union
@@ -711,6 +720,7 @@ verifyDomainValue dv@DomainValue { domainValueSort, domainValueChild = _ } = do
                 (unifiedFreeVariables . extract <$> verified)
     Monad.unless (Set.null freeVariables)
         (koreFail "Domain value must not contain free variables.")
+    let patternSort = Lens.view lensDomainValueSort verified
     return (Valid { patternSort, freeVariables } :< verified)
 
 verifyStringLiteral
@@ -736,13 +746,10 @@ verifyCharLiteral char = do
 verifyVariableDeclaration
     :: MetaOrObject level
     => Variable level
-    -> PatternVerifier VerifySuccess
-verifyVariableDeclaration Variable { variableSort } = do
-    Context { declaredSortVariables } <- Reader.ask
-    verifySort
-        lookupSortDeclaration
-        declaredSortVariables
-        variableSort
+    -> PatternVerifier (Variable level)
+verifyVariableDeclaration variable@Variable { variableSort } = do
+    variableSort' <- verifyPatternSort variableSort
+    return variable { variableSort = variableSort' }
 
 verifySymbolOrAlias
     :: MetaOrObject level

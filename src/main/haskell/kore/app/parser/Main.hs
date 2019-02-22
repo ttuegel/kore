@@ -22,6 +22,7 @@ import           Kore.ASTVerifier.DefinitionVerifier
                  ( AttributesVerification (DoNotVerifyAttributes),
                  defaultAttributesVerification, verifyAndIndexDefinition )
 import qualified Kore.Attribute.Axiom as Attribute
+import qualified Kore.Attribute.Sort as Attribute
 import qualified Kore.Builtin as Builtin
 import           Kore.Error
                  ( printError )
@@ -131,8 +132,8 @@ mainModule
     :: ModuleName
     -> Map.Map
         ModuleName
-        (VerifiedModule StepperAttributes Attribute.Axiom)
-    -> IO (VerifiedModule StepperAttributes Attribute.Axiom)
+        (VerifiedModule StepperAttributes Attribute.Sort Attribute.Axiom)
+    -> IO (VerifiedModule StepperAttributes Attribute.Sort Attribute.Axiom)
 mainModule name modules =
     case Map.lookup name modules of
         Nothing ->
@@ -176,7 +177,7 @@ mainVerify
     -> IO
         (Map.Map
             ModuleName
-            (VerifiedModule StepperAttributes Attribute.Axiom)
+            (VerifiedModule StepperAttributes Attribute.Sort Attribute.Axiom)
         )
 mainVerify willChkAttr definition =
     let attributesVerification =

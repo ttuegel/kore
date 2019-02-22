@@ -27,6 +27,7 @@ import           Kore.ASTVerifier.AttributesVerifier
 import           Kore.ASTVerifier.Error
 import           Kore.ASTVerifier.PatternVerifier as PatternVerifier
 import           Kore.ASTVerifier.SortVerifier
+import qualified Kore.Attribute.Sort as Attribute
 import qualified Kore.Builtin as Builtin
 import           Kore.Error
 import           Kore.IndexedModule.IndexedModule
@@ -114,7 +115,7 @@ definedNamesForObjectSentence
 {-|'verifySentences' verifies the welformedness of a list of Kore 'Sentence's.
 -}
 verifySentences
-    :: KoreIndexedModule declAtts axiomAtts
+    :: KoreIndexedModule declAtts Attribute.Sort axiomAtts
     -- ^ The module containing all definitions which are visible in this
     -- pattern.
     -> AttributesVerification declAtts axiomAtts
@@ -131,7 +132,7 @@ verifySentences indexedModule attributesVerification builtinVerifiers =
 
 verifySentence
     :: Builtin.Verifiers
-    -> KoreIndexedModule declAtts axiomAtts
+    -> KoreIndexedModule declAtts Attribute.Sort axiomAtts
     -> AttributesVerification declAtts axiomAtts
     -> KoreSentence
     -> Either (Error VerifyError) VerifiedKoreSentence
@@ -146,7 +147,7 @@ verifySentence builtinVerifiers indexedModule attributesVerification =
 
 verifyMetaSentence
     :: Builtin.Verifiers
-    -> KoreIndexedModule declAtts axiomAtts
+    -> KoreIndexedModule declAtts Attribute.Sort axiomAtts
     -> AttributesVerification declAtts axiomAtts
     -> Sentence Meta UnifiedSortVariable CommonKorePattern
     -> Either (Error VerifyError) VerifiedKoreSentence
@@ -221,7 +222,7 @@ verifyMetaSentence
 
 verifyObjectSentence
     :: Builtin.Verifiers
-    -> KoreIndexedModule declAtts axiomAtts
+    -> KoreIndexedModule declAtts Attribute.Sort axiomAtts
     -> AttributesVerification declAtts axiomAtts
     -> Sentence Object UnifiedSortVariable CommonKorePattern
     -> Either (Error VerifyError) VerifiedKoreSentence
@@ -290,7 +291,7 @@ verifySentenceAttributes attributesVerification sentence =
 
 verifyHookSentence
     :: Builtin.Verifiers
-    -> KoreIndexedModule declAtts axiomAtts
+    -> KoreIndexedModule declAtts sortAtts axiomAtts
     -> AttributesVerification declAtts axiomAtts
     -> SentenceHook CommonKorePattern
     -> Either (Error VerifyError) (SentenceHook VerifiedKorePattern)
@@ -330,7 +331,7 @@ verifyHookSentence
 
 verifySymbolSentence
     :: (MetaOrObject level)
-    => KoreIndexedModule declAtts axiomAtts
+    => KoreIndexedModule declAtts sortAtts axiomAtts
     -> KoreSentenceSymbol level
     -> Either (Error VerifyError) (VerifiedKoreSentenceSymbol level)
 verifySymbolSentence indexedModule sentence =
@@ -351,7 +352,7 @@ verifySymbolSentence indexedModule sentence =
 verifyAliasSentence
     :: (MetaOrObject level)
     => Builtin.Verifiers
-    -> KoreIndexedModule declAtts axiomAtts
+    -> KoreIndexedModule declAtts Attribute.Sort axiomAtts
     -> KoreSentenceAlias level
     -> Either (Error VerifyError) (VerifiedKoreSentenceAlias level)
 verifyAliasSentence builtinVerifiers indexedModule sentence =
@@ -363,8 +364,7 @@ verifyAliasSentence builtinVerifiers indexedModule sentence =
                 PatternVerifier.Context
                     { builtinDomainValueVerifiers =
                         Builtin.domainValueVerifiers builtinVerifiers
-                    , indexedModule =
-                        makeIndexedModuleAttributesNull indexedModule
+                    , indexedModule
                     , declaredSortVariables = variables
                     , declaredVariables = emptyDeclaredVariables
                     }
@@ -390,7 +390,7 @@ verifyAliasSentence builtinVerifiers indexedModule sentence =
 verifyAxiomSentence
     :: KoreSentenceAxiom
     -> Builtin.Verifiers
-    -> KoreIndexedModule declAtts axiomAtts
+    -> KoreIndexedModule declAtts Attribute.Sort axiomAtts
     -> Either (Error VerifyError) VerifiedKoreSentenceAxiom
 verifyAxiomSentence axiom builtinVerifiers indexedModule =
     do
@@ -401,8 +401,7 @@ verifyAxiomSentence axiom builtinVerifiers indexedModule =
                 PatternVerifier.Context
                     { builtinDomainValueVerifiers =
                         Builtin.domainValueVerifiers builtinVerifiers
-                    , indexedModule =
-                        makeIndexedModuleAttributesNull indexedModule
+                    , indexedModule
                     , declaredSortVariables = variables
                     , declaredVariables = emptyDeclaredVariables
                     }

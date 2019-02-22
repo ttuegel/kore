@@ -414,7 +414,6 @@ test_ceilSimplification =
         Mock.makeMetadataTools
             Mock.attributesMapping
             Mock.headTypeMapping
-            Mock.sortAttributesMapping
             Mock.subsorts
     asConcrete p =
         let Just r = asConcreteStepPattern p in r

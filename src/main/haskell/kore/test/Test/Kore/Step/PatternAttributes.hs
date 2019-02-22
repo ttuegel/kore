@@ -439,11 +439,10 @@ test_patternAttributes =
         Mock.makeMetadataTools
             Mock.attributesMapping
             Mock.headTypeMapping
-            Mock.sortAttributesMapping
             Mock.subsorts
 
     mockMetaMetadataTools :: MetadataTools Meta StepperAttributes
-    mockMetaMetadataTools = Mock.makeMetadataTools [] [] [] []
+    mockMetaMetadataTools = Mock.makeMetadataTools [] [] []
 
 testSort :: Sort Object
 testSort = Mock.testSort

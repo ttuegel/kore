@@ -29,6 +29,7 @@ import           Kore.ASTVerifier.DefinitionVerifier
 import qualified Kore.Attribute.Axiom as Attribute
 import           Kore.Attribute.Constructor
 import           Kore.Attribute.Functional
+import qualified Kore.Attribute.Sort as Attribute
 import qualified Kore.Builtin as Builtin
 import           Kore.Exec
 import           Kore.IndexedModule.IndexedModule
@@ -189,7 +190,7 @@ extractSearchResults =
 
 verifiedMyModule
     :: VerifiedKoreModule
-    -> VerifiedModule StepperAttributes Attribute.Axiom
+    -> VerifiedModule StepperAttributes Attribute.Sort Attribute.Axiom
 verifiedMyModule module_ = indexedModule
   where
     Just indexedModule = Map.lookup (ModuleName "MY-MODULE") indexedModules

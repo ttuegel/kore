@@ -45,6 +45,7 @@ import           Kore.AST.Valid
 import qualified Kore.Attribute.Axiom as Attribute
 import           Kore.Attribute.Hook
                  ( Hook (..) )
+import qualified Kore.Attribute.Sort as Attribute
 import qualified Kore.Builtin.Bool as Bool
 import qualified Kore.Builtin.Builtin as Builtin
 import           Kore.Builtin.Error
@@ -114,7 +115,7 @@ koreVerifiers =
 
  -}
 koreEvaluators
-    :: VerifiedModule StepperAttributes Attribute.Axiom
+    :: VerifiedModule StepperAttributes Attribute.Sort Attribute.Axiom
     -- ^ Module under which evaluation takes place
     -> Map (AxiomIdentifier Object) Builtin.Function
 koreEvaluators = evaluators builtins
@@ -143,7 +144,7 @@ koreEvaluators = evaluators builtins
 evaluators
     :: Map Text Builtin.Function
     -- ^ Builtin functions indexed by name
-    -> VerifiedModule StepperAttributes Attribute.Axiom
+    -> VerifiedModule StepperAttributes Attribute.Sort Attribute.Axiom
     -- ^ Module under which evaluation takes place
     -> Map (AxiomIdentifier Object) Builtin.Function
 evaluators builtins indexedModule =
@@ -155,7 +156,8 @@ evaluators builtins indexedModule =
         )
   where
     hookedSymbolAttributes
-        :: VerifiedModule StepperAttributes Attribute.Axiom
+        :: forall sortAtts axiomAtts
+        .  VerifiedModule StepperAttributes sortAtts axiomAtts
         -> Map (Id Object) StepperAttributes
     hookedSymbolAttributes im =
         Map.union
@@ -167,7 +169,8 @@ evaluators builtins indexedModule =
         justAttributes (attrs, _) = attrs
 
     importHookedSymbolAttributes
-        :: (a, b, VerifiedModule StepperAttributes Attribute.Axiom)
+        :: forall sortAtts axiomAtts a b
+        .  (a, b, VerifiedModule StepperAttributes sortAtts axiomAtts)
         -> Map (Id Object) StepperAttributes
     importHookedSymbolAttributes (_, _, im) = hookedSymbolAttributes im
 
@@ -186,7 +189,7 @@ evaluators builtins indexedModule =
 
  -}
 asPattern
-    :: VerifiedModule declAttrs axiomAttrs
+    :: VerifiedModule declAttrs sortAttrs axiomAttrs
     -- ^ indexed module defining hooks for builtin domains
     -> Builtin
     -- ^ domain value
@@ -220,7 +223,7 @@ asPattern
  -}
 -- TODO (thomas.tuegel): Transform from Domain.Builtin to Domain.External.
 externalizePattern
-    :: VerifiedModule declAttrs axiomAttrs
+    :: VerifiedModule declAttrs sortAttrs axiomAttrs
     -- ^ indexed module defining hooks for builtin domains
     -> CommonStepPattern Object
     -> Either (Error e) (CommonStepPattern Object)

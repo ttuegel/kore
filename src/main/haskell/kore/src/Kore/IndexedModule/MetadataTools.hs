@@ -36,8 +36,6 @@ data MetadataTools level attributes = MetadataTools
     -- ^ get the attributes of a symbol or alias
     , symbolOrAliasType :: SymbolOrAlias level -> HeadType
     -- ^ whether a symbol or alias is a symbol
-    , sortAttributes :: Sort level -> attributes
-    -- ^ get the attributes of a sort
     , isSubsortOf :: Sort level -> Sort level -> Bool
     {- ^ @isSubsortOf a b@ is true if sort @a@ is a subsort of sort @b@,
        including when @a@ equals @b@. -}
@@ -52,15 +50,14 @@ data MetadataTools level attributes = MetadataTools
 -- its argument and result sorts.
 --
 extractMetadataTools
-    ::  forall level declAtts axiomAtts.
+    ::  forall level declAtts sortAtts axiomAtts.
         MetaOrObject level
-    => VerifiedModule declAtts axiomAtts
+    => VerifiedModule declAtts sortAtts axiomAtts
     -> MetadataTools level declAtts
 extractMetadataTools m =
   MetadataTools
     { symAttributes = getHeadAttributes m
     , symbolOrAliasType = getHeadType m
-    , sortAttributes = getSortAttributes m
     , isSubsortOf = checkSubsort
     , subsorts = case isMetaOrObject @level [] of
             IsMeta   -> Set.singleton

@@ -435,7 +435,6 @@ mockMetadataTools =
     Mock.makeMetadataTools
         Mock.attributesMapping
         Mock.headTypeMapping
-        Mock.sortAttributesMapping
         Mock.subsorts
 
 mockHookTools :: MetadataTools Object Hook

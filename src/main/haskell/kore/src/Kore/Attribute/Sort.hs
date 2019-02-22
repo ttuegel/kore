@@ -13,6 +13,8 @@ module Kore.Attribute.Sort
     ( Sort (..)
     , lensHook
     , lensSmtlib
+    , Hook (..)
+    , Smtlib (..)
     ) where
 
 import Control.DeepSeq
