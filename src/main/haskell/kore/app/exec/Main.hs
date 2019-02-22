@@ -39,6 +39,7 @@ import           Kore.ASTVerifier.DefinitionVerifier
                  ( AttributesVerification (DoNotVerifyAttributes),
                  defaultAttributesVerification,
                  verifyAndIndexDefinitionWithBase )
+import qualified Kore.Attribute.Axiom as Attribute
 import qualified Kore.Builtin as Builtin
 import           Kore.Error
                  ( printError )
@@ -51,8 +52,6 @@ import           Kore.Parser.Parser
                  ( parseKoreDefinition, parseKorePattern )
 import           Kore.Predicate.Predicate
                  ( makePredicate )
-import           Kore.Step.AxiomPatterns
-                 ( AxiomPatternAttributes )
 import           Kore.Step.ExpandedPattern
                  ( CommonExpandedPattern, Predicated (..) )
 import           Kore.Step.Pattern
@@ -427,8 +426,8 @@ mainModule
     :: ModuleName
     -> Map.Map
         ModuleName
-        (VerifiedModule StepperAttributes AxiomPatternAttributes)
-    -> IO (VerifiedModule StepperAttributes AxiomPatternAttributes)
+        (VerifiedModule StepperAttributes Attribute.Axiom)
+    -> IO (VerifiedModule StepperAttributes Attribute.Axiom)
 mainModule name modules =
     case Map.lookup name modules of
         Nothing ->
@@ -455,7 +454,7 @@ mainPatternParse = mainParse parseKorePattern
 -- | IO action that parses a kore pattern from a filename, verifies it,
 -- converts it to a pure patterm, and prints timing information.
 mainPatternParseAndVerify
-    :: VerifiedModule StepperAttributes AxiomPatternAttributes
+    :: VerifiedModule StepperAttributes Attribute.Axiom
     -> String
     -> IO (CommonStepPattern Object)
 mainPatternParseAndVerify indexedModule patternFileName = do
@@ -463,7 +462,7 @@ mainPatternParseAndVerify indexedModule patternFileName = do
     makePurePattern <$> mainPatternVerify indexedModule parsedPattern
 
 mainParseSearchPattern
-    :: VerifiedModule StepperAttributes AxiomPatternAttributes
+    :: VerifiedModule StepperAttributes Attribute.Axiom
     -> String
     -> IO (CommonExpandedPattern Object)
 mainParseSearchPattern indexedModule patternFileName = do
@@ -503,7 +502,7 @@ verifyDefinitionWithBase
     :: Maybe
         ( Map.Map
             ModuleName
-            (VerifiedModule StepperAttributes AxiomPatternAttributes)
+            (VerifiedModule StepperAttributes Attribute.Axiom)
         , Map.Map Text AstLocation
         )
     -- ^ base definition to use for verification
@@ -512,7 +511,7 @@ verifyDefinitionWithBase
     -> IO
         ( Map.Map
             ModuleName
-            (VerifiedModule StepperAttributes AxiomPatternAttributes)
+            (VerifiedModule StepperAttributes Attribute.Axiom)
         , Map.Map Text AstLocation
         )
 verifyDefinitionWithBase maybeBaseModule willChkAttr definition =
@@ -547,8 +546,8 @@ makePurePattern pat =
 -- functions are constructors (so that function patterns can match)
 -- and that @kseq@ and @dotk@ are both functional and constructor.
 constructorFunctions
-    :: VerifiedModule StepperAttributes AxiomPatternAttributes
-    -> VerifiedModule StepperAttributes AxiomPatternAttributes
+    :: VerifiedModule StepperAttributes Attribute.Axiom
+    -> VerifiedModule StepperAttributes Attribute.Axiom
 constructorFunctions ixm =
     ixm
         { indexedModuleObjectSymbolSentences =
