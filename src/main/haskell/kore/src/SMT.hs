@@ -60,6 +60,8 @@ import           SimpleSMT
                  ( Result (..), SExpr (..), Solver )
 import qualified SimpleSMT
 
+import ListT
+
 -- | Time-limit for SMT queries.
 newtype TimeOut = TimeOut { getTimeOut :: Limit Integer }
     deriving (Eq, Ord, Read, Show)
@@ -147,6 +149,9 @@ instance (MonadSMT m, Monoid w) => MonadSMT (Writer.Lazy.WriterT w m) where
     liftSMT = Trans.lift . liftSMT
 
 instance (MonadSMT m, Monoid w) => MonadSMT (Writer.Strict.WriterT w m) where
+    liftSMT = Trans.lift . liftSMT
+
+instance MonadSMT m => MonadSMT (ListT m) where
     liftSMT = Trans.lift . liftSMT
 
 {- | Initialize a new solver with the given 'Config'.
