@@ -10,9 +10,11 @@ Portability : portable
 module Kore.Step.Simplification.ExpandedPattern
     ( simplify
     , simplifyPredicate
+    , simplifyPredicateBranch
     ) where
 
-import           Data.Reflection
+import Data.Reflection
+
 import           Kore.AST.Common
                  ( SortedVariable )
 import           Kore.AST.MetaOrObject
@@ -21,7 +23,6 @@ import           Kore.IndexedModule.MetadataTools
 import           Kore.Step.Axiom.Data
                  ( BuiltinAndAxiomSimplifierMap )
 import qualified Kore.Step.Condition.Evaluator as Predicate
-                 ( evaluate )
 import qualified Kore.Step.Merging.ExpandedPattern as ExpandedPattern
                  ( mergeWithPredicateSubstitution )
 import           Kore.Step.Representation.ExpandedPattern
@@ -31,9 +32,6 @@ import qualified Kore.Step.Representation.MultiOr as MultiOr
 import           Kore.Step.Representation.OrOfExpandedPattern
                  ( OrOfExpandedPattern )
 import           Kore.Step.Simplification.Data
-                 ( PredicateSubstitutionSimplifier, SimplificationProof (..),
-                 Simplifier, StepPatternSimplifier (..),
-                 StepPatternSimplifier )
 import           Kore.Step.StepperAttributes
                  ( StepperAttributes )
 import           Kore.Step.Substitution
@@ -146,3 +144,59 @@ simplifyPredicate
             }
         , SimplificationProof
         )
+
+{-| Simplifies the predicate inside an 'ExpandedPattern'.
+-}
+simplifyPredicateBranch
+    ::  ( MetaOrObject level
+        , Ord (variable level)
+        , Show (variable level)
+        , Unparse (variable level)
+        , OrdMetaOrObject variable
+        , ShowMetaOrObject variable
+        , FreshVariable variable
+        , SortedVariable variable
+        )
+    => MetadataTools level StepperAttributes
+    -- ^ Tools for finding additional information about patterns
+    -- such as their sorts, whether they are constructors or hooked.
+    -> PredicateSubstitutionSimplifier level
+    -> StepPatternSimplifier level
+    -- ^ Evaluates functions in a pattern.
+    -> BuiltinAndAxiomSimplifierMap level
+    -- ^ Map from axiom IDs to axiom evaluators
+    -> ExpandedPattern level variable
+    -- ^ The condition to be evaluated.
+    -> BranchT Simplifier (ExpandedPattern level variable)
+simplifyPredicateBranch
+    tools
+    substitutionSimplifier
+    simplifier
+    axiomIdToSimplifier
+    Predicated {term, predicate, substitution}
+  = do
+    evaluated <-
+        give tools
+        $ Predicate.evaluateBranch
+            substitutionSimplifier
+            simplifier
+            predicate
+    let Predicated { predicate = evaluatedPredicate } = evaluated
+        Predicated { substitution = evaluatedSubstitution } = evaluated
+    (merged, _proof) <-
+        liftProvenPruned
+        $ mergePredicatesAndSubstitutions
+            tools
+            substitutionSimplifier
+            simplifier
+            axiomIdToSimplifier
+            [evaluatedPredicate]
+            [substitution, evaluatedSubstitution]
+    let Predicated { predicate = mergedPredicate } = merged
+        Predicated { substitution = mergedSubstitution } = merged
+    -- TODO(virgil): Do I need to re-evaluate the predicate?
+    returnPruned Predicated
+        { term = term
+        , predicate = mergedPredicate
+        , substitution = mergedSubstitution
+        }
