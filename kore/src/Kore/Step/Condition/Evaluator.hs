@@ -9,6 +9,7 @@ Portability : portable
 -}
 module Kore.Step.Condition.Evaluator
     ( evaluate
+    , evaluateBranch
     , decidePredicate
     ) where
 
@@ -16,8 +17,10 @@ import           Control.Applicative
                  ( Alternative (..) )
 import           Control.Error
                  ( MaybeT, runMaybeT )
+import qualified Control.Monad as Monad
 import qualified Control.Monad.Counter as Counter
 import qualified Control.Monad.State.Strict as State
+import qualified Control.Monad.Trans as Monad.Trans
 import qualified Data.Map.Strict as Map
 import           Data.Proxy
 import           Data.Reflection
@@ -32,9 +35,6 @@ import qualified Kore.Step.Representation.ExpandedPattern as ExpandedPattern
 import qualified Kore.Step.Representation.OrOfExpandedPattern as OrOfExpandedPattern
                  ( isFalse, isTrue, toExpandedPattern )
 import           Kore.Step.Simplification.Data
-                 ( PredicateSubstitutionSimplifier,
-                 SimplificationProof (SimplificationProof), Simplifier,
-                 StepPatternSimplifier (..) )
 import           Kore.Step.StepperAttributes
 import           Kore.Step.TranslateSMT
 import           Kore.Unparser
@@ -43,6 +43,53 @@ import           Kore.Variables.Fresh
 import           SMT
                  ( MonadSMT, Result (..), SExpr (..), SMT )
 import qualified SMT
+
+{- | Attempt to evaluate a predicate.
+
+If the predicate is non-trivial (not @\\top{_}()@ or @\\bottom{_}()@),
+@evaluate@ attempts to refute the predicate using an external SMT solver.
+
+ -}
+evaluateBranch
+    ::  forall level variable .
+        ( FreshVariable variable
+        , Given (MetadataTools level StepperAttributes)
+        , MetaOrObject level
+        , Ord (variable level)
+        , OrdMetaOrObject variable
+        , Show (variable level)
+        , ShowMetaOrObject variable
+        , SortedVariable variable
+        , Unparse (variable level)
+        )
+    => PredicateSubstitutionSimplifier level
+    -> StepPatternSimplifier level
+    -- ^ Evaluates functions in a pattern.
+    -> Predicate level variable
+    -- ^ The condition to be evaluated.
+    -> BranchT Simplifier (PredicateSubstitution level variable)
+evaluateBranch
+    substitutionSimplifier
+    (StepPatternSimplifier simplifier)
+    predicate
+  = do
+    (simplified, _proof) <-
+        Monad.Trans.lift
+        $ simplifier
+            substitutionSimplifier
+            (unwrapPredicate predicate)
+    if OrOfExpandedPattern.isTrue simplified
+        then return ExpandedPattern.topPredicate
+        else do
+            simplified' <- scatter simplified
+            Monad.when (ExpandedPattern.isBottom simplified') empty
+            let result = asPredicateSubstitution simplified'
+                Predicated { predicate = predicate' } = result
+            decided <- decidePredicate predicate'
+            case decided of
+                Just False -> empty
+                Just True -> return result { predicate = makeTruePredicate }
+                _ -> returnPruned result
 
 {- | Attempt to evaluate a predicate.
 
@@ -88,7 +135,7 @@ evaluate
                 Just False -> ExpandedPattern.bottom
                 Just True -> ExpandedPattern.top
                 _ -> OrOfExpandedPattern.toExpandedPattern simplified
-        (subst, _proof) = asPredicateSubstitution simplified'
+        subst = asPredicateSubstitution simplified'
     return (subst, SimplificationProof)
 
 asPredicateSubstitution
@@ -99,20 +146,13 @@ asPredicateSubstitution
         , Unparse (variable level)
         )
     => ExpandedPattern level variable
-    -> (PredicateSubstitution level variable, SimplificationProof level)
-asPredicateSubstitution
-    Predicated {term, predicate, substitution}
-  =
-    let
-        andPatt = makeAndPredicate predicate (wrapPredicate term)
-    in
-        ( Predicated
-            { term = ()
-            , predicate = andPatt
-            , substitution = substitution
-            }
-        , SimplificationProof
-        )
+    -> PredicateSubstitution level variable
+asPredicateSubstitution Predicated { term, predicate, substitution } =
+    Predicated
+        { term = ()
+        , predicate = makeAndPredicate predicate (wrapPredicate term)
+        , substitution
+        }
 
 {- | Attempt to refute a predicate using an external SMT solver.
 
