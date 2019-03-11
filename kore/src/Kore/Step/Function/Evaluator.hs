@@ -229,52 +229,7 @@ maybeEvaluatePattern
     patt
     defaultValue
   =
-    case maybeEvaluator of
-        Nothing -> Nothing
-        Just (BuiltinAndAxiomSimplifier evaluator) ->
-            Just
-            $ traceNonErrorMonad
-                D_Function_evaluatePattern
-                [ debugArg "axiomIdentifier" identifier ]
-            $ do
-                (result, proof) <-
-                    evaluator
-                        tools
-                        substitutionSimplifier
-                        simplifier
-                        axiomIdToEvaluator
-                        patt
-                flattened <- case result of
-                    AttemptedAxiom.NotApplicable ->
-                        return AttemptedAxiom.NotApplicable
-                    AttemptedAxiom.Applied AttemptedAxiomResults
-                        { results = orResults
-                        , remainders = orRemainders
-                        } -> do
-                            simplified <- mapM simplifyIfNeeded orResults
-                            return
-                                (AttemptedAxiom.Applied AttemptedAxiomResults
-                                    { results =
-                                        MultiOr.flatten simplified
-                                    , remainders = orRemainders
-                                    }
-                                )
-                (merged, _proof) <- mergeWithConditionAndSubstitution
-                    tools
-                    substitutionSimplifier
-                    simplifier
-                    axiomIdToEvaluator
-                    childrenPredicateSubstitution
-                    (flattened, proof)
-                case merged of
-                    AttemptedAxiom.NotApplicable ->
-                        return (defaultValue, SimplificationProof)
-                    AttemptedAxiom.Applied AttemptedAxiomResults
-                        { results, remainders } ->
-                            return
-                                ( MultiOr.merge results remainders
-                                , SimplificationProof
-                                )
+    maybeEvaluator >>= Just . evaluateWith
   where
     identifier :: Maybe (AxiomIdentifier level)
     identifier = AxiomIdentifier.extract patt
@@ -283,6 +238,50 @@ maybeEvaluatePattern
     maybeEvaluator = do
         identifier' <- identifier
         Map.lookup identifier' axiomIdToEvaluator
+
+    evaluateWith (BuiltinAndAxiomSimplifier evaluator) =
+        traceNonErrorMonad
+            D_Function_evaluatePattern
+            [ debugArg "axiomIdentifier" identifier ]
+        $ do
+            (result, proof) <-
+                evaluator
+                    tools
+                    substitutionSimplifier
+                    simplifier
+                    axiomIdToEvaluator
+                    patt
+            flattened <- case result of
+                AttemptedAxiom.NotApplicable ->
+                    return AttemptedAxiom.NotApplicable
+                AttemptedAxiom.Applied AttemptedAxiomResults
+                    { results = orResults
+                    , remainders = orRemainders
+                    } -> do
+                        simplified <- mapM simplifyIfNeeded orResults
+                        return
+                            (AttemptedAxiom.Applied AttemptedAxiomResults
+                                { results =
+                                    MultiOr.flatten simplified
+                                , remainders = orRemainders
+                                }
+                            )
+            (merged, _proof) <- mergeWithConditionAndSubstitution
+                tools
+                substitutionSimplifier
+                simplifier
+                axiomIdToEvaluator
+                childrenPredicateSubstitution
+                (flattened, proof)
+            case merged of
+                AttemptedAxiom.NotApplicable ->
+                    return (defaultValue, SimplificationProof)
+                AttemptedAxiom.Applied AttemptedAxiomResults
+                    { results, remainders } ->
+                        return
+                            ( MultiOr.merge results remainders
+                            , SimplificationProof
+                            )
 
     unchangedPatt =
         Predicated
