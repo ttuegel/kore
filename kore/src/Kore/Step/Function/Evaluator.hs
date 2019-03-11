@@ -43,13 +43,9 @@ import           Kore.Step.Pattern
 import           Kore.Step.Representation.ExpandedPattern
                  ( ExpandedPattern, PredicateSubstitution, Predicated (..) )
 import qualified Kore.Step.Representation.MultiOr as MultiOr
-                 ( flatten, make, merge, traverseWithPairs )
 import           Kore.Step.Representation.OrOfExpandedPattern
                  ( OrOfExpandedPattern )
 import           Kore.Step.Simplification.Data
-                 ( PredicateSubstitutionSimplifier, SimplificationProof (..),
-                 Simplifier, StepPatternSimplifier (..),
-                 StepPatternSimplifier )
 import qualified Kore.Step.Simplification.ExpandedPattern as ExpandedPattern
 import           Kore.Step.StepperAttributes
                  ( Hook (..), StepperAttributes (..), isSortInjection_ )
@@ -254,25 +250,19 @@ maybeEvaluatePattern
             flattened <- case result of
                 AttemptedAxiom.NotApplicable ->
                     return AttemptedAxiom.NotApplicable
-                AttemptedAxiom.Applied AttemptedAxiomResults
-                    { results = orResults
-                    , remainders = orRemainders
-                    } -> do
-                        simplified <- mapM simplifyIfNeeded orResults
-                        return
-                            (AttemptedAxiom.Applied AttemptedAxiomResults
-                                { results =
-                                    MultiOr.flatten simplified
-                                , remainders = orRemainders
-                                }
-                            )
-            (merged, _proof) <- mergeWithConditionAndSubstitution
-                tools
-                substitutionSimplifier
-                simplifier
-                axiomIdToEvaluator
-                childrenPredicateSubstitution
-                (flattened, proof)
+                AttemptedAxiom.Applied attempt -> do
+                    let AttemptedAxiomResults { results } = attempt
+                    results' <- gatherAll (traverse simplifyIfNeeded results)
+                    (return . AttemptedAxiom.Applied)
+                        attempt { AttemptedAxiomResults.results = results' }
+            (merged, _proof) <-
+                mergeWithConditionAndSubstitution
+                    tools
+                    substitutionSimplifier
+                    simplifier
+                    axiomIdToEvaluator
+                    childrenPredicateSubstitution
+                    (flattened, proof)
             case merged of
                 AttemptedAxiom.NotApplicable ->
                     return (defaultValue, SimplificationProof)
@@ -295,17 +285,17 @@ maybeEvaluatePattern
 
     simplifyIfNeeded
         :: ExpandedPattern level variable
-        -> Simplifier (OrOfExpandedPattern level variable)
-    simplifyIfNeeded toSimplify =
-        if toSimplify == unchangedPatt
-            then return (MultiOr.make [unchangedPatt])
-            else
-                reevaluateFunctions
-                    tools
-                    substitutionSimplifier
-                    simplifier
-                    axiomIdToEvaluator
-                    toSimplify
+        -> BranchT Simplifier (ExpandedPattern level variable)
+    simplifyIfNeeded toSimplify
+      | toSimplify == unchangedPatt =
+        return unchangedPatt
+      | otherwise =
+        reevaluateFunctions
+            tools
+            substitutionSimplifier
+            simplifier
+            axiomIdToEvaluator
+            toSimplify
 
 evaluateSortInjection
     :: (MetaOrObject level, Ord (variable level))
@@ -368,7 +358,7 @@ reevaluateFunctions
     -- ^ Map from axiom IDs to axiom evaluators
     -> ExpandedPattern level variable
     -- ^ Function evaluation result.
-    -> Simplifier (OrOfExpandedPattern level variable)
+    -> BranchT Simplifier (ExpandedPattern level variable)
 reevaluateFunctions
     tools
     substitutionSimplifier
@@ -381,9 +371,11 @@ reevaluateFunctions
         }
   = do
     (pattOr , _proof) <-
-        simplifier substitutionSimplifier rewrittenPattern
+        liftProvenPruned
+        $ simplifier substitutionSimplifier rewrittenPattern
     (mergedPatt, _proof) <-
-        OrOfExpandedPattern.mergeWithPredicateSubstitution
+        liftProvenPruned
+        $ OrOfExpandedPattern.mergeWithPredicateSubstitution
             tools
             substitutionSimplifier
             wrappedSimplifier
@@ -394,16 +386,14 @@ reevaluateFunctions
                 , substitution = rewrittenSubstitution
                 }
             pattOr
-    (evaluatedPatt, _) <-
-        MultiOr.traverseWithPairs
-            (ExpandedPattern.simplifyPredicate
-                tools
-                substitutionSimplifier
-                wrappedSimplifier
-                axiomIdToEvaluator
-            )
-            mergedPatt
-    return evaluatedPatt
+    scatter mergedPatt >>= simplifyPredicate
+  where
+    simplifyPredicate =
+        ExpandedPattern.simplifyPredicateBranch
+            tools
+            substitutionSimplifier
+            wrappedSimplifier
+            axiomIdToEvaluator
 
 {-| Ands the given condition-substitution to the given function evaluation.
 -}
