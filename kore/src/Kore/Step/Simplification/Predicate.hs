@@ -9,17 +9,20 @@ Portability : portable
 -}
 module Kore.Step.Simplification.Predicate
     ( simplifyPartial
+    , eraseTerm
     ) where
 
 import qualified Control.Monad.Trans as Monad.Trans
 import qualified Data.Text.Prettyprint.Doc as Pretty
+import           GHC.Stack
+                 ( HasCallStack )
 
 import Kore.AST.Pure
 import Kore.AST.Valid
 import Kore.Predicate.Predicate
        ( Predicate, unwrapPredicate )
 import Kore.Step.Representation.ExpandedPattern
-       ( PredicateSubstitution, Predicated (..) )
+       ( ExpandedPattern, PredicateSubstitution, Predicated (..) )
 import Kore.Step.Simplification.Data
 import Kore.Unparser
 import Kore.Variables.Fresh
@@ -56,11 +59,21 @@ simplifyPartial
     -- Despite using Monad.Trans.lift above, we do not need to explicitly check
     -- for \bottom because patternOr is an OrOfExpandedPattern.
     scatter (eraseTerm <$> patternOr)
-  where
-    eraseTerm predicated@Predicated { term }
-      | Top_ _ <- term = predicated { term = () }
-      | otherwise =
-        (error . show . Pretty.vsep)
-            [ "Expecting a \\top term, but found:"
-            , unparse predicated
-            ]
+
+eraseTerm
+    ::  ( Ord (variable level)
+        , Show (variable level)
+        , Unparse (variable level)
+        , SortedVariable variable
+        , MetaOrObject level
+        , HasCallStack
+        )
+    => ExpandedPattern level variable
+    -> PredicateSubstitution level variable
+eraseTerm predicated@Predicated { term }
+  | Top_ _ <- term = predicated { term = () }
+  | otherwise =
+    (error . show . Pretty.vsep)
+        [ "Expecting a \\top term, but found:"
+        , unparse predicated
+        ]
