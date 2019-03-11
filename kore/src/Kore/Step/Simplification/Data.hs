@@ -13,7 +13,7 @@ module Kore.Step.Simplification.Data
     , evalSimplifier
     , BranchT, runBranchT
     , getBranches
-    , liftPruned, returnPruned
+    , liftPruned, liftProvenPruned, returnPruned
     , evalSimplifierBranch
     , gather
     , gatherAll
@@ -146,6 +146,23 @@ See also: 'returnPruned'
  -}
 liftPruned :: (Monad m, TopBottom t) => m t -> BranchT m t
 liftPruned unlifted = Monad.Trans.lift unlifted >>= returnPruned
+
+{- | Lift a computation into 'BranchT' while pruning 'isBottom' results.
+
+A "proof" argument is passed along and ignored.
+
+See also: 'liftPruned'
+
+ -}
+liftProvenPruned
+    :: (Monad m, TopBottom t)
+    => m (t, proof)
+    -> BranchT m (t, proof)
+liftProvenPruned unlifted = do
+    result@(t, _) <- Monad.Trans.lift unlifted
+    if TopBottom.isBottom t
+        then empty
+        else return result
 
 {- | Return a 't' unless the value satisfies 'TopBottom.isBottom'.
 
