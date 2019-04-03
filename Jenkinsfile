@@ -43,6 +43,15 @@ pipeline {
           }
         }
         stage('KEVM Integration') {
+          when {
+            anyOf {
+              branch 'master'
+              expression {
+                TAGGED_KEVM_INTEGRATION = sh(returnStdout: true, script: './scripts/should-run-kevm-integration.sh [kevm-integration]').trim()
+                return TAGGED_KEVM_INTEGRATION == 'true'
+              }
+            }
+          }
           steps {
             ansiColor('xterm') {
               sh '''
