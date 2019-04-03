@@ -134,24 +134,17 @@ test_andSimplification =
             assertEqualWithExplanation "" (MultiOr [expect]) actual
 
         , testCase "And substitutions - simple" $ do
-            let expect =
-                    Predicated
-                        { term = mkTop_
-                        , predicate = makeTruePredicate
-                        , substitution = Substitution.unsafeWrap
-                            [(Mock.y, fOfX), (Mock.z, gOfX)]
-                        }
             actual <-
                 evaluatePatterns
-                    Predicated
-                        { term = mkTop_
-                        , predicate = makeTruePredicate
-                        , substitution = Substitution.wrap [(Mock.y, fOfX)]
-                        }
-                    Predicated
-                        { term = mkTop_
-                        , predicate = makeTruePredicate
-                        , substitution = Substitution.wrap [(Mock.z, gOfX)]
+                    (mkSubstitution Mock.y fOfX)
+                    (mkSubstitution Mock.z gOfX)
+            let expect =
+                    ExpandedPattern.top
+                        { substitution =
+                            Substitution.unsafeWrap
+                                [ (Mock.y, fOfX)
+                                , (Mock.z, gOfX)
+                                ]
                         }
             assertEqualWithExplanation "" (MultiOr [expect]) actual
 
@@ -177,48 +170,23 @@ test_andSimplification =
             assertEqualWithExplanation "" (MultiOr [expect]) actual
 
         , testCase "And substitutions - separate predicate" $ do
+            actual <-
+                evaluatePatterns
+                    (mkSubstitution Mock.y fOfX)
+                    (mkSubstitution Mock.y gOfX)
             let
                 expect =
-                    Predicated
-                        { term = mkTop_
-                        , predicate = makeEqualsPredicate fOfX gOfX
-                        , substitution =
-                            Substitution.unsafeWrap [(Mock.y, fOfX)]
-                        }
-            actual <- evaluatePatterns
-                Predicated
-                    { term = mkTop_
-                    , predicate = makeTruePredicate
-                    , substitution = Substitution.wrap [(Mock.y, fOfX)]
-                    }
-                Predicated
-                    { term = mkTop_
-                    , predicate = makeTruePredicate
-                    , substitution = Substitution.wrap [(Mock.y, gOfX)]
-                    }
+                    (mkSubstitution Mock.y fOfX)
+                        { predicate = makeEqualsPredicate fOfX gOfX }
             assertEqualWithExplanation "" (MultiOr [expect]) actual
 
         , testCase "And substitutions - failure" $ do
+            let term0 = Mock.functionalConstr10 (mkVar Mock.x)
+                term1 = Mock.functionalConstr11 (mkVar Mock.x)
             actual <-
                 evaluatePatterns
-                    Predicated
-                        { term = mkTop_
-                        , predicate = makeTruePredicate
-                        , substitution = Substitution.wrap
-                            [   ( Mock.y
-                                , Mock.functionalConstr10 (mkVar Mock.x)
-                                )
-                            ]
-                        }
-                    Predicated
-                        { term = mkTop_
-                        , predicate = makeTruePredicate
-                        , substitution = Substitution.wrap
-                            [   ( Mock.y
-                                , Mock.functionalConstr11 (mkVar Mock.x)
-                                )
-                            ]
-                        }
+                    (mkSubstitution Mock.y term0)
+                    (mkSubstitution Mock.y term1)
             assertEqualWithExplanation "" (MultiOr []) actual
             {-
             TODO(virgil): Uncomment this after substitution merge can handle
@@ -365,6 +333,9 @@ test_andSimplification =
         assertEqualWithExplanation "Distributes or" expect actual
     ]
   where
+    mkSubstitution x t =
+        let substitution = Substitution.wrap [(x, t)]
+        in ExpandedPattern.top { substitution }
     yExpanded = Predicated
         { term = mkVar Mock.y
         , predicate = makeTruePredicate
