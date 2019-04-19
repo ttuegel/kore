@@ -169,7 +169,8 @@ The new solver is returned in an 'MVar' for thread-safety.
  -}
 newSolver :: Config -> IO (MVar Solver)
 newSolver config = do
-    solver <- SimpleSMT.newSolver exe args Nothing
+    logger <- SimpleSMT.newLogger (-1)
+    solver <- SimpleSMT.newSolver exe args (Just logger)
     mvar <- newMVar solver
     runReaderT getSMT mvar
     return mvar
