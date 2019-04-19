@@ -191,6 +191,8 @@ simplify = Simplify
 removeDestination :: patt -> Prim patt rewrite
 removeDestination = RemoveDestination
 
+type Transition = TransitionT (RewriteRule Object Variable) Simplifier
+
 {- | Transition rule for primitive strategies in 'Prim'.
 
 @transitionRule@ is intended to be partially applied and passed to
@@ -299,7 +301,7 @@ transitionRule
     transitionMultiApplyWithRemainders
         :: [RewriteRule level Variable]
         -> (CommonExpandedPattern level, StepProof level Variable)
-        -> TransitionT (RewriteRule level Variable) Simplifier
+        -> Transition
             (CommonStrategyPattern level, StepProof level Variable)
     transitionMultiApplyWithRemainders _ (config, _)
         | ExpandedPattern.isBottom config = empty
@@ -325,32 +327,34 @@ transitionRule
                 ,   "We decided to end the execution because we don't \
                     \understand this case well enough at the moment."
                 ]
-            Right Step.Results { results, remainders } -> do
+            Right results -> do
                 let
                     withProof :: forall x. x -> (x, StepProof level Variable)
                     withProof x = (x, proof)
 
                     rewriteResults, remainderResults
-                        ::  MultiOr.MultiOr
-                                (TransitionT
-                                    (RewriteRule level Variable)
-                                    Simplifier
-                                    ( CommonStrategyPattern level
-                                    , StepProof level Variable
-                                    )
+                        ::  [ Transition
+                                ( CommonStrategyPattern Object
+                                , StepProof Object Variable
                                 )
-                    rewriteResults = fmap withProof . transition <$> results
+                            ]
+                    rewriteResults =
+                        fmap withProof . transition
+                        <$> Foldable.toList (Step.results results)
+                    remainderResults =
+                        pure . withProof . Stuck
+                        <$> Foldable.toList (Step.remainders results)
+                    transition
+                        :: Step.Result Variable
+                        -> Transition (CommonStrategyPattern Object)
                     transition result' = do
                         let rule =
                                 Step.unwrapRule
-                                $ Predicated.term $ Step.unifiedRule result'
+                                $ Predicated.term $ Step.appliedRule result'
                         Transition.addRule (RewriteRule rule)
-                        return (RewritePattern $ Step.result result')
-                    remainderResults =
-                        pure . withProof . Stuck <$> remainders
+                        Foldable.asum (pure . RewritePattern <$> Step.result result')
 
-                Foldable.asum
-                    (MultiOr.uncheckedMerge rewriteResults remainderResults)
+                Foldable.asum rewriteResults <|> Foldable.asum remainderResults
 
     transitionRemoveDestination
         :: CommonExpandedPattern level
