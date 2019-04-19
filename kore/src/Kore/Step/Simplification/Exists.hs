@@ -17,7 +17,6 @@ import           Control.Applicative
 import           Data.Map.Strict
                  ( Map )
 import qualified Data.Map.Strict as Map
-import qualified Data.Maybe as Maybe
 import qualified Data.Set as Set
 
 import           Kore.AST.Pure
@@ -221,6 +220,53 @@ makeEvaluate
     (boundSubstitution, freeSubstitution) =
         splitSubstitutionByVariable variable $ Substitution.toMap substitution
 
+{- | Existentially quantify a variable over an 'ExpandedPattern'.
+
+The input is a pattern of the form
+
+@
+φ ∧ P ∧ S
+@
+
+where @P@ is a predicate and @S@ is a substitution, having the form
+
+@
+S = ∧ᵢ xᵢ = tᵢ
+@
+
+where @xᵢ@ is a variable. The quantified variable @y@ does not occur on the
+left-hand side of any conjunct in @S@, but this is not checked. The quantifier
+will be lowered into the pattern as far as possible.
+
+The predicate @P@ is split into a bound part and a free part,
+
+@
+P = freeP ∧ boundP
+@
+
+such that @freeP@ does not contain @y@, but @boundP@ (if it exists) does contain
+@y@. Likewise the substitution is split into a bound part and a free part,
+
+@
+S = freeS ∧ boundS
+@
+
+such that @y@ does not occur on the right-hand side of any conjunct in @freeS@,
+but @y@ occurs on the right-hand side of /every/ conjunct in @boundS@.
+
+If @y@ occurs in @φ@, the result is
+
+@
+(∃ y. φ ∧ boundP ∧ boundS) ∧ freeP ∧ freeS
+@
+
+otherwise (if @y@ does not occur in @φ@) the result is
+
+@
+φ ∧ (freeP ∧ (∃ y. boundP ∧ boundS)) ∧ freeS.
+@
+
+ -}
 makeEvaluateNoFreeVarInSubstitution
     ::  ( MetaOrObject level
         , SortedVariable variable
@@ -245,28 +291,33 @@ makeEvaluateNoFreeVarInSubstitution
       where
         boundConfiguration
           | hasVariable (Pattern.freeVariables term) =
+            -- Quantify the term (with bound variables) in conjunction with the
+            -- conditions with bound variables.
             (ExpandedPattern.topOf patternSort)
                 { term =
-                    mkExists variable
-                    $ Maybe.fromMaybe (mkTop patternSort)
-                    $ mkAndMaybe (Just term)
+                    mkExists variable . mkAndMaybe term
                     $ Predicate.fromPredicate patternSort <$> boundCondition
                 }
           | otherwise =
+            -- Keep the term (free of bound variables) outside the quantifier on
+            -- the conditions with bound variables.
             (ExpandedPattern.topOf patternSort)
                 { term = term
                 , predicate =
-                    Predicate.makeAndPredicate freePredicate
-                    $ Predicate.makeExistsPredicate variable
-                    $ Maybe.fromMaybe Predicate.makeTruePredicate boundCondition
+                    maybe
+                        Predicate.makeTruePredicate
+                        (Predicate.makeExistsPredicate variable)
+                        boundCondition
                 }
         Valid { patternSort } = extract term
+
         (boundPredicate, freePredicate)
           | hasVariable (Predicate.freeVariables predicate) =
             (Just predicate, makeTruePredicate)
           | otherwise = (Nothing, predicate)
         (boundSubstitution, freeSubstitution) =
             splitSubstitutionByDependency variable substitution
+
         boundCondition =
             mkAndPredicateMaybe boundPredicate
             $ Predicate.fromSubstitution <$> boundSubstitution
@@ -276,7 +327,8 @@ makeEvaluateNoFreeVarInSubstitution
                 , predicate = freePredicate
                 , substitution = freeSubstitution
                 }
-        mkAndMaybe a b = (mkAnd <$> a <*> b) <|> a <|> b
+
+        mkAndMaybe a = maybe a (mkAnd a)
         mkAndPredicateMaybe a b =
             (Predicate.makeAndPredicate <$> a <*> b) <|> a <|> b
 
