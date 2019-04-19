@@ -182,7 +182,7 @@ newSolver config = do
     Config { executable = exe, arguments = args } = config
     Config { preludeFile } = config
     SMT { getSMT } = do
-        setLogic logic
+        -- setLogic logic
         setTimeOut timeOut
         maybe (pure ()) loadFile preludeFile
 
