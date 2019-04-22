@@ -311,7 +311,7 @@ makeEvaluateFunctionalOr
         )
         seconds
     firstNotCeil <-
-        gather $ Not.simplifyEvaluated
+        fmap MultiOr.make $ gather $ Not.simplifyEvaluated
             tools
             substitutionSimplifier
             simplifier
@@ -320,7 +320,7 @@ makeEvaluateFunctionalOr
     let (secondCeils, _proofs) = unzip secondCeilsWithProofs
     secondNotCeils <-
         Traversable.for secondCeils
-        $ gather . Not.simplifyEvaluated
+        $ fmap MultiOr.make . gather . Not.simplifyEvaluated
             tools
             substitutionSimplifier
             simplifier
@@ -481,14 +481,14 @@ makeEvaluate
             axiomIdToSimplfier
             second { term = if termsAreEqual then mkTop_ else secondTerm }
     firstCeilNegation <-
-        gather $ Not.simplifyEvaluated
+        fmap MultiOr.make $ gather $ Not.simplifyEvaluated
             tools
             substitutionSimplifier
             simplifier
             axiomIdToSimplfier
             firstCeil
     secondCeilNegation <-
-        gather $ Not.simplifyEvaluated
+        fmap MultiOr.make $ gather $ Not.simplifyEvaluated
             tools
             substitutionSimplifier
             simplifier

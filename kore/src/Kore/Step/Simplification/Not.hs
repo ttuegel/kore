@@ -74,7 +74,7 @@ simplify
     axiomSimplifiers
     Not { notChild = child }
   =
-    gather $ simplifyEvaluated
+    fmap MultiOr.make $ gather $ simplifyEvaluated
         tools
         predicateSimplifier
         termSimplifier

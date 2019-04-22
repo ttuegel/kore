@@ -102,6 +102,7 @@ simplifyEvaluated
 simplifyEvaluated =
     SMT.runSMT SMT.defaultConfig
     . evalSimplifier emptyLogger
+    . fmap MultiOr.make
     . gather
     . Not.simplifyEvaluated
         mockMetadataTools

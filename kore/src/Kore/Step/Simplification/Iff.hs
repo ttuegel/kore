@@ -121,7 +121,7 @@ simplifyEvaluated
     second
   | OrOfExpandedPattern.isTrue first = return second
   | OrOfExpandedPattern.isFalse first =
-    gather $ Not.simplifyEvaluated
+    fmap MultiOr.make $ gather $ Not.simplifyEvaluated
         tools
         predicateSimplifier
         termSimplifier
@@ -129,7 +129,7 @@ simplifyEvaluated
         second
   | OrOfExpandedPattern.isTrue second = return first
   | OrOfExpandedPattern.isFalse second =
-    gather $ Not.simplifyEvaluated
+    fmap MultiOr.make $ gather $ Not.simplifyEvaluated
         tools
         predicateSimplifier
         termSimplifier

@@ -140,7 +140,7 @@ simplifyEvaluated
             termSimplifier
             axiomSimplifiers
             first
-    return (result, SimplificationProof)
+    return (MultiOr.make result, SimplificationProof)
   | otherwise = do
     results <- traverse (simplifyEvaluateHalfImplies' first) second
     return (MultiOr.flatten results, SimplificationProof)
@@ -180,7 +180,7 @@ simplifyEvaluateHalfImplies
   | ExpandedPattern.isTop second =
     return (MultiOr.make [ExpandedPattern.top])
   | ExpandedPattern.isBottom second =
-    gather $ Not.simplifyEvaluated
+    fmap MultiOr.make $ gather $ Not.simplifyEvaluated
         tools
         predicateSimplifier
         termSimplifier
