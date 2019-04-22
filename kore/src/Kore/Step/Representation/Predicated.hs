@@ -207,8 +207,7 @@ The result has a true 'Predicate'.
 
  -}
 fromSubstitution
-    :: Ord (variable Object)
-    => Substitution Object variable
+    :: Substitution Object variable
     -> Predicated Object variable ()
 fromSubstitution substitution =
     Predicated
