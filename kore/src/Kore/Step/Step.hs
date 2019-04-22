@@ -38,6 +38,7 @@ import qualified Control.Monad as Monad
 import qualified Control.Monad.Trans as Monad.Trans
 import qualified Data.Foldable as Foldable
 import qualified Data.Map.Strict as Map
+import qualified Data.Reflection as Reflection
 import           Data.Semigroup
                  ( Semigroup (..) )
 import qualified Data.Sequence as Seq
@@ -51,7 +52,6 @@ import           Kore.Attribute.Symbol
 import qualified Kore.Attribute.Symbol as Attribute.Symbol
 import           Kore.IndexedModule.MetadataTools
                  ( MetadataTools )
-import qualified Kore.IndexedModule.MetadataTools as MetadataTools
 import qualified Kore.Logger as Log
 import           Kore.Predicate.Predicate
                  ( Predicate )
@@ -648,9 +648,12 @@ checkSubstitutionCoverage tools initial unified final
     isValidSymbolic (x, t)
       | Target.isTarget x = True
       | Valid.App_ symbolOrAlias _ <- t =
-        (Attribute.Symbol.isConstructor . Attribute.Symbol.constructor)
-            (MetadataTools.symAttributes tools symbolOrAlias)
+        isConstructor symbolOrAlias || isSortInjection symbolOrAlias
       | otherwise = False
+      where
+        isConstructor = Reflection.give tools Attribute.Symbol.isConstructor_
+        isSortInjection =
+            Reflection.give tools Attribute.Symbol.isSortInjection_
 
 {- | Apply the given rules to the initial configuration in parallel.
 
