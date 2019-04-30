@@ -25,6 +25,7 @@ module Test.Kore
       -- * Re-exports
     , ParsedPattern
     , asParsedPattern
+    , module Kore.Parser.Sentence
     , Logger.emptyLogger
     ) where
 
@@ -41,16 +42,15 @@ import           Data.Text
                  ( Text )
 import qualified Data.Text as Text
 
-import qualified Kore.AST.Common as Common
 import qualified Kore.AST.Pure
 import           Kore.AST.Sentence
 import           Kore.AST.Valid
 import qualified Kore.Domain.Builtin as Domain
 import qualified Kore.Logger.Output as Logger
                  ( emptyLogger )
-import           Kore.Parser
-                 ( ParsedPattern, asParsedPattern )
 import           Kore.Parser.Lexeme
+import qualified Kore.Parser.Pattern as Parser
+import           Kore.Parser.Sentence
 import qualified Kore.Predicate.Predicate as Syntax
                  ( Predicate )
 import qualified Kore.Predicate.Predicate as Syntax.Predicate
@@ -61,6 +61,13 @@ import qualified Kore.Step.OrPattern as OrPattern
 import           Kore.Step.Pattern as Pattern
 import           Kore.Step.TermLike as TermLike
 import           Kore.Syntax
+
+type ParsedPattern = Parser.Pattern Variable
+
+asParsedPattern
+    :: Parser.PatternF variable (Parser.Pattern variable)
+    -> Parser.Pattern variable
+asParsedPattern = Parser.asPattern
 
 {- | @Context@ stores the variables and sort variables in scope.
  -}
@@ -280,14 +287,9 @@ ceilGen = ceilFloorGen Ceil
 equalsGen :: (Sort -> Gen child) -> Sort -> Gen (Equals Sort child)
 equalsGen = equalsInGen Equals
 
-genBuiltinExternal :: Sort -> Gen (Domain.Builtin child)
-genBuiltinExternal domainValueSort =
-    Domain.BuiltinExternal <$> genExternal domainValueSort
-
 genBuiltin :: Sort -> Gen (Domain.Builtin child)
 genBuiltin domainValueSort = Gen.choice
-    [ genBuiltinExternal domainValueSort
-    , Domain.BuiltinInt <$> genInternalInt domainValueSort
+    [ Domain.BuiltinInt <$> genInternalInt domainValueSort
     , Domain.BuiltinBool <$> genInternalBool domainValueSort
     ]
 
@@ -301,14 +303,9 @@ genInternalBool :: Sort -> Gen Domain.InternalBool
 genInternalBool builtinBoolSort =
     Domain.InternalBool builtinBoolSort <$> Gen.bool
 
-genExternal :: Sort -> Gen (Domain.External child)
-genExternal domainValueSort =
-    Domain.External
-        domainValueSort
-        . Kore.AST.Pure.eraseAnnotations
-        . mkStringLiteral
-        . getStringLiteral
-        <$> stringLiteralGen
+domainValueGen :: (Sort -> Gen child) -> Sort -> Gen (DomainValue Sort child)
+domainValueGen childGen domainValueSort =
+    DomainValue domainValueSort <$> childGen stringMetaSort
 
 existsGen :: (Sort -> Gen child) -> Sort -> Gen (Exists Sort Variable child)
 existsGen = existsForallGen Exists
@@ -346,24 +343,24 @@ topGen = topBottomGen Top
 patternGen
     :: (Sort -> Gen child)
     -> Sort
-    -> Gen (Common.Pattern Object dom Variable child)
+    -> Gen (Parser.PatternF Variable child)
 patternGen childGen patternSort =
     Gen.frequency
-        [ (1, Common.AndPattern <$> andGen childGen patternSort)
-        , (1, Common.ApplicationPattern <$> applicationGen childGen patternSort)
-        , (1, Common.BottomPattern <$> bottomGen patternSort)
-        , (1, Common.CeilPattern <$> ceilGen childGen patternSort)
-        , (1, Common.EqualsPattern <$> equalsGen childGen patternSort)
-        , (1, Common.ExistsPattern <$> existsGen childGen patternSort)
-        , (1, Common.FloorPattern <$> floorGen childGen patternSort)
-        , (1, Common.ForallPattern <$> forallGen childGen patternSort)
-        , (1, Common.IffPattern <$> iffGen childGen patternSort)
-        , (1, Common.ImpliesPattern <$> impliesGen childGen patternSort)
-        , (1, Common.InPattern <$> inGen childGen patternSort)
-        , (1, Common.NotPattern <$> notGen childGen patternSort)
-        , (1, Common.OrPattern <$> orGen childGen patternSort)
-        , (1, Common.TopPattern <$> topGen patternSort)
-        , (5, Common.VariablePattern <$> variableGen patternSort)
+        [ (1, Parser.AndF <$> andGen childGen patternSort)
+        , (1, Parser.ApplicationF <$> applicationGen childGen patternSort)
+        , (1, Parser.BottomF <$> bottomGen patternSort)
+        , (1, Parser.CeilF <$> ceilGen childGen patternSort)
+        , (1, Parser.EqualsF <$> equalsGen childGen patternSort)
+        , (1, Parser.ExistsF <$> existsGen childGen patternSort)
+        , (1, Parser.FloorF <$> floorGen childGen patternSort)
+        , (1, Parser.ForallF <$> forallGen childGen patternSort)
+        , (1, Parser.IffF <$> iffGen childGen patternSort)
+        , (1, Parser.ImpliesF <$> impliesGen childGen patternSort)
+        , (1, Parser.InF <$> inGen childGen patternSort)
+        , (1, Parser.NotF <$> notGen childGen patternSort)
+        , (1, Parser.OrF <$> orGen childGen patternSort)
+        , (1, Parser.TopF <$> topGen patternSort)
+        , (5, Parser.VariableF <$> variableGen patternSort)
         ]
 
 termLikeGen :: Hedgehog.Gen (TermLike Variable)
@@ -461,11 +458,11 @@ termLikeChildGen patternSort =
     termLikeTopGen = pure (mkTop patternSort)
     termLikeVariableGen = mkVar <$> variableGen patternSort
 
-korePatternGen :: Hedgehog.Gen ParsedPattern
+korePatternGen :: Hedgehog.Gen (Parser.Pattern Variable)
 korePatternGen =
     standaloneGen (korePatternChildGen =<< sortGen)
 
-korePatternChildGen :: Sort -> Gen ParsedPattern
+korePatternChildGen :: Sort -> Gen (Parser.Pattern Variable)
 korePatternChildGen patternSort' =
     Gen.sized korePatternChildGenWorker
   where
@@ -488,38 +485,38 @@ korePatternChildGen patternSort' =
                     , (1, korePatternGenRewrites)
                     ]
 
-    korePatternGenLevel :: Gen ParsedPattern
+    korePatternGenLevel :: Gen (Parser.Pattern Variable)
     korePatternGenLevel =
-        asParsedPattern <$> patternGen korePatternChildGen patternSort'
+        Parser.asPattern <$> patternGen korePatternChildGen patternSort'
 
-    korePatternGenStringLiteral :: Gen ParsedPattern
+    korePatternGenStringLiteral :: Gen (Parser.Pattern Variable)
     korePatternGenStringLiteral =
-        asParsedPattern . Common.StringLiteralPattern <$> stringLiteralGen
+        Parser.asPattern . Parser.StringLiteralF <$> stringLiteralGen
 
-    korePatternGenCharLiteral :: Gen ParsedPattern
+    korePatternGenCharLiteral :: Gen (Parser.Pattern Variable)
     korePatternGenCharLiteral =
-        asParsedPattern . Common.CharLiteralPattern <$> charLiteralGen
+        Parser.asPattern . Parser.CharLiteralF <$> charLiteralGen
 
-    korePatternGenDomainValue :: Object ~ Object => Gen ParsedPattern
+    korePatternGenDomainValue :: Object ~ Object => Gen (Parser.Pattern Variable)
     korePatternGenDomainValue =
-        asParsedPattern . Common.DomainValuePattern
-            <$> genBuiltinExternal patternSort'
+        Parser.asPattern . Parser.DomainValueF
+            <$> domainValueGen korePatternChildGen patternSort'
 
-    korePatternGenNext :: Object ~ Object => Gen ParsedPattern
+    korePatternGenNext :: Object ~ Object => Gen (Parser.Pattern Variable)
     korePatternGenNext =
-        asParsedPattern . Common.NextPattern
+        Parser.asPattern . Parser.NextF
             <$> nextGen korePatternChildGen patternSort'
 
-    korePatternGenRewrites :: Object ~ Object => Gen ParsedPattern
+    korePatternGenRewrites :: Object ~ Object => Gen (Parser.Pattern Variable)
     korePatternGenRewrites =
-        asParsedPattern . Common.RewritesPattern
+        Parser.asPattern . Parser.RewritesF
             <$> rewritesGen korePatternChildGen patternSort'
 
-    korePatternGenVariable :: Gen ParsedPattern
+    korePatternGenVariable :: Gen (Parser.Pattern Variable)
     korePatternGenVariable =
-        asParsedPattern . Common.VariablePattern <$> variableGen patternSort'
+        Parser.asPattern . Parser.VariableF <$> variableGen patternSort'
 
-korePatternUnifiedGen :: Gen ParsedPattern
+korePatternUnifiedGen :: Gen (Parser.Pattern Variable)
 korePatternUnifiedGen = korePatternChildGen =<< sortGen
 
 predicateGen

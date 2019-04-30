@@ -56,15 +56,14 @@ import qualified Kore.Domain.Builtin as Domain
 import           Kore.Error
 import           Kore.IndexedModule.IndexedModule
 import           Kore.IndexedModule.Resolvers
-import           Kore.Parser
-                 ( ParsedPattern )
+import qualified Kore.Parser.Pattern as Parser
+import           Kore.Parser.Sentence
 import           Kore.Unparser
 import qualified Kore.Variables.Free as Variables
 import qualified Kore.Verified as Verified
 
 newtype DeclaredVariables =
-    DeclaredVariables
-        { getDeclaredVariables :: Map.Map Id (Variable) }
+    DeclaredVariables { getDeclaredVariables :: Map.Map Id (Variable) }
     deriving (Monoid, Semigroup)
 
 emptyDeclaredVariables :: DeclaredVariables
@@ -77,8 +76,7 @@ data Context =
         -- ^ The sort variables in scope.
         , indexedModule :: !(KoreIndexedModule Attribute.Null Attribute.Null)
         -- ^ The indexed Kore module containing all definitions in scope.
-        , builtinDomainValueVerifiers
-            :: !(Builtin.DomainValueVerifiers Verified.Pattern)
+        , builtinDomainValueVerifiers :: !Builtin.DomainValueVerifiers
         }
 
 newtype PatternVerifier a =
@@ -97,9 +95,7 @@ runPatternVerifier
 runPatternVerifier ctx PatternVerifier { getPatternVerifier } =
     runReaderT getPatternVerifier ctx
 
-lookupSortDeclaration
-    :: Id
-    -> PatternVerifier ParsedSentenceSort
+lookupSortDeclaration :: Id -> PatternVerifier ParsedSentenceSort
 lookupSortDeclaration sortId = do
     Context { indexedModule } <- Reader.ask
     (_, sortDecl) <- resolveSort indexedModule sortId
@@ -227,7 +223,7 @@ This includes verifying that:
 verifyPattern
     :: Maybe Sort
     -- ^ If present, represents the expected sort of the pattern.
-    -> ParsedPattern
+    -> Parser.Pattern Variable
     -> PatternVerifier Verified.Pattern
 verifyPattern expectedSort korePattern = do
     verified <- Recursive.fold verifyPatternWorker korePattern
@@ -246,7 +242,7 @@ See also: 'verifyPattern', 'verifyFreeVariables', 'withDeclaredVariables'
  -}
 verifyStandalonePattern
     :: Maybe Sort
-    -> ParsedPattern
+    -> Parser.Pattern Variable
     -> PatternVerifier Verified.Pattern
 verifyStandalonePattern expectedSort korePattern = do
     declaredVariables <- verifyFreeVariables korePattern
@@ -261,75 +257,67 @@ type variables.
  -}
 verifyNoPatterns
     :: MonadError (Error VerifyError) m
-    => ParsedPattern
+    => Parser.Pattern Variable
     -> m Verified.Pattern
 verifyNoPatterns _ = koreFail "Unexpected pattern."
 
 verifyObjectPattern
-    ::  ( base ~ Pattern Object Domain.Builtin Variable
-        , valid ~ Valid (Variable) Object
-        )
-    => base (PatternVerifier Verified.Pattern)
-    -> PatternVerifier (CofreeF base valid Verified.Pattern)
+    :: (Parser.PatternF Variable) (PatternVerifier Verified.Pattern)
+    -> PatternVerifier (Base Verified.Pattern Verified.Pattern)
 verifyObjectPattern pat =
     withLocationAndContext pat patternName $ verifyPatternHead pat
   where
     patternName = patternNameForContext pat
 
 verifyPatternHead
-    ::  ( base ~ Pattern Object Domain.Builtin Variable
-        , valid ~ Valid Variable Object
-        )
-    => base (PatternVerifier Verified.Pattern)
-    -> PatternVerifier (CofreeF base valid Verified.Pattern)
+    :: (Parser.PatternF Variable) (PatternVerifier Verified.Pattern)
+    -> PatternVerifier (Base Verified.Pattern Verified.Pattern)
 verifyPatternHead =
     \case
-        AndPattern and' ->
+        Parser.AndF and' ->
             transCofreeF AndPattern <$> verifyAnd and'
-        ApplicationPattern app ->
+        Parser.ApplicationF app ->
             transCofreeF ApplicationPattern <$> verifyApplication app
-        BottomPattern bottom ->
+        Parser.BottomF bottom ->
             transCofreeF BottomPattern <$> verifyBottom bottom
-        CeilPattern ceil' ->
+        Parser.CeilF ceil' ->
             transCofreeF CeilPattern <$> verifyCeil ceil'
-        DomainValuePattern dv ->
+        Parser.DomainValueF dv ->
             transCofreeF DomainValuePattern <$> verifyDomainValue dv
-        EqualsPattern equals' ->
+        Parser.EqualsF equals' ->
             transCofreeF EqualsPattern <$> verifyEquals equals'
-        ExistsPattern exists ->
+        Parser.ExistsF exists ->
             transCofreeF ExistsPattern <$> verifyExists exists
-        FloorPattern floor' ->
+        Parser.FloorF floor' ->
             transCofreeF FloorPattern <$> verifyFloor floor'
-        ForallPattern forall' ->
+        Parser.ForallF forall' ->
             transCofreeF ForallPattern <$> verifyForall forall'
-        IffPattern iff ->
+        Parser.IffF iff ->
             transCofreeF IffPattern <$> verifyIff iff
-        ImpliesPattern implies ->
+        Parser.ImpliesF implies ->
             transCofreeF ImpliesPattern <$> verifyImplies implies
-        InPattern in' ->
+        Parser.InF in' ->
             transCofreeF InPattern <$> verifyIn in'
-        NextPattern next ->
+        Parser.NextF next ->
             transCofreeF NextPattern <$> verifyNext next
-        NotPattern not' ->
+        Parser.NotF not' ->
             transCofreeF NotPattern <$> verifyNot not'
-        OrPattern or' ->
+        Parser.OrF or' ->
             transCofreeF OrPattern <$> verifyOr or'
-        RewritesPattern rewrites ->
+        Parser.RewritesF rewrites ->
             transCofreeF RewritesPattern <$> verifyRewrites rewrites
-        StringLiteralPattern str ->
+        Parser.StringLiteralF str ->
             transCofreeF (StringLiteralPattern . getConst)
                 <$> verifyStringLiteral str
-        CharLiteralPattern char ->
+        Parser.CharLiteralF char ->
             transCofreeF (CharLiteralPattern . getConst)
                 <$> verifyCharLiteral char
-        TopPattern top ->
-            transCofreeF TopPattern <$> verifyTop top
-        VariablePattern var ->
+        Parser.TopF top -> transCofreeF TopPattern <$> verifyTop top
+        Parser.VariableF var ->
             transCofreeF (VariablePattern . getConst)
                 <$> verifyVariable var
-        InhabitantPattern _ ->
-            koreFail "Unexpected pattern."
-        SetVariablePattern (SetVariable var) ->
+        Parser.InhabitantF _ -> koreFail "Unexpected pattern."
+        Parser.SetVariableF (SetVariable var) ->
             transCofreeF (SetVariablePattern . SetVariable . getConst)
                 <$> verifyVariable var
   where
@@ -593,12 +581,10 @@ verifyVariable variable@Variable { variableName, variableSort } = do
     return (Valid { patternSort, freeVariables } :< verified)
 
 verifyDomainValue
-    :: valid ~ Valid (Variable) Object
-    => Domain.Builtin (PatternVerifier Verified.Pattern)
-    -> PatternVerifier (CofreeF Domain.Builtin valid Verified.Pattern)
+    :: DomainValue Sort (PatternVerifier Verified.Pattern)
+    -> PatternVerifier (CofreeF Domain.Builtin (Valid Variable Object) Verified.Pattern)
 verifyDomainValue domain = do
-    let DomainValue { domainValueSort = patternSort } =
-            Lens.view Domain.lensDomainValue domain
+    let DomainValue { domainValueSort = patternSort } = domain
     Context { builtinDomainValueVerifiers, indexedModule } <- Reader.ask
     verifyPatternSort patternSort
     let lookupSortDeclaration' sortId = do
@@ -639,10 +625,7 @@ verifyCharLiteral char = do
 verifyVariableDeclaration :: Variable -> PatternVerifier VerifySuccess
 verifyVariableDeclaration Variable { variableSort } = do
     Context { declaredSortVariables } <- Reader.ask
-    verifySort
-        lookupSortDeclaration
-        declaredSortVariables
-        variableSort
+    verifySort lookupSortDeclaration declaredSortVariables variableSort
 
 verifySymbolOrAlias
     :: SymbolOrAlias
@@ -675,10 +658,7 @@ applicationSortsFromSymbolOrAliasSentence
 applicationSortsFromSymbolOrAliasSentence symbolOrAlias sentence = do
     Context { declaredSortVariables } <- Reader.ask
     mapM_
-        ( verifySort
-            lookupSortDeclaration
-            declaredSortVariables
-        )
+        (verifySort lookupSortDeclaration declaredSortVariables)
         (symbolOrAliasParams symbolOrAlias)
     symbolOrAliasSorts (symbolOrAliasParams symbolOrAlias) sentence
 
@@ -707,13 +687,13 @@ assertExpectedSort (Just expected) Valid { patternSort } =
     assertSameSort expected patternSort
 
 verifyFreeVariables
-    :: ParsedPattern
+    :: Parser.Pattern Variable
     -> PatternVerifier DeclaredVariables
-verifyFreeVariables unifiedPattern =
+verifyFreeVariables parsedPattern =
     Monad.foldM
         addFreeVariable
         emptyDeclaredVariables
-        (Set.toList (Variables.freePureVariables unifiedPattern))
+        (Set.toList (Parser.freeVariables parsedPattern))
 
 addFreeVariable
     :: DeclaredVariables
@@ -739,40 +719,40 @@ checkVariable var vars =
             <+> unparse var
             <> Pretty.dot
 
-patternNameForContext :: Pattern Object dom Variable p -> String
-patternNameForContext (AndPattern _) = "\\and"
-patternNameForContext (ApplicationPattern application) =
+patternNameForContext :: Parser.PatternF Variable p -> String
+patternNameForContext (Parser.AndF _) = "\\and"
+patternNameForContext (Parser.ApplicationF application) =
     "symbol or alias '"
     ++ getIdForError
         (symbolOrAliasConstructor (applicationSymbolOrAlias application))
     ++ "'"
-patternNameForContext (BottomPattern _) = "\\bottom"
-patternNameForContext (CeilPattern _) = "\\ceil"
-patternNameForContext (DomainValuePattern _) = "\\dv"
-patternNameForContext (EqualsPattern _) = "\\equals"
-patternNameForContext (ExistsPattern exists) =
+patternNameForContext (Parser.BottomF _) = "\\bottom"
+patternNameForContext (Parser.CeilF _) = "\\ceil"
+patternNameForContext (Parser.DomainValueF _) = "\\dv"
+patternNameForContext (Parser.EqualsF _) = "\\equals"
+patternNameForContext (Parser.ExistsF exists) =
     "\\exists '"
     ++ variableNameForContext (existsVariable exists)
     ++ "'"
-patternNameForContext (FloorPattern _) = "\\floor"
-patternNameForContext (ForallPattern forall) =
+patternNameForContext (Parser.FloorF _) = "\\floor"
+patternNameForContext (Parser.ForallF forall) =
     "\\forall '"
     ++ variableNameForContext (forallVariable forall)
     ++ "'"
-patternNameForContext (IffPattern _) = "\\iff"
-patternNameForContext (ImpliesPattern _) = "\\implies"
-patternNameForContext (InPattern _) = "\\in"
-patternNameForContext (NextPattern _) = "\\next"
-patternNameForContext (NotPattern _) = "\\not"
-patternNameForContext (OrPattern _) = "\\or"
-patternNameForContext (RewritesPattern _) = "\\rewrites"
-patternNameForContext (StringLiteralPattern _) = "<string>"
-patternNameForContext (CharLiteralPattern _) = "<char>"
-patternNameForContext (TopPattern _) = "\\top"
-patternNameForContext (VariablePattern variable) =
+patternNameForContext (Parser.IffF _) = "\\iff"
+patternNameForContext (Parser.ImpliesF _) = "\\implies"
+patternNameForContext (Parser.InF _) = "\\in"
+patternNameForContext (Parser.NextF _) = "\\next"
+patternNameForContext (Parser.NotF _) = "\\not"
+patternNameForContext (Parser.OrF _) = "\\or"
+patternNameForContext (Parser.RewritesF _) = "\\rewrites"
+patternNameForContext (Parser.StringLiteralF _) = "<string>"
+patternNameForContext (Parser.CharLiteralF _) = "<char>"
+patternNameForContext (Parser.TopF _) = "\\top"
+patternNameForContext (Parser.VariableF variable) =
     "variable '" ++ variableNameForContext variable ++ "'"
-patternNameForContext (InhabitantPattern _) = "\\inh"
-patternNameForContext (SetVariablePattern (SetVariable variable)) =
+patternNameForContext (Parser.InhabitantF _) = "\\inh"
+patternNameForContext (Parser.SetVariableF (SetVariable variable)) =
     "set variable '" ++ variableNameForContext variable ++ "'"
 
 variableNameForContext :: Variable -> String

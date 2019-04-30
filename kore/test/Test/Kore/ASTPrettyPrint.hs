@@ -7,7 +7,7 @@ import Test.Tasty.HUnit
 
 import           Kore.AST.Pure
 import           Kore.ASTPrettyPrint
-import qualified Kore.Domain.Builtin as Domain
+import qualified Kore.Parser.Pattern as Parser
 
 import Test.Kore
 
@@ -16,7 +16,7 @@ test_astPrettyPrint =
     [ testCase "Char literal"
         (assertEqual ""
             "CharLiteralPattern (CharLiteral 'a')"
-            (prettyPrintPattern (CharLiteralPattern (CharLiteral 'a')))
+            (prettyPrintPattern (Parser.CharLiteralF (CharLiteral 'a')))
         )
     , testCase "Object unified variable"
         (assertEqual ""
@@ -51,6 +51,6 @@ test_astPrettyPrint =
     ]
 
 prettyPrintPattern
-    :: Pattern Object Domain.Builtin Variable ParsedPattern
+    :: Parser.PatternF Variable (Parser.Pattern Variable)
     -> String
 prettyPrintPattern = prettyPrintToString

@@ -330,9 +330,8 @@ keccakSymbol = builtinSymbol "KECCAK"
 -- | Declare 'a sort' in a Kore module.
 sortDecl :: Sort -> ParsedSentence
 sortDecl sort =
-    asSentence sentence
+    SentenceSortSentence sentence
   where
-    sentence :: ParsedSentenceSort
     sentence =
         SentenceSort
             { sentenceSortName =
@@ -350,9 +349,8 @@ hookedSortDecl
     -- ^ declaration attributes
     -> ParsedSentence
 hookedSortDecl sort attrs =
-    (asSentence . SentenceHookedSort) sentence
+    (SentenceHookSentence . SentenceHookedSort) sentence
   where
-    sentence :: ParsedSentenceSort
     sentence =
         SentenceSort
             { sentenceSortName =
@@ -525,13 +523,12 @@ pairSort lSort rSort =
 -- | Declare 'Pair' in a Kore module.
 pairSortDecl :: ParsedSentence
 pairSortDecl =
-    asSentence decl
+    SentenceSortSentence decl
   where
     lSortVariable = SortVariable (testId "l")
     rSortVariable = SortVariable (testId "r")
     lSort = SortVariableSort lSortVariable
     rSort = SortVariableSort rSortVariable
-    decl :: ParsedSentenceSort
     decl =
         SentenceSort
             { sentenceSortName =
@@ -612,9 +609,8 @@ symbolDecl
     sentenceSymbolSorts
     (Attributes -> sentenceSymbolAttributes)
   =
-    asSentence sentence
+    SentenceSymbolSentence sentence
   where
-    sentence :: ParsedSentenceSymbol
     sentence =
         SentenceSymbol
             { sentenceSymbolSymbol
@@ -645,9 +641,8 @@ hookedSymbolDecl
     sentenceSymbolSorts
     (Attributes -> sentenceSymbolAttributes)
   =
-    (asSentence . SentenceHookedSymbol) sentence
+    (SentenceHookSentence . SentenceHookedSymbol) sentence
   where
-    sentence :: ParsedSentenceSymbol
     sentence =
         SentenceSymbol
             { sentenceSymbolSymbol
@@ -678,9 +673,8 @@ unhookedSymbolDecl
     sentenceSymbolSorts
     (Attributes -> sentenceSymbolAttributes)
   =
-    asSentence sentence
+    SentenceSymbolSentence sentence
   where
-    sentence :: ParsedSentenceSymbol
     sentence =
         SentenceSymbol
             { sentenceSymbolSymbol
@@ -696,9 +690,8 @@ unhookedSymbolDecl
 
 importParsedModule :: ModuleName -> ParsedSentence
 importParsedModule moduleName =
-    asSentence sentence
+    SentenceImportSentence sentence
   where
-    sentence :: ParsedSentenceImport
     sentence =
         SentenceImport
             { sentenceImportModuleName = moduleName
@@ -866,9 +859,8 @@ kEqualModule =
 
 injSymbolDecl :: ParsedSentence
 injSymbolDecl =
-    asSentence decl
+    SentenceSymbolSentence decl
   where
-    decl :: ParsedSentenceSymbol
     decl =
         SentenceSymbol
             { sentenceSymbolSymbol =
@@ -1032,9 +1024,8 @@ pairModule =
 
 pairSymbolDecl :: ParsedSentence
 pairSymbolDecl =
-    asSentence decl
+    SentenceSymbolSentence decl
   where
-    decl :: ParsedSentenceSymbol
     decl =
         SentenceSymbol
             { sentenceSymbolSymbol =

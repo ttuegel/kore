@@ -19,13 +19,13 @@ module Kore.Builtin
     , Builtin.Function
     , Builtin
     , Builtin.sortDeclVerifier
+    , Builtin.SymbolVerifier (..)
     , Builtin.symbolVerifier
     , Builtin.verifyDomainValue
     , koreVerifiers
     , koreEvaluators
     , evaluators
     , externalizePattern
-    , asMetaPattern
     ) where
 
 import qualified Data.Functor.Foldable as Recursive
@@ -38,7 +38,6 @@ import           Data.Semigroup
 import           Data.Text
                  ( Text )
 
-import qualified Kore.Annotation.Null as Annotation
 import           Kore.AST.Pure
 import qualified Kore.Attribute.Axiom as Attribute
 import           Kore.Attribute.Hook
@@ -48,8 +47,6 @@ import           Kore.Attribute.Symbol
 import qualified Kore.Attribute.Symbol as Attribute
 import qualified Kore.Builtin.Bool as Bool
 import qualified Kore.Builtin.Builtin as Builtin
-import           Kore.Builtin.Error
-                 ( notImplementedInternal )
 import qualified Kore.Builtin.Int as Int
 import qualified Kore.Builtin.KEqual as KEqual
 import qualified Kore.Builtin.Krypto as Krypto
@@ -61,6 +58,7 @@ import qualified Kore.Domain.Builtin as Domain
 import           Kore.IndexedModule.IndexedModule
                  ( IndexedModule (..), VerifiedModule )
 import qualified Kore.IndexedModule.IndexedModule as IndexedModule
+import qualified Kore.Parser.Pattern as Parser
 import           Kore.Step.Axiom.Identifier
                  ( AxiomIdentifier )
 import qualified Kore.Step.Axiom.Identifier as AxiomIdentifier
@@ -187,48 +185,52 @@ See also: 'asPattern'
 externalizePattern
     ::  forall variable. Ord variable
     =>  TermLike variable
-    ->  TermLike variable
+    ->  Parser.Pattern variable
 externalizePattern =
     Recursive.unfold externalizePatternWorker
   where
     externalizePatternWorker
         ::  TermLike variable
-        ->  Base (TermLike variable) (TermLike variable)
-    externalizePatternWorker (Recursive.project -> original@(_ :< pat)) =
+        ->  Base (Parser.Pattern variable) (TermLike variable)
+    externalizePatternWorker (Recursive.project -> _ :< pat) =
         case pat of
             DomainValuePattern domain ->
                 case domain of
-                    Domain.BuiltinExternal _ -> original
+                    Domain.BuiltinExternal external ->
+                        (Parser.asPatternBase . Parser.DomainValueF)
+                            DomainValue { domainValueSort, domainValueChild }
+                      where
+                        Domain.External { domainValueSort } = external
+                        Domain.External { domainValueChild } = external
                     Domain.BuiltinMap  builtin ->
-                        Recursive.project (Map.asTermLike builtin)
+                        externalizePatternWorker (Map.asTermLike builtin)
                     Domain.BuiltinList builtin ->
-                        Recursive.project (List.asTermLike builtin)
+                        externalizePatternWorker (List.asTermLike builtin)
                     Domain.BuiltinSet  builtin ->
-                        Recursive.project (Set.asTermLike builtin)
+                        externalizePatternWorker (Set.asTermLike builtin)
                     Domain.BuiltinInt  builtin ->
-                        Recursive.project (Int.asTermLike builtin)
+                        externalizePatternWorker (Int.asTermLike builtin)
                     Domain.BuiltinBool builtin ->
-                        Recursive.project (Bool.asTermLike builtin)
-            _ -> original
-
-{- | Extract the meta-level pattern argument of a domain value.
-
-WARNING: This is not implemented for internal domain values. Use
-'externalizePattern' before calling this function.
-
- -}
-asMetaPattern
-    :: Functor domain
-    => Domain.Builtin child
-    -> PurePattern Meta domain Variable (Annotation.Null Meta)
-asMetaPattern =
-    \case
-        Domain.BuiltinExternal ext ->
-            castVoidDomainValues domainValueChild
-          where
-            Domain.External { domainValueChild } = ext
-        Domain.BuiltinMap _ -> notImplementedInternal
-        Domain.BuiltinList _ -> notImplementedInternal
-        Domain.BuiltinSet _ -> notImplementedInternal
-        Domain.BuiltinInt _ -> notImplementedInternal
-        Domain.BuiltinBool _ -> notImplementedInternal
+                        externalizePatternWorker (Bool.asTermLike builtin)
+            -- Trivial cases
+            InhabitantPattern s       -> Parser.asPatternBase $ Parser.InhabitantF s
+            AndPattern andP           -> Parser.asPatternBase $ Parser.AndF andP
+            ApplicationPattern appP   -> Parser.asPatternBase $ Parser.ApplicationF appP
+            BottomPattern botP        -> Parser.asPatternBase $ Parser.BottomF botP
+            CeilPattern ceilP         -> Parser.asPatternBase $ Parser.CeilF ceilP
+            EqualsPattern eqP         -> Parser.asPatternBase $ Parser.EqualsF eqP
+            ExistsPattern existsP     -> Parser.asPatternBase $ Parser.ExistsF existsP
+            FloorPattern flrP         -> Parser.asPatternBase $ Parser.FloorF flrP
+            ForallPattern forallP     -> Parser.asPatternBase $ Parser.ForallF forallP
+            IffPattern iffP           -> Parser.asPatternBase $ Parser.IffF iffP
+            ImpliesPattern impP       -> Parser.asPatternBase $ Parser.ImpliesF impP
+            InPattern inP             -> Parser.asPatternBase $ Parser.InF inP
+            NextPattern nextP         -> Parser.asPatternBase $ Parser.NextF nextP
+            NotPattern notP           -> Parser.asPatternBase $ Parser.NotF notP
+            OrPattern orP             -> Parser.asPatternBase $ Parser.OrF orP
+            RewritesPattern rewP      -> Parser.asPatternBase $ Parser.RewritesF rewP
+            StringLiteralPattern strP -> Parser.asPatternBase $ Parser.StringLiteralF strP
+            CharLiteralPattern charP  -> Parser.asPatternBase $ Parser.CharLiteralF charP
+            TopPattern topP           -> Parser.asPatternBase $ Parser.TopF topP
+            VariablePattern varP      -> Parser.asPatternBase $ Parser.VariableF varP
+            SetVariablePattern varP   -> Parser.asPatternBase $ Parser.SetVariableF varP

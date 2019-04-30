@@ -78,31 +78,32 @@ symbolVerifiers =
     ]
   where
     iteVerifier :: Builtin.SymbolVerifier
-    iteVerifier
-        findSort
-        SentenceSymbol
-            { sentenceSymbolSorts = sorts
-            , sentenceSymbolResultSort = result
-            }
-      =
-        Kore.Error.withContext "In argument sorts" $
-            case sorts of
-                [firstSort, secondSort, thirdSort] -> do
-                    Bool.assertSort findSort firstSort
-                    Kore.Error.koreFailWhen
-                        (secondSort /= thirdSort)
-                        "Expected continuations to match"
-                    Kore.Error.koreFailWhen
-                        (secondSort /= result)
-                        "Expected continuations to match"
-                    return ()
-                _ ->
-                    Kore.Error.koreFail
-                        ( "Wrong arity, expected 3 but got "
-                        ++ show arity ++ " in KEQUAL.ite"
-                        )
-      where
-        arity = length sorts
+    iteVerifier =
+        Builtin.SymbolVerifier $ \findSort sentenceSymbol ->
+            let
+                SentenceSymbol { sentenceSymbolSorts = sorts } = sentenceSymbol
+                arity = length sorts
+                SentenceSymbol { sentenceSymbolResultSort = result } =
+                    sentenceSymbol
+            in Kore.Error.withContext "In argument sorts" $
+                case sorts of
+                    [firstSort, secondSort, thirdSort] -> do
+                        Builtin.runSortVerifier
+                            Bool.assertSort
+                            findSort
+                            firstSort
+                        Kore.Error.koreFailWhen
+                            (secondSort /= thirdSort)
+                            "Expected continuations to match"
+                        Kore.Error.koreFailWhen
+                            (secondSort /= result)
+                            "Expected continuations to match"
+                        return ()
+                    _ ->
+                        Kore.Error.koreFail
+                            ( "Wrong arity, expected 3 but got "
+                            ++ show arity ++ " in KEQUAL.ite"
+                            )
 
 {- | @builtinFunctions@ defines the hooks for @KEQUAL.eq@, @KEQUAL.neq@, and
 @KEQUAL.ite@.

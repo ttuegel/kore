@@ -6,74 +6,76 @@ This is a parser for the Kore language. Sample usage:
 
 @
 import Kore.Parser
-
-import           Kore.Parser.ParserUtils (parseOnly)
-import           System.Environment (getArgs)
+import System.Environment (getArgs)
 
 main :: IO ()
 main = do
     (fileName:_) <- getArgs
     contents <- readFile fileName
-    print (parseKoreDefinition contents)
-    -- or --
-    print (parse koreParser fileName contents)
-    -- or --
-    print (parseOnly koreParser fileName contents)
+    print (parseDefinition contents)
 @
 
 -}
 module Kore.Parser
-    ( parseKoreDefinition
-    , parseKorePattern
-    , koreParser
-    , korePatternParser
-    , ParsedPattern
-    , Parser.asParsedPattern
+    ( parseDefinition
+    , parsePattern
+    , definitionParser
+    , patternParser
+    -- * Re-exports
+    , Pattern
+    , asPattern
+    , ParsedSentence
     , ParsedDefinition
     ) where
 
-import           Kore.AST.Sentence
 import           Kore.Parser.Lexeme
                  ( skipWhitespace )
-import           Kore.Parser.Parser
-                 ( ParsedPattern )
 import qualified Kore.Parser.Parser as Parser
 import           Kore.Parser.ParserUtils
+import           Kore.Parser.Pattern
+import           Kore.Parser.Sentence
 
-{-|'koreParser' is a parser for Kore.
-The input must contain a full valid Kore defininition and nothing else.
--}
-koreParser :: Parser ParsedDefinition
-koreParser = skipWhitespace *> Parser.koreDefinitionParser <* endOfInput
+{- | 'definitionParser' is a parser for Kore definitions.
 
-{-|'korePatternParser' is a parser for Kore patterns.
+The input must contain a full valid Kore definition and nothing else.
+
+ -}
+definitionParser :: Parser ParsedDefinition
+definitionParser = skipWhitespace *> Parser.koreDefinitionParser <* endOfInput
+
+{- | 'patternParser' is a parser for Kore patterns.
 
 The input must contain a full valid Kore pattern and nothing else.
--}
-korePatternParser :: Parser ParsedPattern
-korePatternParser = Parser.korePatternParser
+
+ -}
+patternParser :: Parser (Pattern Variable)
+patternParser = Parser.korePatternParser
 
 {- | Parse a string representing a Kore definition.
 
-@parseKoreDefinition@ returns a 'KoreDefinition' upon success, or an parse error
+@parseDefinition@ returns a 'Definition' upon success, or an parse error
 message otherwise. The input must contain a valid Kore definition and nothing
 else.
 
+See also: 'definitionParser'
+
  -}
-parseKoreDefinition
+parseDefinition
     :: FilePath  -- ^ Filename used for error messages
     -> String  -- ^ The concrete syntax of a valid Kore definition
     -> Either String ParsedDefinition
-parseKoreDefinition = parseOnly koreParser
+parseDefinition = parseOnly definitionParser
 
 {- | Parse a string representing a Kore pattern.
 
-@parseKorePattern@ returns a 'ParsedPattern' upon success, or an parse error
-message otherwise. The input must contain a valid Kore pattern and nothing else.
+@parsePattern@ returns a 'Pattern' upon success, or an parse error message
+otherwise. The input must contain a valid Kore pattern and nothing else.
+
+See also: 'patternParser'
 
  -}
-parseKorePattern
+parsePattern
     :: FilePath  -- ^ Filename used for error messages
     -> String  -- ^ The concrete syntax of a valid Kore pattern
-    -> Either String ParsedPattern
-parseKorePattern = parseOnly korePatternParser
+    -> Either String (Pattern Variable)
+parsePattern = parseOnly patternParser

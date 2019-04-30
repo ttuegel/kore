@@ -7,17 +7,26 @@ License     : NCSA
 {-# LANGUAGE TemplateHaskell #-}
 
 module Kore.Parser.Pattern
-    ( Pattern
+    ( Pattern (..)
     , PatternF (..)
     , mapVariablesF
     , traverseVariablesF
     , mapVariables
+    , asPattern
+    , asPatternBase
+    , freeVariables
+    -- * Pattern synonyms
+    , pattern StringLiteral_
+    -- * Re-exports
+    , module Kore.Syntax
     ) where
 
 import           Control.Comonad.Trans.Cofree
 import qualified Control.Comonad.Trans.Env as Env
 import           Control.DeepSeq
                  ( NFData (..) )
+import qualified Control.Monad as Monad
+import qualified Control.Monad.RWS.Strict as Monad.RWS
 import qualified Data.Bifunctor as Bifunctor
 import qualified Data.Deriving as Deriving
 import           Data.Functor.Classes
@@ -29,9 +38,15 @@ import qualified Data.Functor.Foldable as Recursive
 import           Data.Functor.Identity
                  ( Identity (..) )
 import           Data.Hashable
+import           Data.Set
+                 ( Set )
+import qualified Data.Set as Set
+import           Data.Text
+                 ( Text )
 import           GHC.Generics
                  ( Generic )
 
+import Kore.AST.AstWithLocation
 import Kore.Syntax
 import Kore.TopBottom
 import Kore.Unparser
@@ -126,6 +141,46 @@ instance (Unparse child, Unparse variable) => Unparse (PatternF variable child)
             VariableF p      -> unparse2 p
             InhabitantF s    -> unparse s
             SetVariableF p   -> unparse p
+
+instance
+    AstWithLocation variable =>
+    AstWithLocation (PatternF variable child)
+  where
+    locationFromAst =
+        \case
+            AndF And { andSort } -> locationFromAst andSort
+            ApplicationF Application { applicationSymbolOrAlias } ->
+                locationFromAst applicationSymbolOrAlias
+            BottomF Bottom { bottomSort } -> locationFromAst bottomSort
+            CeilF Ceil { ceilResultSort } ->
+                locationFromAst ceilResultSort
+            DomainValueF DomainValue { domainValueSort } ->
+                locationFromAst domainValueSort
+            EqualsF Equals { equalsResultSort } ->
+                locationFromAst equalsResultSort
+            ExistsF Exists { existsSort } -> locationFromAst existsSort
+            FloorF Floor { floorResultSort } ->
+                locationFromAst floorResultSort
+            ForallF Forall { forallSort } -> locationFromAst forallSort
+            IffF Iff { iffSort } -> locationFromAst iffSort
+            ImpliesF Implies { impliesSort } ->
+                locationFromAst impliesSort
+            InF In { inResultSort } ->
+                locationFromAst inResultSort
+            NextF Next { nextSort } -> locationFromAst nextSort
+            NotF Not { notSort } -> locationFromAst notSort
+            OrF Or { orSort } -> locationFromAst orSort
+            RewritesF Rewrites { rewritesSort } ->
+                locationFromAst rewritesSort
+            StringLiteralF _ -> AstLocationUnknown
+            CharLiteralF _ -> AstLocationUnknown
+            TopF Top { topSort } -> locationFromAst topSort
+            VariableF variable -> locationFromAst variable
+            InhabitantF s -> locationFromAst s
+            SetVariableF (SetVariable variable) ->
+                locationFromAst variable
+
+    updateAstLocation = undefined
 
 {- | Use the provided mapping to replace all variables in a 'PatternF' head.
 
@@ -339,3 +394,51 @@ mapVariables
 mapVariables mapping =
     Pattern . transCofreeT (mapVariablesF mapping) . getPattern
 {-# INLINE mapVariables #-}
+
+asPattern :: (PatternF variable) (Pattern variable) -> Pattern variable
+asPattern = Recursive.embed . asPatternBase
+{-# INLINE asPattern #-}
+
+asPatternBase
+    :: (PatternF variable) a
+    -> Base (Pattern variable) a
+asPatternBase patternBase = mempty :< patternBase
+{-# INLINE asPatternBase #-}
+
+-- | The free variables of a 'Pattern'.
+freeVariables :: Ord variable => Pattern variable -> Set variable
+freeVariables root =
+    let (free, ()) =
+            Monad.RWS.execRWS
+                (freePureVariables1 root)
+                Set.empty  -- initial set of bound variables
+                Set.empty  -- initial set of free variables
+    in
+        free
+  where
+    unlessM m go = m >>= \b -> Monad.unless b go
+    isBound v = Monad.RWS.asks (Set.member v)
+    recordFree v = Monad.RWS.modify' (Set.insert v)
+
+    freePureVariables1 (Recursive.project -> _ :< projected) =
+        case projected of
+            VariableF v -> unlessM (isBound v) (recordFree v)
+            ExistsF Exists { existsVariable, existsChild } ->
+                Monad.RWS.local
+                    -- record the bound variable
+                    (Set.insert existsVariable)
+                    -- descend into the bound pattern
+                    (freePureVariables1 existsChild)
+            ForallF Forall { forallVariable, forallChild } ->
+                Monad.RWS.local
+                    -- record the bound variable
+                    (Set.insert forallVariable)
+                    -- descend into the bound pattern
+                    (freePureVariables1 forallChild)
+            p -> mapM_ freePureVariables1 p
+
+pattern StringLiteral_ :: Text -> Pattern variable
+pattern StringLiteral_ literal <-
+    (Recursive.project -> _ :< StringLiteralF (StringLiteral literal))
+  where
+    StringLiteral_ literal = asPattern (StringLiteralF $ StringLiteral literal)

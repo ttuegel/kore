@@ -108,7 +108,7 @@ sort = "MAP.Map"
 
  -}
 assertSort :: Builtin.SortVerifier
-assertSort findSort = Builtin.verifySort findSort sort
+assertSort = Builtin.SortVerifier (Builtin.verifySort sort)
 
 {- | Verify that hooked sort declarations are well-formed.
 

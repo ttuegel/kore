@@ -41,15 +41,6 @@ module Kore.AST.Sentence
     , PureModule
     , PureDefinition
     , castDefinitionDomainValues
-    , ParsedSentenceAlias
-    , ParsedSentenceSymbol
-    , ParsedSentenceImport
-    , ParsedSentenceAxiom
-    , ParsedSentenceSort
-    , ParsedSentenceHook
-    , ParsedSentence
-    , ParsedModule
-    , ParsedDefinition
     , Attributes (..)
     ) where
 
@@ -73,9 +64,9 @@ import           GHC.Generics
                  ( Generic )
 
 import qualified Kore.Annotation.Null as Annotation
+import           Kore.AST.AstWithLocation
 import           Kore.AST.Pure as Pure
 import           Kore.Attribute.Attributes
-import qualified Kore.Domain.Builtin as Domain
 import           Kore.Unparser
 
 {-|'Symbol' corresponds to the
@@ -832,38 +823,18 @@ type PureModule level domain = Module (PureSentence level domain)
 -- |'PureDefinition' is the pure (fixed-@level@) version of 'Definition'
 type PureDefinition level domain = Definition (PureSentence level domain)
 
-type ParsedSentenceSort =
-    SentenceSort Object (ParsedPurePattern Object Domain.Builtin)
-
-type ParsedSentenceSymbol =
-    SentenceSymbol Object (ParsedPurePattern Object Domain.Builtin)
-
-type ParsedSentenceAlias =
-    SentenceAlias Object (ParsedPurePattern Object Domain.Builtin)
-
-type ParsedSentenceImport =
-    SentenceImport (ParsedPurePattern Object Domain.Builtin)
-
-type ParsedSentenceAxiom =
-    SentenceAxiom
-        SortVariable
-        (ParsedPurePattern Object Domain.Builtin)
-
-type ParsedSentenceHook =
-    SentenceHook (ParsedPurePattern Object Domain.Builtin)
-
-type ParsedSentence =
-    Sentence
-        Object
-        SortVariable
-        (ParsedPurePattern Object Domain.Builtin)
-
-type ParsedModule = Module ParsedSentence
-
-type ParsedDefinition = Definition ParsedSentence
-
 castDefinitionDomainValues
     :: Functor domain
     => PureDefinition Object (Const Void)
     -> PureDefinition Object domain
 castDefinitionDomainValues = (fmap . fmap) Pure.castVoidDomainValues
+
+instance AstWithLocation (Alias level) where
+    locationFromAst = locationFromAst . aliasConstructor
+    updateAstLocation al loc =
+        al { aliasConstructor = updateAstLocation (aliasConstructor al) loc }
+
+instance AstWithLocation (Symbol level) where
+    locationFromAst = locationFromAst . symbolConstructor
+    updateAstLocation s loc =
+        s { symbolConstructor = updateAstLocation (symbolConstructor s) loc }

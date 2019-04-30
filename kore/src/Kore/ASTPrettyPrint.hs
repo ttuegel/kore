@@ -33,6 +33,7 @@ import           Kore.AST.Sentence
 import           Kore.AST.Valid
 import qualified Kore.Builtin.Error as Builtin
 import qualified Kore.Domain.Builtin as Domain
+import qualified Kore.Parser.Pattern as Parser
 import           Kore.Predicate.Predicate
 import           Kore.Proof.Functional
 import           Kore.Step.Conditional
@@ -553,8 +554,61 @@ instance
         writeStructure "PurePattern"
             [ writeFieldOneLine "getPurePattern" getPurePattern purePattern ]
 
-instance PrettyPrint Attributes
+instance
+    (PrettyPrint variable, PrettyPrint child) =>
+    PrettyPrint (Parser.PatternF variable child)
   where
+    prettyPrint flags (Parser.AndF p) =
+        writeOneFieldStruct flags "AndF" p
+    prettyPrint flags (Parser.ApplicationF p)   =
+        writeOneFieldStruct flags "ApplicationF" p
+    prettyPrint flags (Parser.BottomF p)        =
+        writeOneFieldStruct flags "BottomF" p
+    prettyPrint flags (Parser.CeilF p)          =
+        writeOneFieldStruct flags "CeilF" p
+    prettyPrint flags (Parser.DomainValueF p)          =
+        writeOneFieldStruct flags "DomainValueF" p
+    prettyPrint flags (Parser.EqualsF p)        =
+        writeOneFieldStruct flags "EqualsF" p
+    prettyPrint flags (Parser.ExistsF p)        =
+        writeOneFieldStruct flags "ExistsF" p
+    prettyPrint flags (Parser.FloorF p)         =
+        writeOneFieldStruct flags "FloorF" p
+    prettyPrint flags (Parser.ForallF p)        =
+        writeOneFieldStruct flags "ForallF" p
+    prettyPrint flags (Parser.IffF p)           =
+        writeOneFieldStruct flags "IffF" p
+    prettyPrint flags (Parser.ImpliesF p)       =
+        writeOneFieldStruct flags "ImpliesF" p
+    prettyPrint flags (Parser.InF p)            =
+        writeOneFieldStruct flags "InF" p
+    prettyPrint flags (Parser.NextF p)          =
+        writeOneFieldStruct flags "NextF" p
+    prettyPrint flags (Parser.NotF p)           =
+        writeOneFieldStruct flags "NotF" p
+    prettyPrint flags (Parser.OrF p)            =
+        writeOneFieldStruct flags "OrF" p
+    prettyPrint flags (Parser.RewritesF p)      =
+        writeOneFieldStruct flags "RewritesF" p
+    prettyPrint flags (Parser.StringLiteralF p) =
+        writeOneFieldStruct flags "StringLiteralF" p
+    prettyPrint flags (Parser.CharLiteralF p) =
+        writeOneFieldStruct flags "CharLiteralF" p
+    prettyPrint flags (Parser.TopF p)           =
+        writeOneFieldStruct flags "TopF" p
+    prettyPrint flags (Parser.VariableF p)      =
+        writeOneFieldStruct flags "VariableF" p
+    prettyPrint flags (Parser.InhabitantF s)          =
+        writeOneFieldStruct flags "InhabitantF" s
+    prettyPrint flags (Parser.SetVariableF p)      =
+        writeOneFieldStruct flags "SetVariableF" p
+
+instance PrettyPrint variable => PrettyPrint (Parser.Pattern variable) where
+    prettyPrint _ pattern' =
+        writeStructure "Pattern"
+            [ writeFieldOneLine "getPattern" Parser.getPattern pattern' ]
+
+instance PrettyPrint Attributes where
     prettyPrint flags (Attributes a)
         | null a    = "Attributes []"
         | otherwise = writeOneFieldStruct flags "Attributes" a

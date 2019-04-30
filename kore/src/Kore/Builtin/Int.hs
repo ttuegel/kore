@@ -95,6 +95,7 @@ import qualified Kore.Domain.Builtin as Domain
 import qualified Kore.Error
 import           Kore.Step.Pattern as Pattern
 import           Kore.Step.TermLike as TermLike
+import           Kore.Syntax.DomainValue
 
 {- | Builtin name of the @Int@ sort.
  -}
@@ -107,7 +108,7 @@ sort = "INT.Int"
 
  -}
 assertSort :: Builtin.SortVerifier
-assertSort findSort = Builtin.verifySort findSort sort
+assertSort = Builtin.SortVerifier (Builtin.verifySort sort)
 
 {- | Verify that hooked sort declarations are well-formed.
 
@@ -176,26 +177,21 @@ symbolVerifiers =
 
 {- | Verify that domain value patterns are well-formed.
  -}
-patternVerifier :: Builtin.DomainValueVerifier child
+patternVerifier :: Builtin.DomainValueVerifier
 patternVerifier =
     Builtin.makeEncodedDomainValueVerifier sort patternVerifierWorker
   where
-    patternVerifierWorker domain =
-        case domain of
-            Domain.BuiltinExternal external
-              | StringLiteral_ lit <- externalChild -> do
-                builtinIntValue <- Builtin.parseString parse lit
-                (return . Domain.BuiltinInt)
-                    Domain.InternalInt
-                        { builtinIntSort = domainValueSort
-                        , builtinIntValue
-                        }
-              where
-                Domain.External { domainValueSort } = external
-                Domain.External { domainValueChild = externalChild } = external
-            Domain.BuiltinInt _ -> return domain
-            _ -> Kore.Error.koreFail
-                    "Expected literal string or internal value"
+    patternVerifierWorker domainValue
+      | StringLiteral_ literal <- domainValueChild = do
+        builtinIntValue <- Builtin.parseString parse literal
+        (return . Domain.BuiltinInt)
+            Domain.InternalInt
+                { builtinIntSort = domainValueSort
+                , builtinIntValue
+                }
+      | otherwise = Kore.Error.koreFail "Expected literal string"
+      where
+        DomainValue { domainValueSort, domainValueChild } = domainValue
 
 -- | get the value from a (possibly encoded) domain value
 extractIntDomainValue
@@ -284,10 +280,7 @@ asTermLike builtin =
     (mkDomainValue . Domain.BuiltinExternal)
         Domain.External
             { domainValueSort = builtinIntSort
-            , domainValueChild =
-                AST.eraseAnnotations
-                $ mkStringLiteral . Text.pack
-                $ show int
+            , domainValueChild = mkStringLiteral $ Text.pack $ show int
             }
   where
     Domain.InternalInt { builtinIntSort } = builtin
@@ -310,9 +303,8 @@ asConcretePattern domainValueSort builtinIntChild =
         Domain.External
             { domainValueSort
             , domainValueChild =
-                AST.eraseAnnotations
-                $ mkStringLiteral . Text.pack
-                $ show builtinIntChild
+                mkStringLiteral
+                $ Text.pack $ show builtinIntChild
             }
 
 asPattern

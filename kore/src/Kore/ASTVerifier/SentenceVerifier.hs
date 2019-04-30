@@ -32,6 +32,7 @@ import qualified Kore.Builtin as Builtin
 import           Kore.Error
 import           Kore.IndexedModule.IndexedModule
 import           Kore.IndexedModule.Resolvers
+import           Kore.Parser.Sentence
 import qualified Kore.Verified as Verified
 
 {-|'verifyUniqueNames' verifies that names defined in a list of sentences are
@@ -235,7 +236,10 @@ verifyHookSentence
             verifySymbolHookAttribute
                 attributesVerification
                 sentenceSymbolAttributes
-        Builtin.symbolVerifier builtinVerifiers hook findSort sentence
+        Builtin.runSymbolVerifier
+            (Builtin.symbolVerifier builtinVerifiers hook)
+            findSort
+            sentence
         return verified
 
     findSort = findIndexedSort indexedModule

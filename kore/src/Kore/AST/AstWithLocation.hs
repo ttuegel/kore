@@ -15,7 +15,6 @@ module Kore.AST.AstWithLocation
 import qualified Control.Lens as Lens
 
 import Kore.AST.Common
-import Kore.AST.Sentence
 import Kore.Domain.Class
 import Kore.Syntax
 
@@ -64,11 +63,6 @@ instance AstWithLocation Variable where
     updateAstLocation var loc =
         var {variableName = updateAstLocation (variableName var) loc}
 
-instance AstWithLocation (Alias level) where
-    locationFromAst = locationFromAst . aliasConstructor
-    updateAstLocation al loc =
-        al { aliasConstructor = updateAstLocation (aliasConstructor al) loc }
-
 instance AstWithLocation SymbolOrAlias where
     locationFromAst = locationFromAst . symbolOrAliasConstructor
     updateAstLocation sal loc =
@@ -76,11 +70,6 @@ instance AstWithLocation SymbolOrAlias where
             { symbolOrAliasConstructor =
                 updateAstLocation (symbolOrAliasConstructor sal) loc
             }
-
-instance AstWithLocation (Symbol level) where
-    locationFromAst = locationFromAst . symbolConstructor
-    updateAstLocation s loc =
-        s { symbolConstructor = updateAstLocation (symbolConstructor s) loc }
 
 instance
     (Domain domain, AstWithLocation variable) =>

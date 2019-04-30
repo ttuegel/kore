@@ -44,8 +44,6 @@ import           Control.Applicative
                  ( Alternative (..) )
 import           Control.Error
                  ( MaybeT )
-import           Control.Monad
-                 ( void )
 import           Data.Char
                  ( chr, ord )
 import qualified Data.HashMap.Strict as HashMap
@@ -64,7 +62,6 @@ import           Numeric
                  ( readOct )
 import qualified Text.Megaparsec as Parsec
 
-import qualified Kore.AST.Pure as AST
 import           Kore.AST.Valid
 import qualified Kore.Builtin.Bool as Bool
 import qualified Kore.Builtin.Builtin as Builtin
@@ -87,7 +84,7 @@ sort = "STRING.String"
 
  -}
 assertSort :: Builtin.SortVerifier
-assertSort findSort = Builtin.verifySort findSort sort
+assertSort = Builtin.SortVerifier (Builtin.verifySort sort)
 
 {- | Verify that hooked sort declarations are well-formed.
 
@@ -142,15 +139,13 @@ symbolVerifiers =
 
 {- | Verify that domain value patterns are well-formed.
  -}
-patternVerifier :: Builtin.DomainValueVerifier child
-patternVerifier =
-    Builtin.makeNonEncodedDomainValueVerifier sort
-        (void . Builtin.parseDomainValue parse)
+patternVerifier :: Builtin.DomainValueVerifier
+patternVerifier = Builtin.defaultDomainValueVerifier
 
 -- | get the value from a (possibly encoded) domain value
 extractStringDomainValue
     :: Text -- ^ error message Context
-    -> Domain.Builtin child
+    -> Domain.Builtin (TermLike variable)
     -> Text
 extractStringDomainValue ctx =
     Builtin.runParser ctx . Builtin.parseDomainValue parse
@@ -220,8 +215,7 @@ asConcretePattern domainValueSort builtinStringChild =
     (mkDomainValue . Domain.BuiltinExternal)
         Domain.External
             { domainValueSort
-            , domainValueChild =
-                AST.eraseAnnotations $ mkStringLiteral builtinStringChild
+            , domainValueChild = mkStringLiteral builtinStringChild
             }
 
 asPattern

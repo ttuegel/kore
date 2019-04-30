@@ -17,6 +17,7 @@ import Kore.AST.Sentence
 import Kore.Parser.Lexeme
 import Kore.Parser.Parser
 import Kore.Parser.ParserUtils
+import Kore.Parser.Pattern
 import Kore.Unparser
 
 import Test.Kore
@@ -26,24 +27,22 @@ test_unparse =
     testGroup
         "Unparse"
         [ unparseTest
-            (asSentence
-                (SentenceSort
-                    { sentenceSortName = testId "x"
-                    , sentenceSortParameters = []
-                    , sentenceSortAttributes = Attributes []
-                    }
-                    :: ParsedSentenceSort
-                )
+            (SentenceSortSentence SentenceSort
+                { sentenceSortName = testId "x"
+                , sentenceSortParameters = []
+                , sentenceSortAttributes = Attributes []
+                }
+                :: ParsedSentence
             )
             "sort x{} []"
         , unparseTest
             Attributes
                 { getAttributes =
-                    [ asParsedPattern (TopPattern Top
+                    [ (asParsedPattern . TopF) Top
                         { topSort = SortVariableSort SortVariable
                             { getSortVariable = testId "#Fm" }
-                        })
-                    , asParsedPattern (InPattern In
+                        }
+                    , (asParsedPattern . InF) In
                         { inOperandSort = SortActualSort SortActual
                             { sortActualName = testId "B"
                             , sortActualSorts = []
@@ -53,15 +52,16 @@ test_unparse =
                             , sortActualSorts = []
                             }
                         , inContainedChild =
-                            asParsedPattern $ VariablePattern Variable
+                            (asParsedPattern . VariableF) Variable
                                 { variableName = testId "T"
                                 , variableSort = SortVariableSort SortVariable
                                     { getSortVariable = testId "C" }
                                 , variableCounter = mempty
                                 }
-                        , inContainingChild = asParsedPattern (StringLiteralPattern
-                            StringLiteral { getStringLiteral = "" })
-                        })
+                        , inContainingChild =
+                            (asParsedPattern . StringLiteralF)
+                                StringLiteral { getStringLiteral = "" }
+                        }
                     ]
                 }
             "[\\top{#Fm}(), \\in{B{}, G{}}(T:C, \"\")]"
@@ -130,14 +130,12 @@ test_unparse =
         , unparseTest
             (Attributes
                 { getAttributes =
-                    [ asParsedPattern
-                        ( TopPattern Top
-                            { topSort = SortActualSort SortActual
-                                { sortActualName = testId "#CharList"
-                                , sortActualSorts = []
-                                }
+                    [ (asParsedPattern . TopF) Top
+                        { topSort = SortActualSort SortActual
+                            { sortActualName = testId "#CharList"
+                            , sortActualSorts = []
                             }
-                        )
+                        }
                     ]
                 }::Attributes
             )
@@ -145,14 +143,10 @@ test_unparse =
         , unparseTest
             (Attributes
                 { getAttributes =
-                    [ asParsedPattern
-                        (CharLiteralPattern CharLiteral
-                            { getCharLiteral = '\'' }
-                        )
-                    , asParsedPattern
-                        (CharLiteralPattern CharLiteral
-                            { getCharLiteral = '\'' }
-                        )
+                    [ (asParsedPattern . CharLiteralF)
+                        CharLiteral { getCharLiteral = '\'' }
+                    , (asParsedPattern . CharLiteralF)
+                        CharLiteral { getCharLiteral = '\'' }
                     ]
                 }::Attributes
             )

@@ -21,10 +21,11 @@ import qualified Data.Functor.Foldable as Recursive
 import           Data.Proxy
                  ( Proxy )
 
-import           Kore.AST.Pure
 import           Kore.AST.Sentence
 import           Kore.ASTVerifier.Error
 import           Kore.Attribute.Hook
+import           Kore.Attribute.Parser
+                 ( AttributePattern, PatternF (..) )
 import qualified Kore.Attribute.Parser as Attribute.Parser
 import           Kore.Error
 import           Kore.IndexedModule.IndexedModule
@@ -61,13 +62,12 @@ verifyAttributes _ DoNotVerifyAttributes =
 
 verifyAttributePattern
     :: MonadError (Error VerifyError) m
-    => Pattern Object domain variable (PurePattern Object domain variable annotation)
+    => PatternF variable AttributePattern
     -> m VerifySuccess
 verifyAttributePattern pat =
     case pat of
-        ApplicationPattern _ -> verifySuccess
-        _ ->
-            koreFail "Non-application attributes are not supported"
+        ApplicationF _ -> verifySuccess
+        _ -> koreFail "Non-application attributes are not supported"
 
 {- | Verify that the @hook{}()@ attribute is present and well-formed.
 

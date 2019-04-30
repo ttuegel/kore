@@ -81,8 +81,7 @@ import           Kore.Attribute.Subsort
 import qualified Kore.Attribute.Symbol.Symbol as Attribute
                  ( Symbol )
 import           Kore.Error
-import           Kore.Parser
-                 ( ParsedPattern )
+import qualified Kore.Parser.Pattern as Parser
 import qualified Kore.Verified as Verified
 
 type SortDescription level dom =
@@ -263,8 +262,7 @@ mapIndexedModulePatterns mapping indexedModule =
         , mapIndexedModulePatterns mapping indexedModule'
         )
 
-type KoreIndexedModule =
-    IndexedModule SortVariable ParsedPattern
+type KoreIndexedModule = IndexedModule SortVariable (Parser.Pattern Variable)
 
 type VerifiedModule = IndexedModule SortVariable Verified.Pattern
 
@@ -355,7 +353,7 @@ newtype ImplicitIndexedModule param pat declAtts axiomAtts =
     deriving (Show)
 
 type KoreImplicitIndexedModule =
-    ImplicitIndexedModule SortVariable ParsedPattern
+    ImplicitIndexedModule SortVariable (Parser.Pattern Variable)
 
 emptyIndexedModule
     ::  ( Default parsedDeclAttributes

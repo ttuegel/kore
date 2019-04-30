@@ -21,7 +21,6 @@ import qualified Data.Set as Set
 import           GHC.Stack
                  ( HasCallStack )
 
-import qualified Kore.AST.Pure as AST
 import           Kore.AST.Sentence
 import           Kore.AST.Valid
 import           Kore.ASTVerifier.DefinitionVerifier
@@ -38,7 +37,7 @@ import           Kore.IndexedModule.MetadataTools
 import qualified Kore.IndexedModule.MetadataToolsBuilder as MetadataTools
                  ( build )
 import           Kore.Parser
-                 ( parseKorePattern )
+                 ( parsePattern )
 import qualified Kore.Predicate.Predicate as Predicate
 import           Kore.Step.Axiom.Data
 import qualified Kore.Step.OrPattern as OrPattern
@@ -170,7 +169,7 @@ Just verifiedModule = Map.lookup testModuleName verifiedModules
 indexedModule :: KoreIndexedModule Attribute.Null Attribute.Null
 indexedModule =
     makeIndexedModuleAttributesNull
-    $ mapIndexedModulePatterns AST.eraseAnnotations verifiedModule
+    $ mapIndexedModulePatterns Builtin.externalizePattern verifiedModule
 
 testMetadataTools :: SmtMetadataTools StepperAttributes
 testMetadataTools = MetadataTools.build (constructorFunctions verifiedModule)
@@ -306,5 +305,5 @@ hpropUnparse
 hpropUnparse gen = Hedgehog.property $ do
     builtin <- Hedgehog.forAll gen
     let syntax = unparseToString builtin
-        expected = AST.eraseAnnotations (Builtin.externalizePattern builtin)
-    Right expected Hedgehog.=== parseKorePattern "<test>" syntax
+        expected = Builtin.externalizePattern builtin
+    Right expected Hedgehog.=== parsePattern "<test>" syntax

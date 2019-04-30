@@ -60,6 +60,7 @@ import qualified Kore.Error
 import           Kore.Step.Pattern as Pattern
 import           Kore.Step.TermLike
                  ( TermLike )
+import           Kore.Syntax.DomainValue
 
 {- | Builtin name of the @Bool@ sort.
  -}
@@ -72,7 +73,7 @@ sort = "BOOL.Bool"
 
  -}
 assertSort :: Builtin.SortVerifier
-assertSort findSort = Builtin.verifySort findSort sort
+assertSort = Builtin.SortVerifier (Builtin.verifySort sort)
 
 {- | Verify that hooked sort declarations are well-formed.
 
@@ -103,26 +104,22 @@ symbolVerifiers =
 
 {- | Verify that domain value patterns are well-formed.
  -}
-patternVerifier :: Builtin.DomainValueVerifier child
+patternVerifier :: Builtin.DomainValueVerifier
 patternVerifier =
     Builtin.makeEncodedDomainValueVerifier sort patternVerifierWorker
   where
-    patternVerifierWorker domain =
-        case domain of
-            Domain.BuiltinExternal builtin
-              | StringLiteral_ lit <- externalChild -> do
-                builtinBoolValue <- Builtin.parseString parse lit
-                (return . Domain.BuiltinBool)
-                    Domain.InternalBool
-                        { builtinBoolSort = domainValueSort
-                        , builtinBoolValue
-                        }
-              where
-                Domain.External { domainValueSort } = builtin
-                Domain.External { domainValueChild = externalChild } = builtin
-            Domain.BuiltinBool _ -> return domain
-            _ -> Kore.Error.koreFail
-                    "Expected literal string or internal value"
+    patternVerifierWorker domainValue
+      | StringLiteral_ literal <- domainValueChild = do
+        builtinBoolValue <- Builtin.parseString parse literal
+        (return . Domain.BuiltinBool)
+            Domain.InternalBool
+                { builtinBoolSort = domainValueSort
+                , builtinBoolValue
+                }
+      | otherwise =
+        Kore.Error.koreFail "Expected literal string"
+      where
+        DomainValue { domainValueSort, domainValueChild } = domainValue
 
 -- | get the value from a (possibly encoded) domain value
 extractBoolDomainValue
@@ -181,7 +178,7 @@ asTermLike builtin =
     (mkDomainValue . Domain.BuiltinExternal)
         Domain.External
             { domainValueSort = builtinBoolSort
-            , domainValueChild = AST.eraseAnnotations $ mkStringLiteral literal
+            , domainValueChild = mkStringLiteral literal
             }
   where
     Domain.InternalBool { builtinBoolSort } = builtin

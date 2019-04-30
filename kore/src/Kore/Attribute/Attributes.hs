@@ -8,6 +8,9 @@ module Kore.Attribute.Attributes
     , asAttributePattern
     , attributePattern
     , attributePattern_
+    , attributeString
+    -- * Re-exports
+    , PatternF (..)
     ) where
 
 import           Control.DeepSeq
@@ -16,18 +19,17 @@ import           Data.Default
                  ( Default (..) )
 import           Data.Hashable
                  ( Hashable )
+import           Data.Text
+                 ( Text )
 import qualified GHC.Generics as GHC
 
-import           Kore.AST.Pure
-import qualified Kore.Domain.Builtin as Domain
-import           Kore.Unparser
+import Kore.Parser.Pattern
+import Kore.Unparser
 
-type AttributePattern = ParsedPurePattern Object Domain.Builtin
+type AttributePattern = Pattern Variable
 
-asAttributePattern
-    :: (Pattern Object Domain.Builtin Variable) AttributePattern
-    -> AttributePattern
-asAttributePattern = asPurePattern . (mempty :<)
+asAttributePattern :: PatternF Variable AttributePattern -> AttributePattern
+asAttributePattern = asPattern
 
 -- | An 'AttributePattern' of the attribute symbol applied to its arguments.
 attributePattern
@@ -35,7 +37,7 @@ attributePattern
     -> [AttributePattern]  -- ^ arguments
     -> AttributePattern
 attributePattern applicationSymbolOrAlias applicationChildren =
-    (asAttributePattern . ApplicationPattern)
+    (asAttributePattern . ApplicationF)
         Application { applicationSymbolOrAlias, applicationChildren }
 
 -- | An 'AttributePattern' of the attribute symbol applied to no arguments.
@@ -44,6 +46,11 @@ attributePattern_
     -> AttributePattern
 attributePattern_ applicationSymbolOrAlias =
     attributePattern applicationSymbolOrAlias []
+
+-- | An 'AttributePattern' of the given literal string.
+attributeString :: Text -> AttributePattern
+attributeString text =
+    (asAttributePattern . StringLiteralF) (StringLiteral text)
 
 {-|'Attributes' corresponds to the @attributes@ Kore syntactic declaration.
 It is parameterized by the types of Patterns, @pat@.
