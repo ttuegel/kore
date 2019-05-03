@@ -18,6 +18,7 @@ module Test.Terse
         -- $commonFunctions
       satisfies
     , equals
+    , same
     , unequals
     , has
     , gives
@@ -101,6 +102,12 @@ equals_
     :: (HasCallStack, Eq a, Show a, EqualWithExplanation a)
     => a -> a -> TestTree
 equals_ = actual_expected
+
+same
+    :: (HasCallStack, Eq a, Show a, EqualWithExplanation [a])
+    => [a] -> String -> TestTree
+same []       = error "Vacuous test: expected non-empty list"
+same (a : as) = equals (const a <$> as) as
 
 -- |
 -- > (3 + 4) `unequals` 8  $ "name"
