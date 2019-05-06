@@ -224,7 +224,26 @@ test_equalsSimplification_Or_Pattern =
                         , predicate =
                             makeMultipleAndPredicate
                                 [ definedF
-                                , makeOrPredicate definedG definedH
+                                , makeCeilPredicate Mock.cg
+                                , makeImpliesPredicate
+                                    (makeAndPredicate
+                                        (makeCeilPredicate Mock.cg)
+                                        (makeEqualsPredicate Mock.a Mock.a)
+                                    )
+                                    (makeEqualsPredicate Mock.cf Mock.cg)
+                                , makeImpliesPredicate
+                                    definedH
+                                    (makeEqualsPredicate Mock.cf Mock.ch)
+                                ]
+                        , substitution =
+                            Substitution.unsafeWrap [(Mock.x, Mock.a)]
+                        }
+                    , Conditional
+                        { term = mkTop_
+                        , predicate =
+                            makeMultipleAndPredicate
+                                [ definedF
+                                , definedH
                                 , makeImpliesPredicate
                                     definedG
                                     (makeEqualsPredicate Mock.cf Mock.cg)

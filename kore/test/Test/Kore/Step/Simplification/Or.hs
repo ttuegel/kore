@@ -75,8 +75,8 @@ test_disjoinPredicates =
             -- If the terms are equal, expect the given simplification.
             -- Otherwise, the predicates should not be merged.
             expectation
-              | t1 == t2  = simplifiesTo
-              | otherwise = \initial _ -> doesNotSimplify initial
+              | t1 == t2, s1 == s2 = simplifiesTo
+              | otherwise          = \initial _ -> doesNotSimplify initial
             (p', s')
               | s1 == s2  = (makeOrPredicate p1 p2, s1)
               | otherwise =
