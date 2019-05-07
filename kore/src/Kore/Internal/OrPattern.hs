@@ -93,9 +93,7 @@ top = fromPattern Pattern.top
 isTrue :: Ord variable => OrPattern variable -> Bool
 isTrue = isTop
 
-{-| 'toPattern' transforms an 'Pattern' into
-an 'Pattern.Pattern'.
--}
+-- | Transform an 'OrPattern' into a 'Pattern'.
 toPattern
     ::  ( SortedVariable variable
         , Ord variable
@@ -114,8 +112,7 @@ toPattern multiOr =
                 , substitution = mempty
                 }
 
-{-| Transforms a 'Pattern' into a 'TermLike'.
--}
+-- | Transform an 'OrPattern' into a 'TermLike'.
 toTermLike
     ::  ( SortedVariable variable
         , Ord variable
