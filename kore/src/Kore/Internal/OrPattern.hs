@@ -19,7 +19,6 @@ module Kore.Internal.OrPattern
 
 import qualified Data.Foldable as Foldable
 
-import qualified Kore.Internal.Conditional as Conditional
 import           Kore.Internal.MultiOr
                  ( MultiOr )
 import qualified Kore.Internal.MultiOr as MultiOr
@@ -27,7 +26,6 @@ import           Kore.Internal.Pattern
                  ( Pattern )
 import qualified Kore.Internal.Pattern as Pattern
 import           Kore.Internal.TermLike
-import qualified Kore.Predicate.Predicate as Syntax.Predicate
 import           Kore.TopBottom
                  ( TopBottom (..) )
 import           Kore.Unparser
@@ -106,11 +104,9 @@ toPattern multiOr =
         [] -> Pattern.bottom
         [patt] -> patt
         patts ->
-            Conditional.Conditional
-                { term = Foldable.foldr1 mkOr (Pattern.toTermLike <$> patts)
-                , predicate = Syntax.Predicate.makeTruePredicate
-                , substitution = mempty
-                }
+            Pattern.fromTermLike
+            $ Foldable.foldr1 mkOr
+            $ Pattern.toTermLike <$> patts
 
 -- | Transform an 'OrPattern' into a 'TermLike'.
 toTermLike
