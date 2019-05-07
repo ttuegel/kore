@@ -192,5 +192,5 @@ makeEvaluateNonBoolIff
         ]
   | otherwise =
     OrPattern.fromTermLike $ mkIff
-        (Pattern.toMLPattern patt1)
-        (Pattern.toMLPattern patt2)
+        (Pattern.toTermLike patt1)
+        (Pattern.toTermLike patt2)
