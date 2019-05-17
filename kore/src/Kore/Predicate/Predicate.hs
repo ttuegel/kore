@@ -272,7 +272,7 @@ simplification.
 -}
 makeNotPredicate
     ::  ( SortedVariable variable
-        , Eq variable
+        , Ord variable
         , Show variable
         , Unparse variable
         )
@@ -318,6 +318,7 @@ predicate.
 -}
 makeCeilPredicate
     ::  ( SortedVariable variable
+        , Ord variable
         , Show variable
         , Unparse variable
         )
@@ -393,7 +394,7 @@ makeTruePredicate = GenericPredicate TermLike.mkTop_
 
 {-| 'makeFalsePredicate' produces a predicate wrapping a 'bottom'.
 -}
-makeFalsePredicate :: Predicate variable
+makeFalsePredicate :: Ord variable => Predicate variable
 makeFalsePredicate = GenericPredicate TermLike.mkBottom_
 
 makePredicate

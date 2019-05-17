@@ -142,6 +142,7 @@ import           Data.Align
 import qualified Data.Bifunctor as Bifunctor
 import qualified Data.Deriving as Deriving
 import qualified Data.Foldable as Foldable
+import           Data.Function
 import           Data.Functor.Classes
 import           Data.Functor.Compose
                  ( Compose (..) )
@@ -918,6 +919,146 @@ getRigidSort pattern' =
           | sort == predicateSort -> Nothing
           | otherwise -> Just sort
 
+-- TODO (thomas.tuegel): Remove the 'Sort' argument.
+synthetic
+    ::  Ord variable
+    =>  CofreeF (TermLikeF variable) Sort (Attribute.Pattern variable)
+    ->  Attribute.Pattern variable
+synthetic (sort :< termLikeF) =
+    case termLikeF of
+        -- Connectives
+        NotF notF -> notChild notF
+        NextF nextF -> nextChild nextF
+        AndF andF@And { andSort } ->
+            Attribute.Pattern
+                { patternSort = andSort
+                , freeVariables =
+                    (Set.unions . Foldable.toList)
+                        (Attribute.freeVariables <$> andF)
+                }
+        OrF orF@Or { orSort } ->
+            Attribute.Pattern
+                { patternSort = orSort
+                , freeVariables =
+                    (Set.unions . Foldable.toList)
+                        (Attribute.freeVariables <$> orF)
+                }
+        ImpliesF impliesF@Implies { impliesSort } ->
+            Attribute.Pattern
+                { patternSort = impliesSort
+                , freeVariables =
+                    (Set.unions . Foldable.toList)
+                        (Attribute.freeVariables <$> impliesF)
+                }
+        IffF iffF@Iff { iffSort } ->
+            Attribute.Pattern
+                { patternSort = iffSort
+                , freeVariables =
+                    (Set.unions . Foldable.toList)
+                        (Attribute.freeVariables <$> iffF)
+                }
+        RewritesF rewritesF@Rewrites { rewritesSort } ->
+            Attribute.Pattern
+                { patternSort = rewritesSort
+                , freeVariables =
+                    (Set.unions . Foldable.toList)
+                        (Attribute.freeVariables <$> rewritesF)
+                }
+        -- Predicates
+        BottomF bottomF ->
+            Attribute.Pattern
+                { patternSort = bottomSort bottomF
+                , freeVariables = Set.empty
+                }
+        TopF topF ->
+            Attribute.Pattern
+                { patternSort = topSort topF
+                , freeVariables = Set.empty
+                }
+        CeilF Ceil { ceilChild, ceilResultSort } ->
+            ceilChild & Lens.set Attribute.lensPatternSort ceilResultSort
+        FloorF Floor { floorChild, floorResultSort } ->
+            floorChild & Lens.set Attribute.lensPatternSort floorResultSort
+        EqualsF equalsF@Equals { equalsResultSort } ->
+            Attribute.Pattern
+                { patternSort = equalsResultSort
+                , freeVariables =
+                    (Set.unions . Foldable.toList)
+                        (Attribute.freeVariables <$> equalsF)
+                }
+        InF inF@In { inResultSort } ->
+            Attribute.Pattern
+                { patternSort = inResultSort
+                , freeVariables =
+                    (Set.unions . Foldable.toList)
+                        (Attribute.freeVariables <$> inF)
+                }
+        -- Binders and variables
+        ExistsF Exists { existsChild, existsVariable } ->
+            existsChild
+            & Lens.over Attribute.lensFreeVariables (Set.delete existsVariable)
+        ForallF Forall { forallChild, forallVariable } ->
+            forallChild
+            & Lens.over Attribute.lensFreeVariables (Set.delete forallVariable)
+        VariableF variableF ->
+            Attribute.Pattern
+                { patternSort = sort
+                , freeVariables = Set.singleton variableF
+                }
+        -- Symbols and aliases
+        ApplicationF applicationF ->
+            Attribute.Pattern
+                { patternSort = sort
+                , freeVariables =
+                    (Set.unions . Foldable.toList)
+                        (Attribute.freeVariables <$> applicationF)
+                }
+        -- Sets
+        InhabitantF inhabitantF ->
+            Attribute.Pattern
+                { patternSort = inhabitantF
+                , freeVariables = Set.empty
+                }
+        SetVariableF _ ->
+            Attribute.Pattern
+                { patternSort = sort
+                , freeVariables = Set.empty
+                }
+        -- Literals, domain values, and builtins
+        StringLiteralF _ ->
+            Attribute.Pattern
+                { patternSort = stringMetaSort
+                , freeVariables = Set.empty
+                }
+        CharLiteralF _ ->
+            Attribute.Pattern
+                { patternSort = charMetaSort
+                , freeVariables = Set.empty
+                }
+        DomainValueF domainValueF ->
+            (domainValueChild domainValueF)
+                { Attribute.patternSort = domainValueSort domainValueF }
+        BuiltinF builtinF ->
+            Attribute.Pattern
+                { patternSort = domainValueSort
+                , freeVariables =
+                    (Set.unions . Foldable.toList)
+                        (Attribute.freeVariables <$> builtinF)
+                }
+          where
+            DomainValue { domainValueSort } = Lens.view lensDomainValue builtinF
+        EvaluatedF evaluatedF -> getEvaluated evaluatedF
+
+embedTermLikeF
+    :: Ord variable
+    => Sort
+    -> TermLikeF variable (TermLike variable)
+    -> TermLike variable
+embedTermLikeF sort termLikeF =
+    Recursive.embed (attrs :< termLikeF)
+  where
+    attrs = synthetic (sort :< fmap extractAttributes termLikeF)
+
 {- | Construct an 'And' pattern.
  -}
 mkAnd
@@ -932,16 +1073,8 @@ mkAnd
 mkAnd = makeSortsAgree mkAndWorker
   where
     mkAndWorker andFirst andSecond andSort =
-        Recursive.embed (attrs :< AndF and')
-      where
-        attrs =
-            Attribute.Pattern
-                { patternSort = andSort
-                , freeVariables = Set.union freeVariables1 freeVariables2
-                }
-        and' = And { andSort, andFirst, andSecond }
-        freeVariables1 = freeVariables andFirst
-        freeVariables2 = freeVariables andSecond
+        embedTermLikeF andSort
+        $ AndF And { andSort, andFirst, andSecond }
 
 {- | Construct an 'Application' pattern.
 
@@ -963,14 +1096,8 @@ mkApp
     -- ^ Application arguments
     -> TermLike variable
 mkApp resultSort applicationSymbolOrAlias applicationChildren =
-    Recursive.embed (attrs :< ApplicationF application)
-  where
-    attrs =
-        Attribute.Pattern
-            { patternSort = resultSort
-            , freeVariables = Set.unions (freeVariables <$> applicationChildren)
-            }
-    application = Application { applicationSymbolOrAlias, applicationChildren }
+    embedTermLikeF resultSort
+    $ ApplicationF Application { applicationSymbolOrAlias, applicationChildren }
 
 {- | The 'Sort' substitution from applying the given sort parameters.
  -}
@@ -1137,16 +1264,9 @@ applySymbol_ sentence = applySymbol sentence []
 See also: 'mkBottom_'
 
  -}
-mkBottom :: Sort -> TermLike variable
+mkBottom :: Ord variable => Sort -> TermLike variable
 mkBottom bottomSort =
-    Recursive.embed (attrs :< BottomF bottom)
-  where
-    attrs =
-        Attribute.Pattern
-            { patternSort = bottomSort
-            , freeVariables = Set.empty
-            }
-    bottom = Bottom { bottomSort }
+    embedTermLikeF bottomSort $ BottomF Bottom { bottomSort }
 
 {- | Construct a 'Bottom' pattern in 'predicateSort'.
 
@@ -1156,7 +1276,7 @@ This should not be used outside "Kore.Predicate.Predicate"; please use
 See also: 'mkBottom'
 
  -}
-mkBottom_ :: TermLike variable
+mkBottom_ :: Ord variable => TermLike variable
 mkBottom_ = mkBottom predicateSort
 
 {- | Construct a 'Ceil' pattern in the given sort.
@@ -1164,17 +1284,16 @@ mkBottom_ = mkBottom predicateSort
 See also: 'mkCeil_'
 
  -}
-mkCeil :: Sort -> TermLike variable -> TermLike variable
+mkCeil
+    :: Ord variable
+    => Sort
+    -> TermLike variable
+    -> TermLike variable
 mkCeil ceilResultSort ceilChild =
-    Recursive.embed (attrs :< CeilF ceil)
+    embedTermLikeF ceilResultSort
+    $ CeilF Ceil { ceilOperandSort, ceilResultSort, ceilChild }
   where
     ceilOperandSort = termLikeSort ceilChild
-    attrs =
-        Attribute.Pattern
-            { patternSort = ceilResultSort
-            , freeVariables = freeVariables ceilChild
-            }
-    ceil = Ceil { ceilOperandSort, ceilResultSort, ceilChild }
 
 {- | Construct a 'Ceil' pattern in 'predicateSort'.
 
@@ -1184,7 +1303,10 @@ instead.
 See also: 'mkCeil'
 
  -}
-mkCeil_ :: TermLike variable -> TermLike variable
+mkCeil_
+    :: Ord variable
+    => TermLike variable
+    -> TermLike variable
 mkCeil_ = mkCeil predicateSort
 
 {- | Construct a builtin pattern.
