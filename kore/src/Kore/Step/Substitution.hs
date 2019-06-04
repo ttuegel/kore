@@ -18,6 +18,8 @@ module Kore.Step.Substitution
     , normalizeExcept
     ) where
 
+import           Control.Applicative
+import qualified Control.Monad as Monad
 import           Control.Monad.Except
                  ( withExceptT )
 import qualified Control.Monad.Trans.Class as Monad.Trans
@@ -29,6 +31,9 @@ import           GHC.Stack
 import           Kore.Internal.Predicate
                  ( Conditional (..), Predicate )
 import qualified Kore.Internal.Predicate as Predicate
+import           Kore.Internal.TermLike
+                 ( TermLike, mkBottom_ )
+import qualified Kore.Logger as Log
 import qualified Kore.Predicate.Predicate as Syntax
                  ( Predicate )
 import qualified Kore.Predicate.Predicate as Syntax.Predicate
@@ -91,46 +96,54 @@ normalize Conditional { term, predicate, substitution } = do
     applyTerm predicated = predicated { term }
 
 normalizeExcept
-    ::  ( Ord variable
+    ::  forall variable unifier.
+        ( Ord variable
         , Show variable
         , Unparse variable
         , SortedVariable variable
         , FreshVariable variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => Predicate variable
     -> unifier (Predicate variable)
-normalizeExcept Conditional { predicate, substitution } = do
-    predicateSimplifier <- Simplifier.askSimplifierPredicate
-    -- The intermediate steps do not need to be checked for \bottom because we
-    -- use guardAgainstBottom at the end.
-    deduplicated <- normalizeSubstitutionDuplication substitution
-    let
-        PredicateSimplifier simplifySubstitution = predicateSimplifier
-        Conditional { substitution = preDeduplicatedSubstitution } =
-            deduplicated
-        Conditional { predicate = deduplicatedPredicate } = deduplicated
-        -- The substitution is not fully normalized, but it is safe to convert
-        -- to a Map because it has been deduplicated.
-        deduplicatedSubstitution =
-            Map.fromList $ Substitution.unwrap preDeduplicatedSubstitution
+normalizeExcept Conditional { predicate, substitution } =
+    Log.withLogScope "Substitution.normalizeExcept" $ do
+        predicateSimplifier <- Simplifier.askSimplifierPredicate
+        -- The intermediate steps do not need to be checked for \bottom because
+        -- we use guardAgainstBottom at the end.
+        deduplicated <- normalizeSubstitutionDuplication substitution
+        let
+            PredicateSimplifier simplifySubstitution = predicateSimplifier
+            Conditional { substitution = preDeduplicatedSubstitution } =
+                deduplicated
+            Conditional { predicate = deduplicatedPredicate } = deduplicated
+            -- The substitution is not fully normalized, but it is safe to
+            -- convert to a Map because it has been deduplicated.
+            deduplicatedSubstitution =
+                Map.fromList $ Substitution.unwrap preDeduplicatedSubstitution
 
-    normalized <- normalizeSubstitution' deduplicatedSubstitution
-    let
-        Conditional { substitution = normalizedSubstitution } = normalized
-        Conditional { predicate = normalizedPredicate } = normalized
+        normalized <- normalizeSubstitution' deduplicatedSubstitution
+        let
+            Conditional { substitution = normalizedSubstitution } = normalized
+            Conditional { predicate = normalizedPredicate } = normalized
 
-        mergedPredicate =
-            Syntax.Predicate.makeMultipleAndPredicate
-                [predicate, deduplicatedPredicate, normalizedPredicate]
+            mergedPredicate =
+                Syntax.Predicate.makeMultipleAndPredicate
+                    [predicate, deduplicatedPredicate, normalizedPredicate]
 
-    TopBottom.guardAgainstBottom mergedPredicate
-    Monad.Unify.liftBranchedSimplifier
-        $ simplifySubstitution Conditional
-            { term = ()
-            , predicate = mergedPredicate
-            , substitution = normalizedSubstitution
-            }
+        Monad.when (TopBottom.isBottom mergedPredicate) $ do
+            Monad.Unify.explainBottom
+                "refuted during normalization"
+                (mkBottom_ :: TermLike variable)
+                mkBottom_
+            empty
+        Monad.Unify.liftBranchedSimplifier
+            $ simplifySubstitution Conditional
+                { term = ()
+                , predicate = mergedPredicate
+                , substitution = normalizedSubstitution
+                }
   where
 
     normalizeSubstitution' =
@@ -183,6 +196,7 @@ mergePredicatesAndSubstitutionsExcept
         , FreshVariable variable
         , HasCallStack
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => [Syntax.Predicate variable]
     -> [Substitution variable]
@@ -209,6 +223,7 @@ createPredicatesAndSubstitutionsMergerExcept
         , Ord variable
         , FreshVariable variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => PredicateMerger variable unifier
 createPredicatesAndSubstitutionsMergerExcept =
@@ -261,6 +276,7 @@ createLiftedPredicatesAndSubstitutionsMerger
         , Ord variable
         , FreshVariable variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => PredicateMerger variable unifier
 createLiftedPredicatesAndSubstitutionsMerger =
@@ -284,6 +300,7 @@ normalizeSubstitutionAfterMerge
         , FreshVariable variable
         , HasCallStack
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => Predicate variable
     -> unifier (Predicate variable)

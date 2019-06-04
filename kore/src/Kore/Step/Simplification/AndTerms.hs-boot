@@ -4,6 +4,8 @@ import Kore.Internal.Pattern
        ( Pattern )
 import Kore.Internal.TermLike
        ( TermLike )
+import Kore.Logger
+       ( LogMessage, WithLog )
 import Kore.Step.Simplification.Data
        ( BranchT, Simplifier )
 import Kore.Syntax.Variable
@@ -33,6 +35,7 @@ termUnification
         , Unparse variable
         , SortedVariable variable
         , MonadUnify unifier
+        , WithLog LogMessage unifier
         )
     => TermLike variable
     -> TermLike variable

@@ -248,6 +248,7 @@ termUnification
         , Unparse variable
         , SortedVariable variable
         , MonadUnify unifier
+        , Logger.WithLog Logger.LogMessage unifier
         )
     => TermLike variable
     -> TermLike variable
@@ -449,34 +450,24 @@ andEqualsFunctions = fmap mapEqualsFunctions
                 Nothing -> do
                     Monad.Unify.liftSimplifier
                         . Logger.withLogScope (Logger.Scope "AndTerms")
+                        . Logger.withLogScope (Logger.Scope $ Text.pack fnName)
                         . Logger.logDebug
-                        . Text.pack
-                        . show
-                        $ Pretty.hsep
-                                [ "Evaluator"
-                                , Pretty.pretty fnName
-                                , "does not apply."
-                                ]
+                        $ "Not applicable"
                     return mresult
                 Just result -> do
                     Monad.Unify.liftSimplifier
                         . Logger.withLogScope (Logger.Scope "AndTerms")
+                        . Logger.withLogScope (Logger.Scope $ Text.pack fnName)
                         . Logger.logInfo
                         . Text.pack
                         . show
-                        $ Pretty.vsep
-                            [ Pretty.hsep
-                                [ "Evaluator"
-                                , Pretty.pretty fnName
-                                ]
-                            , Pretty.indent 4 $ Pretty.vsep
-                                [ "First:"
-                                , Pretty.indent 4 $ unparse t1
-                                , "Second:"
-                                , Pretty.indent 4 $ unparse t2
-                                , "Result:"
-                                , Pretty.indent 4 $ unparse result
-                                ]
+                        $ Pretty.indent 4 $ Pretty.vsep
+                            [ "terms:"
+                            , Pretty.indent 4 $ unparse t1
+                            , Pretty.indent 2 "and"
+                            , Pretty.indent 4 $ unparse t2
+                            , "unifier:"
+                            , Pretty.indent 4 $ unparse result
                             ]
                     return mresult
             )

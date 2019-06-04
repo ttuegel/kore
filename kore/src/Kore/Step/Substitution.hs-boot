@@ -5,6 +5,7 @@ import GHC.Stack
 
 import           Kore.Internal.Pattern
                  ( Predicate )
+import qualified Kore.Logger as Log
 import qualified Kore.Predicate.Predicate as Syntax
                  ( Predicate )
 import           Kore.Syntax.Variable
@@ -25,6 +26,7 @@ mergePredicatesAndSubstitutionsExcept
         , FreshVariable variable
         , HasCallStack
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => [Syntax.Predicate variable]
     -> [Substitution variable]

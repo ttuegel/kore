@@ -55,6 +55,7 @@ unificationProcedure
         , Unparse variable
         , FreshVariable variable
         , MonadUnify unifier
+        , Logger.WithLog Logger.LogMessage unifier
         )
     => TermLike variable
     -> TermLike variable
@@ -66,19 +67,23 @@ unificationProcedure  p1 p2
         p1
         p2
     empty
-  | otherwise = do
-    Monad.Unify.liftSimplifier
-        . Logger.withLogScope (Logger.Scope "UnificationProcedure")
-        . Logger.logInfo
-        . Text.pack
-        . show
-        $ Pretty.vsep
-            [ "Attemptying to unify terms"
-            , Pretty.indent 4 $ unparse p1
-            , "with"
-            , Pretty.indent 4 $ unparse p2
-            ]
+  | otherwise =
+    Logger.withLogScope "UnificationProcedure" $ do
+    prettyLogInfo $ Pretty.vsep
+        [ "terms:"
+        , Pretty.indent 4 $ unparse p1
+        , Pretty.indent 2 "and"
+        , Pretty.indent 4 $ unparse p2
+        ]
     pat@Conditional { term } <- termUnification p1 p2
+    prettyLogInfo $ Pretty.vsep
+        [ "terms:"
+        , Pretty.indent 4 $ unparse p1
+        , Pretty.indent 2 "and"
+        , Pretty.indent 4 $ unparse p2
+        , "unifier:"
+        , Pretty.indent 4 $ unparse pat
+        ]
     if Conditional.isBottom pat
         then empty
         else Monad.Unify.liftBranchedSimplifier $ do
@@ -90,5 +95,6 @@ unificationProcedure  p1 p2
                     orCeil
             BranchT.scatter (MultiOr.extractPatterns orResult)
   where
-      p1Sort = termLikeSort p1
-      p2Sort = termLikeSort p2
+    p1Sort = termLikeSort p1
+    p2Sort = termLikeSort p2
+    prettyLogInfo = Logger.logInfo . Text.pack . show

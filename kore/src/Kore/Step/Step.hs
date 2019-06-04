@@ -37,6 +37,8 @@ module Kore.Step.Step
     , toAxiomVariables
     ) where
 
+import qualified Control.Applicative as Alternative
+                 ( Alternative (..) )
 import qualified Control.Monad as Monad
 import qualified Control.Monad.State.Strict as State
 import qualified Control.Monad.Trans.Class as Monad.Trans
@@ -53,8 +55,6 @@ import           Kore.Internal.Conditional
                  ( Conditional (Conditional) )
 import qualified Kore.Internal.Conditional as Conditional
 import qualified Kore.Internal.MultiOr as MultiOr
-import           Kore.Internal.OrPattern
-                 ( OrPattern )
 import qualified Kore.Internal.OrPattern as OrPattern
 import           Kore.Internal.OrPredicate
                  ( OrPredicate )
@@ -76,7 +76,6 @@ import qualified Kore.Unification.Substitution as Substitution
 import           Kore.Unification.Unify
                  ( MonadUnify )
 import qualified Kore.Unification.Unify as Monad.Unify
-                 ( gather, scatter )
 import           Kore.Unparser
 import           Kore.Variables.Fresh
 import           Kore.Variables.Target
@@ -95,6 +94,7 @@ newtype UnificationProcedure =
             , Unparse variable
             , FreshVariable variable
             , MonadUnify unifier
+            , Log.WithLog Log.LogMessage unifier
             )
         => TermLike variable
         -> TermLike variable
@@ -197,6 +197,7 @@ unifyRule
         , FreshVariable  variable
         , SortedVariable variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => UnificationProcedure
     -> Pattern variable
@@ -208,7 +209,7 @@ unifyRule
     (UnificationProcedure unifyPatterns)
     initial@Conditional { term = initialTerm }
     rule
-  = do
+  = Log.withLogScope "Step.unifyRule" $ do
     -- Rename free axiom variables to avoid free variables from the initial
     -- configuration.
     let
@@ -219,11 +220,13 @@ unifyRule
     let
         RulePattern { left = ruleLeft } = rule'
     unification <- unifyPatterns ruleLeft initialTerm
+    Log.logInfo "got unifier"
     -- Combine the unification solution with the rule's requirement clause.
     let
         RulePattern { requires = ruleRequires } = rule'
         requires' = Predicate.fromPredicate ruleRequires
     unification' <- Substitution.normalizeExcept (unification <> requires')
+    Log.logInfo "normalized unifier"
     return (rule' `Conditional.withCondition` unification')
 
 unifyRules
@@ -234,6 +237,7 @@ unifyRules
         , FreshVariable  variable
         , SortedVariable variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => UnificationProcedure
     -> Pattern (Target variable)
@@ -261,6 +265,7 @@ applyInitialConditions
         , FreshVariable  variable
         , SortedVariable variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => Predicate variable
     -- ^ Initial conditions
@@ -279,7 +284,12 @@ applyInitialConditions initial unification = do
     -- If 'applied' is \bottom, the rule is considered to not apply and
     -- no result is returned. If the result is \bottom after this check,
     -- then the rule is considered to apply with a \bottom result.
-    TopBottom.guardAgainstBottom applied
+    Monad.when (TopBottom.isBottom applied) $ do
+        Monad.Unify.explainBottom
+            "refuted by initial conditions"
+            (mkBottom_ :: TermLike variable)
+            mkBottom_
+        Alternative.empty
     return applied
 
 {- | Produce the final configurations of an applied rule.
@@ -302,6 +312,7 @@ finalizeAppliedRule
         , FreshVariable  variable
         , SortedVariable variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => RulePattern variable
     -- ^ Applied rule
@@ -340,6 +351,7 @@ applyRemainder
         , FreshVariable  variable
         , SortedVariable variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => Pattern variable
     -- ^ Initial configuration

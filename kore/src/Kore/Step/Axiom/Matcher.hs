@@ -31,6 +31,7 @@ import           Kore.Internal.Predicate
                  ( Predicate )
 import qualified Kore.Internal.Predicate as Predicate
 import           Kore.Internal.TermLike
+import qualified Kore.Logger as Log
 import qualified Kore.Step.Merging.OrPattern as OrPattern
 import           Kore.Step.RecursiveAttributes
                  ( isFunctionPattern )
@@ -79,6 +80,7 @@ matchAsUnification
         , Unparse variable
         , SortedVariable variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => TermLike variable
     -> TermLike variable
@@ -98,6 +100,7 @@ unificationWithAppMatchOnTop
         , Unparse variable
         , SortedVariable variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => TermLike variable
     -> TermLike variable
@@ -156,6 +159,7 @@ match
         , Unparse variable
         , SortedVariable variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => Map.Map variable variable
     -- ^ Quantified variables
@@ -175,6 +179,7 @@ matchEqualHeadPatterns
         , Show variable
         , FreshVariable variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => Map.Map variable variable
     -- ^ Quantified variables
@@ -354,6 +359,7 @@ matchJoin
         , Unparse variable
         , SortedVariable variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => Map.Map variable variable
     -- ^ Quantified variables
@@ -375,6 +381,7 @@ unifyJoin
         , Unparse variable
         , SortedVariable variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => [(TermLike variable, TermLike variable)]
     -> unifier (Predicate variable)
@@ -403,6 +410,7 @@ matchVariableFunction
         , SortedVariable variable
         , Unparse variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => Map.Map variable variable
     -- ^ Quantified variables

@@ -33,6 +33,7 @@ import qualified Control.Monad.State.Strict as Strict
 import           Control.Monad.Trans
                  ( MonadTrans )
 import qualified Control.Monad.Trans as Monad.Trans
+import           Control.Monad.Trans.Accum
 import           Control.Monad.Trans.Identity
 import           Control.Monad.Trans.Reader
 import           Data.Functor.Contravariant
@@ -101,6 +102,10 @@ class Monad m => WithLog msg m where
         -> m a
         -> m a
     localLogAction mapping = Monad.Morph.hoist (localLogAction mapping)
+    {-# INLINE localLogAction #-}
+
+instance (Monoid w, WithLog msg m, Monad m) => WithLog msg (AccumT w m) where
+    localLogAction locally = mapAccumT (localLogAction locally)
     {-# INLINE localLogAction #-}
 
 instance (WithLog msg m, Monad m) => WithLog msg (IdentityT m)

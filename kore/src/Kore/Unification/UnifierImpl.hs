@@ -27,6 +27,7 @@ import           Kore.Internal.Predicate
                  ( Conditional (..), Predicate )
 import qualified Kore.Internal.Predicate as Predicate
 import           Kore.Internal.TermLike
+import qualified Kore.Logger as Log
 import qualified Kore.Predicate.Predicate as Predicate
                  ( isFalse, makeAndPredicate )
 import           Kore.Unification.Substitution
@@ -50,6 +51,7 @@ simplifyAnds
         , SortedVariable variable
         , FreshVariable variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => NonEmpty (TermLike variable)
     -> unifier (Pattern variable)
@@ -99,12 +101,13 @@ groupSubstitutionByVariable =
 -- x = ((t1 /\ t2) /\ (..)) /\ tn
 -- then recursively reducing that to finally get x = t /\ subst
 solveGroupedSubstitution
-    :: ( Show variable
-       , Unparse variable
-       , SortedVariable variable
-       , FreshVariable variable
-       , MonadUnify unifier
-      )
+    ::  ( Show variable
+        , Unparse variable
+        , SortedVariable variable
+        , FreshVariable variable
+        , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
+        )
     => variable
     -> NonEmpty (TermLike variable)
     -> unifier (Predicate variable)
@@ -132,6 +135,7 @@ normalizeSubstitutionDuplication
         , SortedVariable variable
         , FreshVariable variable
         , MonadUnify unifier
+        , Log.WithLog Log.LogMessage unifier
         )
     => Substitution variable
     -> unifier (Predicate variable)

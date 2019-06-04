@@ -98,6 +98,8 @@ import           Kore.Internal.Predicate
                  ( Predicate )
 import           Kore.Internal.TermLike
                  ( TermLike )
+import           Kore.Logger
+                 ( LogMessage, WithLog )
 import qualified Kore.Logger.Output as Logger
 import           Kore.OnePath.StrategyPattern
 import           Kore.OnePath.Verification
@@ -395,6 +397,8 @@ newtype UnifierWithExplanation a =
 deriving instance MonadSMT UnifierWithExplanation
 
 deriving instance MonadSimplify UnifierWithExplanation
+
+deriving instance WithLog LogMessage UnifierWithExplanation
 
 instance MonadUnify UnifierWithExplanation where
     throwSubstitutionError =
