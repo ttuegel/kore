@@ -307,28 +307,26 @@ finalizeAppliedRule
     -- ^ Applied rule
     -> OrPredicate variable
     -- ^ Conditions of applied rule
-    -> unifier (OrPattern variable)
-finalizeAppliedRule renamedRule appliedConditions =
-    Monad.liftM OrPattern.fromPatterns . Monad.Unify.gather
-    $ finalizeAppliedRuleWorker =<< Monad.Unify.scatter appliedConditions
-  where
-    finalizeAppliedRuleWorker appliedCondition = do
-        -- Combine the initial conditions, the unification conditions, and the
-        -- axiom ensures clause. The axiom requires clause is included by
-        -- unifyRule.
-        let
-            RulePattern { ensures } = renamedRule
-            ensuresCondition = Predicate.fromPredicate ensures
-        finalCondition <- normalize (appliedCondition <> ensuresCondition)
-        -- Apply the normalized substitution to the right-hand side of the
-        -- axiom.
-        let
-            Conditional { substitution } = finalCondition
-            substitution' = Substitution.toMap substitution
-            RulePattern { right = finalTerm } = renamedRule
-            finalTerm' = TermLike.substitute substitution' finalTerm
-        return finalCondition { Pattern.term = finalTerm' }
+    -> unifier (Pattern variable)
+finalizeAppliedRule renamedRule appliedConditions = do
+    appliedCondition <- Monad.Unify.scatter appliedConditions
 
+    -- Combine the applied conditions (initial conditions and unification
+    -- conditions) with the axiom ensures clause. The axiom requires clause
+    -- is included by unifyRule.
+    let
+        RulePattern { ensures } = renamedRule
+        ensuresCondition = Predicate.fromPredicate ensures
+    finalCondition <- normalize (appliedCondition <> ensuresCondition)
+    -- Apply the normalized substitution to the right-hand side of the
+    -- axiom.
+    let
+        Conditional { substitution } = finalCondition
+        substitution' = Substitution.toMap substitution
+        RulePattern { right = finalTerm } = renamedRule
+        finalTerm' = TermLike.substitute substitution' finalTerm
+    return (finalTerm' `Pattern.withCondition` finalCondition)
+  where
     normalize = Substitution.normalizeExcept
 
 {- | Apply the remainder predicate to the given initial configuration.
@@ -380,17 +378,24 @@ finalizeRule
     -- ^ Initial conditions
     -> UnifiedRule (Target variable)
     -- ^ Rewriting axiom
-    -> unifier [Result variable]
+    -> unifier (Result variable)
     -- TODO (virgil): This is broken, it should take advantage of the unifier's
     -- branching and not return a list.
 finalizeRule initialCondition unifiedRule =
-    Log.withLogScope "finalizeRule" $ Monad.Unify.gather $ do
+    Log.withLogScope "finalizeRule" $ do
         let unificationCondition = Conditional.withoutTerm unifiedRule
         applied <- applyInitialConditions initialCondition unificationCondition
         let renamedRule = Conditional.term unifiedRule
-        final <- finalizeAppliedRule renamedRule applied
-        let result = unwrapAndQuantifyConfiguration <$> final
-        return Step.Result { appliedRule = unifiedRule, result }
+        -- Now the rule is considered "applied"; always return a Result.
+        fmap withUnifier $ Monad.Unify.gather $ do
+            final <- finalizeAppliedRule renamedRule applied
+            return (unwrapAndQuantifyConfiguration final)
+  where
+    withUnifier results =
+        Step.Result
+            { appliedRule = unifiedRule
+            , result = OrPattern.fromPatterns results
+            }
 
 finalizeRulesParallel
     ::  forall unifier variable
@@ -407,8 +412,7 @@ finalizeRulesParallel
     -> unifier (Results variable)
 finalizeRulesParallel initial unifiedRules = do
     let initialCondition = Conditional.withoutTerm initial
-    results <-
-        Foldable.fold <$> traverse (finalizeRule initialCondition) unifiedRules
+    results <- traverse (finalizeRule initialCondition) unifiedRules
     let unifications = MultiOr.make (Conditional.withoutTerm <$> unifiedRules)
         remainder = Predicate.fromPredicate (Remainder.remainder' unifications)
     remainders' <- Monad.Unify.gather $ applyRemainder initial remainder
@@ -439,7 +443,7 @@ finalizeRulesSequence initial unifiedRules = do
             (Conditional.withoutTerm initial)
     remainders' <- Monad.Unify.gather $ applyRemainder initial remainder
     return Step.Results
-        { results = Seq.fromList $ Foldable.fold results
+        { results = Seq.fromList results
         , remainders =
             OrPattern.fromPatterns
             $ Pattern.mapVariables Target.unwrapVariable <$> remainders'
@@ -447,17 +451,17 @@ finalizeRulesSequence initial unifiedRules = do
   where
     finalizeRuleSequence'
         :: UnifiedRule (Target variable)
-        -> State.StateT (Predicate (Target variable)) unifier [Result variable]
+        -> State.StateT (Predicate (Target variable)) unifier (Result variable)
     finalizeRuleSequence' unifiedRule = do
         remainder <- State.get
-        results <- Monad.Trans.lift $ finalizeRule remainder unifiedRule
+        result <- Monad.Trans.lift $ finalizeRule remainder unifiedRule
         let unification = Conditional.withoutTerm unifiedRule
             remainder' =
                 Predicate.fromPredicate
                 $ Remainder.remainder'
                 $ MultiOr.singleton unification
         State.put (remainder `Conditional.andCondition` remainder')
-        return results
+        return result
 
 {- | Check that the final substitution covers the applied rule appropriately.
 
