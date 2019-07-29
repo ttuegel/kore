@@ -160,6 +160,7 @@ import qualified Data.Functor.Foldable as Recursive
 import           Data.Functor.Identity
                  ( Identity (..) )
 import           Data.Hashable
+import Data.Generics.Sum
 import           Data.Map.Strict
                  ( Map )
 import qualified Data.Map.Strict as Map
@@ -1371,8 +1372,18 @@ applySymbol_ sentence = applySymbol sentence []
 See also: 'mkBottom_'
 
  -}
-mkBottom :: (Ord variable, SortedVariable variable) => Sort -> TermLike variable
-mkBottom bottomSort = synthesize (BottomF Bottom { bottomSort })
+-- mkBottom :: (Ord variable, SortedVariable variable) => Sort -> TermLike variable
+mkBottom
+    ::  forall s f a
+    .   ( AsType (Bottom Sort s) (f s)
+        , Synthetic f a
+        , Base s ~ CofreeF f a
+        , Corecursive s, Recursive s
+        )
+    => Sort
+    -> s
+mkBottom bottomSort =
+    synthesize $ injectTyped @(Bottom Sort s) Bottom { bottomSort }
 
 {- | Construct a 'Bottom' pattern in 'predicateSort'.
 
