@@ -37,7 +37,7 @@ import           Kore.Internal.Symbol
 import           Kore.Internal.TermLike
 import qualified Kore.Proof.Value as Value
 import           Kore.Step.Axiom.Matcher
-                 ( matchAsUnification )
+                 ( matchIncremental )
 import           Kore.Step.Remainder
                  ( ceilChildOfApplicationOrTop )
 import qualified Kore.Step.Result as Result
@@ -369,4 +369,4 @@ evaluateWithDefinitionAxioms
             pattern2
 
     unificationProcedure =
-        UnificationProcedure (ignoreUnificationErrors matchAsUnification)
+        UnificationProcedure (ignoreUnificationErrors matchIncremental)
