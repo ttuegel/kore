@@ -3,7 +3,6 @@ module Test.Kore.Step.Function.Integration
     , test_Nat
     , test_List
     , test_Map
-    , test_Pair
     ) where
 
 import Test.Tasty
@@ -946,70 +945,6 @@ mapSimplifiers :: BuiltinAndAxiomSimplifierMap
 mapSimplifiers =
     Map.fromList
         [ lookupMapEvaluator
-        ]
-
-test_Pair :: [TestTree]
-test_Pair =
-    [ applies "pair constructor axiom applies"
-        [pairCtorAxiom]
-        (mkExistsN [xInt, yInt] $ mkPair (mkElemVar xInt) (mkElemVar yInt))
-    , equals "∃ x:Int y:Int. (x, y) = ⊤"
-        (mkExistsN [xInt, yInt] $ mkPair (mkElemVar xInt) (mkElemVar yInt))
-        mkTop_
-    ]
-  where
-    -- Evaluation tests: check the result of evaluating the term
-    equals
-        :: HasCallStack
-        => TestName
-        -> TermLike Variable
-        -> TermLike Variable
-        -> TestTree
-    equals comment term expect =
-        testCase comment $ do
-            actual <- evaluate' pairSimplifiers term
-            assertEqualWithExplanation "" (Pattern.fromTermLike expect) actual
-
-    evaluate'
-        :: BuiltinAndAxiomSimplifierMap
-        -> TermLike Variable
-        -> IO (Pattern Variable)
-    evaluate' functionIdToEvaluator patt =
-        SMT.runSMT SMT.defaultConfig emptyLogger
-        $ evalSimplifier env
-        $ TermLike.simplify patt
-      where
-        env =
-            Mock.env
-                { metadataTools = Builtin.testMetadataTools
-                , simplifierAxioms = functionIdToEvaluator
-                }
-
-mkPair :: TermLike Variable -> TermLike Variable -> TermLike Variable
-mkPair = Builtin.pair
-
-xInt, yInt :: ElementVariable Variable
-xInt = elemVarS (testId "xInt") intSort
-yInt = elemVarS (testId "yInt") intSort
-
-pairCtorAxiom :: EqualityRule Variable
-pairCtorAxiom =
-    EqualityRule $ rulePattern
-        (mkExistsN [xInt, yInt] $ mkPair (mkElemVar xInt) (mkElemVar yInt))
-        (mkTop $ Builtin.pairSort intSort intSort)
-
-pairCtorEvaluator :: (AxiomIdentifier, BuiltinAndAxiomSimplifier)
-pairCtorEvaluator =
-    ( AxiomIdentifier.Exists
-        $ AxiomIdentifier.Exists
-        $ AxiomIdentifier.Application Builtin.pairId
-    , firstFullEvaluation [equalityRuleSimplifier pairCtorAxiom]
-    )
-
-pairSimplifiers :: BuiltinAndAxiomSimplifierMap
-pairSimplifiers =
-    Map.fromList
-        [ pairCtorEvaluator
         ]
 
 axiomEvaluator
