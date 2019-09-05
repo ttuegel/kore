@@ -22,6 +22,8 @@ module Kore.Internal.Predicate
     , Conditional (..)
     ) where
 
+import Data.Hashable
+       ( Hashable )
 
 import           Kore.Attribute.Pattern.FreeVariables
                  ( FreeVariables )
@@ -43,7 +45,7 @@ eraseConditionalTerm
     -> Predicate variable
 eraseConditionalTerm = Conditional.withoutTerm
 
-top :: (Ord variable, SortedVariable variable) => Predicate variable
+top :: (Ord variable, SortedVariable variable, Hashable variable) => Predicate variable
 top =
     Conditional
         { term = ()
@@ -52,10 +54,10 @@ top =
         }
 
 -- | A 'top' 'Predicate' for refactoring which should eventually be removed.
-topTODO :: (Ord variable, SortedVariable variable) => Predicate variable
+topTODO :: (Ord variable, SortedVariable variable, Hashable variable) => Predicate variable
 topTODO = top
 
-bottom :: (Ord variable, SortedVariable variable) => Predicate variable
+bottom :: (Ord variable, SortedVariable variable, Hashable variable) => Predicate variable
 bottom =
     Conditional
         { term = ()
@@ -63,11 +65,11 @@ bottom =
         , substitution = mempty
         }
 
-topPredicate :: (Ord variable, SortedVariable variable) => Predicate variable
+topPredicate :: (Ord variable, SortedVariable variable, Hashable variable) => Predicate variable
 topPredicate = top
 
 bottomPredicate
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => Predicate variable
 bottomPredicate = bottom
 
@@ -104,6 +106,7 @@ toPredicate
        , Ord variable
        , Show variable
        , Unparse variable
+       , Hashable variable
        )
     => Predicate variable
     -> Syntax.Predicate variable

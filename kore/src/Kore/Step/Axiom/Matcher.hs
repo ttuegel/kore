@@ -67,6 +67,8 @@ import qualified Kore.Step.Simplification.AndTerms as SortInjectionMatch
                  ( SortInjectionMatch (..) )
 import qualified Kore.Step.Simplification.AndTerms as SortInjectionSimplification
                  ( SortInjectionSimplification (..) )
+import           Kore.Step.Simplification.Data
+                 ( SimplifierVariable )
 import qualified Kore.Step.Simplification.Data as Simplifier
 import           Kore.Unification.Error
                  ( unsupportedPatterns )
@@ -74,7 +76,6 @@ import qualified Kore.Unification.Substitution as Substitution
 import           Kore.Unification.Unify
                  ( MonadUnify )
 import qualified Kore.Unification.Unify as Monad.Unify
-import           Kore.Unparser
 import           Kore.Variables.Binding
 import           Kore.Variables.Fresh
                  ( FreshVariable )
@@ -333,12 +334,7 @@ matchBuiltinMap _ = empty
 
 -- * Implementation
 
-type MatchingVariable variable =
-    ( FreshVariable variable
-    , SortedVariable variable
-    , Show variable
-    , Unparse variable
-    )
+type MatchingVariable variable = SimplifierVariable variable
 
 {- | A matching constraint is a @Pair@ of patterns.
 
@@ -494,8 +490,7 @@ setSubstitute sVariable termLike = do
     substitute1 = substituteTermLike subst
 
 substituteTermLike
-    :: (FreshVariable variable, SortedVariable variable)
-    => (Show variable, Unparse variable)
+    :: SimplifierVariable variable
     => Map (UnifiedVariable variable) (TermLike variable)
     -> TermLike variable
     -> TermLike variable

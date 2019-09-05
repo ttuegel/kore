@@ -22,7 +22,6 @@ import qualified Kore.Predicate.Predicate as Syntax.Predicate
 import           Kore.Step.Simplification.Data
 import qualified Kore.Step.Simplification.Not as Not
                  ( makeEvaluate, simplifyEvaluated )
-import           Kore.Unparser
 
 {-|'simplify' simplifies an 'Implies' pattern with 'OrPattern'
 children.
@@ -95,11 +94,7 @@ simplifyEvaluateHalfImplies
         _ -> makeEvaluateImplies (OrPattern.toPattern first) second
 
 makeEvaluateImplies
-    ::  ( SortedVariable variable
-        , Ord variable
-        , Show variable
-        , Unparse variable
-        )
+    :: SimplifierVariable variable
     => Pattern variable
     -> Pattern variable
     -> OrPattern variable
@@ -117,11 +112,7 @@ makeEvaluateImplies
     makeEvaluateImpliesNonBool first second
 
 makeEvaluateImpliesNonBool
-    ::  ( SortedVariable variable
-        , Ord variable
-        , Show variable
-        , Unparse variable
-        )
+    :: SimplifierVariable variable
     => Pattern variable
     -> Pattern variable
     -> OrPattern variable

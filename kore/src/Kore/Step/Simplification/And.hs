@@ -37,7 +37,6 @@ import qualified Kore.Step.Simplification.AndTerms as AndTerms
 import           Kore.Step.Simplification.Data hiding
                  ( And )
 import qualified Kore.Step.Substitution as Substitution
-import           Kore.Unparser
 
 {-|'simplify' simplifies an 'And' of 'OrPattern'.
 
@@ -165,11 +164,7 @@ makeEvaluateNonBool
         { predicate = applyAndIdempotence <$> Conditional.predicate normalized }
 
 applyAndIdempotence
-    ::  ( Ord variable
-        , Show variable
-        , Unparse variable
-        , SortedVariable variable
-        )
+    :: SimplifierVariable variable
     => TermLike variable
     -> TermLike variable
 applyAndIdempotence patt =

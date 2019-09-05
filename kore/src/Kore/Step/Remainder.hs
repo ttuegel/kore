@@ -36,7 +36,6 @@ import           Kore.Step.Simplification.Data
 import           Kore.Unification.Substitution
                  ( Substitution )
 import qualified Kore.Unification.Substitution as Substitution
-import           Kore.Unparser
 import           Kore.Variables.Target
                  ( Target )
 import qualified Kore.Variables.Target as Target
@@ -54,11 +53,7 @@ See also: 'remainder\''
 
  -}
 remainder
-    ::  ( Ord     variable
-        , Show    variable
-        , Unparse variable
-        , SortedVariable variable
-        )
+    :: SimplifierVariable variable
     => MultiOr (Predicate (Target variable))
     -> Syntax.Predicate variable
 remainder =
@@ -71,11 +66,7 @@ by any applied rule.
 
  -}
 remainder'
-    ::  ( Ord     variable
-        , Show    variable
-        , Unparse variable
-        , SortedVariable variable
-        )
+    :: SimplifierVariable variable
     => MultiOr (Predicate (Target variable))
     -> Syntax.Predicate (Target variable)
 remainder' results =
@@ -86,11 +77,7 @@ remainder' results =
 
 -- | Existentially-quantify target (axiom) variables in the 'Predicate'.
 existentiallyQuantifyTarget
-    ::  ( Ord     variable
-        , Show    variable
-        , Unparse variable
-        , SortedVariable variable
-        )
+    :: SimplifierVariable variable
     => Syntax.Predicate (Target variable)
     -> Syntax.Predicate (Target variable)
 existentiallyQuantifyTarget predicate =
@@ -109,11 +96,7 @@ existentiallyQuantifyTarget predicate =
 
  -}
 mkNotMultiOr
-    ::  ( Ord     variable
-        , Show    variable
-        , Unparse variable
-        , SortedVariable variable
-        )
+    :: SimplifierVariable variable
     => MultiOr  (Syntax.Predicate variable)
     -> MultiAnd (Syntax.Predicate variable)
 mkNotMultiOr =
@@ -122,11 +105,7 @@ mkNotMultiOr =
     . Foldable.toList
 
 mkMultiAndPredicate
-    ::  ( Ord     variable
-        , Show    variable
-        , Unparse variable
-        , SortedVariable variable
-        )
+    :: SimplifierVariable variable
     => MultiAnd (Syntax.Predicate variable)
     ->           Syntax.Predicate variable
 mkMultiAndPredicate =
@@ -135,11 +114,7 @@ mkMultiAndPredicate =
 {- | Represent the unification solution as a conjunction of predicates.
  -}
 unificationConditions
-    ::  ( Ord     variable
-        , Show    variable
-        , Unparse variable
-        , SortedVariable variable
-        )
+    :: SimplifierVariable variable
     => Predicate (Target variable)
     -- ^ Unification solution
     -> MultiAnd (Syntax.Predicate (Target variable))
@@ -151,11 +126,7 @@ unificationConditions Conditional { predicate, substitution } =
             substitution
 
 substitutionConditions
-    ::  ( Ord     variable
-        , Show    variable
-        , Unparse variable
-        , SortedVariable variable
-        )
+    :: SimplifierVariable variable
     => Substitution variable
     -> MultiAnd (Syntax.Predicate variable)
 substitutionConditions subst =

@@ -15,12 +15,14 @@ import           Kore.Internal.OrPattern
                  ( OrPattern )
 import qualified Kore.Internal.OrPattern as OrPattern
 import           Kore.Internal.TermLike
+import           Kore.Step.Simplification.Data
+                 ( SimplifierVariable )
 
 {-| 'simplify' simplifies a 'StringLiteral' pattern, which means returning
 an or containing a term made of that literal.
 -}
 simplify
-    :: (Ord variable, SortedVariable variable)
+    :: SimplifierVariable variable
     => StringLiteral
     -> OrPattern variable
 simplify (StringLiteral str) =

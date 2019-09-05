@@ -260,6 +260,7 @@ reverseIfRhsIsVar
         , Show variable
         , SortedVariable variable
         , Unparse variable
+        , Hashable variable
         )
     => UnifiedVariable variable
     -> Substitution variable

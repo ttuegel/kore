@@ -23,7 +23,6 @@ import qualified Kore.Predicate.Predicate as Syntax.Predicate
 import           Kore.Step.Simplification.Data
 import qualified Kore.Step.Simplification.Not as Not
                  ( makeEvaluate, simplifyEvaluated )
-import           Kore.Unparser
 
 {-|'simplify' simplifies an 'Iff' pattern with 'OrPattern'
 children.
@@ -83,11 +82,7 @@ simplifyEvaluated
 See 'simplify' for detailed documentation.
 -}
 makeEvaluate
-    ::  ( SortedVariable variable
-        , Ord variable
-        , Show variable
-        , Unparse variable
-        )
+    :: SimplifierVariable variable
     => Pattern variable
     -> Pattern variable
     -> OrPattern variable
@@ -99,11 +94,7 @@ makeEvaluate first second
   | otherwise = makeEvaluateNonBoolIff first second
 
 makeEvaluateNonBoolIff
-    ::  ( SortedVariable variable
-        , Ord variable
-        , Show variable
-        , Unparse variable
-        )
+    :: SimplifierVariable variable
     => Pattern variable
     -> Pattern variable
     -> OrPattern variable

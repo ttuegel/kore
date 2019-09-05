@@ -13,14 +13,15 @@ import           Kore.Internal.TermLike as TermLike
 import           Kore.Predicate.Predicate
                  ( wrapPredicate )
 import           Kore.Step.Simplification.Data
-                 ( MonadSimplify, TermLikeSimplifier, termLikeSimplifier )
+                 ( MonadSimplify, SimplifierVariable, TermLikeSimplifier,
+                 termLikeSimplifier )
 import           Kore.Syntax.Variable
                  ( SortedVariable (..) )
 import           Kore.Variables.Fresh
                  ( FreshVariable )
 
 mockSimplifier
-    :: (Ord variable, SortedVariable variable)
+    :: SimplifierVariable variable
     => [(TermLike variable, [Pattern variable])]
     -> TermLikeSimplifier
 mockSimplifier values =
@@ -28,7 +29,7 @@ mockSimplifier values =
         $ const $ mockSimplifierHelper Pattern.fromTermLike values
 
 mockPredicateSimplifier
-    :: (Ord variable, SortedVariable variable)
+    :: SimplifierVariable variable
     => [(TermLike variable, [Pattern variable])]
     -> TermLikeSimplifier
 mockPredicateSimplifier values =

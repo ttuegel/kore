@@ -776,7 +776,7 @@ notApplicableAxiomEvaluator = pure NotApplicable
 
 -- |Yields a pure 'Simplifier' which produces a given 'TermLike'
 purePatternAxiomEvaluator
-    :: (Applicative m, Ord variable, SortedVariable variable)
+    :: (Applicative m, SimplifierVariable variable)
     => TermLike variable
     -> m (AttemptedAxiom variable)
 purePatternAxiomEvaluator p =
@@ -792,14 +792,9 @@ purePatternAxiomEvaluator p =
 'Application'.
 -}
 applicationAxiomSimplifier
-    ::  ( forall variable m
-        .   ( FreshVariable variable
-            , Ord variable
-            , SortedVariable variable
-            , Show variable
-            , Show variable
-            , Unparse variable
-            , MonadSimplify m
+    ::  ( forall variable simplifier
+        .   ( SimplifierVariable variable
+            , MonadSimplify simplifier
             )
         => PredicateSimplifier
         -> TermLikeSimplifier
@@ -808,28 +803,23 @@ applicationAxiomSimplifier
             (Application Symbol)
             (Attribute.Pattern variable)
             (TermLike variable)
-        -> m (AttemptedAxiom variable)
+        -> simplifier (AttemptedAxiom variable)
         )
     -> BuiltinAndAxiomSimplifier
 applicationAxiomSimplifier applicationSimplifier =
     BuiltinAndAxiomSimplifier helper
   where
     helper
-        ::  forall variable m
-        .   ( FreshVariable variable
-            , Ord variable
-            , SortedVariable variable
-            , Show variable
-            , Show variable
-            , Unparse variable
-            , MonadSimplify m
+        ::  forall variable simplifier
+        .   ( SimplifierVariable variable
+            , MonadSimplify simplifier
             )
         => PredicateSimplifier
         -> TermLikeSimplifier
         -> BuiltinAndAxiomSimplifierMap
         -> TermLike variable
         -> Predicate variable
-        -> m (AttemptedAxiom variable)
+        -> simplifier (AttemptedAxiom variable)
     helper substitutionSimplifier simplifier axiomIdToSimplifier termLike _ =
         case Recursive.project termLike of
             (valid :< ApplySymbolF p) ->

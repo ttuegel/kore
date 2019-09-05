@@ -16,12 +16,14 @@ import           Kore.Internal.OrPattern
 import qualified Kore.Internal.OrPattern as OrPattern
 import qualified Kore.Internal.Pattern as Pattern
 import           Kore.Internal.TermLike
+import           Kore.Step.Simplification.Data
+                 ( SimplifierVariable )
 
 {-| 'simplify' simplifies a 'CharLiteral' pattern, which means returning
 an or containing a term made of that literal.
 -}
 simplify
-    :: (Ord variable, SortedVariable variable)
+    :: SimplifierVariable variable
     => CharLiteral
     -> OrPattern variable
 simplify (CharLiteral char) =

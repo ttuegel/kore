@@ -36,6 +36,8 @@ module Kore.Step.Rule
     ) where
 
 import qualified Data.Default as Default
+import           Data.Hashable
+                 ( Hashable )
 import           Data.Map.Strict
                  ( Map )
 import           Data.Maybe
@@ -111,7 +113,7 @@ instance
         RulePattern { left, right, requires, ensures } = rulePattern'
 
 rulePattern
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => TermLike variable
     -> TermLike variable
     -> RulePattern variable
@@ -149,7 +151,7 @@ instance SOP.HasDatatypeInfo (RewriteRule variable)
 instance Debug variable => Debug (RewriteRule variable)
 
 instance
-    (Ord variable, SortedVariable variable, Unparse variable)
+    (Ord variable, SortedVariable variable, Unparse variable, Hashable variable)
     => Unparse (RewriteRule variable)
   where
     unparse (RewriteRule RulePattern { left, right, requires } ) =
@@ -171,7 +173,7 @@ deriving instance Ord variable => Ord (ImplicationRule variable)
 deriving instance Show variable => Show (ImplicationRule variable)
 
 instance
-    (Ord variable, SortedVariable variable, Unparse variable)
+    (Ord variable, SortedVariable variable, Unparse variable, Hashable variable)
     => Unparse (ImplicationRule variable)
   where
     unparse (ImplicationRule RulePattern { left, right } ) =
@@ -212,7 +214,7 @@ instance SOP.HasDatatypeInfo (OnePathRule variable)
 instance Debug variable => Debug (OnePathRule variable)
 
 instance
-    (Ord variable, SortedVariable variable, Unparse variable)
+    (Ord variable, SortedVariable variable, Unparse variable, Hashable variable)
     => Unparse (OnePathRule variable)
   where
     unparse = unparse . onePathRuleToPattern
@@ -369,6 +371,7 @@ onePathRuleToPattern
     :: Ord variable
     => SortedVariable variable
     => Unparse variable
+    => Hashable variable
     => OnePathRule variable
     -> TermLike variable
 onePathRuleToPattern (OnePathRule rulePatt) =
@@ -547,6 +550,7 @@ refreshRulePattern
     .   ( FreshVariable variable
         , SortedVariable variable
         , Show variable
+        , Hashable variable
         )
     => FreeVariables variable  -- ^ Variables to avoid
     -> RulePattern variable
@@ -609,6 +613,7 @@ substitute
     ::  ( FreshVariable variable
         , SortedVariable variable
         , Show variable
+        , Hashable variable
         )
     => Map (UnifiedVariable variable) (TermLike variable)
     -> RulePattern variable

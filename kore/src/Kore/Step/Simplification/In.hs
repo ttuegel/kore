@@ -23,7 +23,6 @@ import           Kore.Predicate.Predicate
 import qualified Kore.Step.Simplification.Ceil as Ceil
                  ( makeEvaluate, simplifyEvaluated )
 import           Kore.Step.Simplification.Data
-import           Kore.Unparser
 
 {-|'simplify' simplifies an 'In' pattern with 'OrPattern'
 children.
@@ -89,11 +88,7 @@ makeEvaluateIn predicate first second
   | otherwise = return $ makeEvaluateNonBoolIn first second
 
 makeEvaluateNonBoolIn
-    ::  ( SortedVariable variable
-        , Ord variable
-        , Show variable
-        , Unparse variable
-        )
+    :: SimplifierVariable variable
     => Pattern variable
     -> Pattern variable
     -> OrPattern variable

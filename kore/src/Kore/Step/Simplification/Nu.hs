@@ -11,17 +11,14 @@ import Kore.Internal.OrPattern
        ( OrPattern )
 import Kore.Internal.Pattern as Pattern
 import Kore.Internal.TermLike
-import Kore.Unparser
+import Kore.Step.Simplification.Data
+       ( SimplifierVariable )
 
 {-|'simplify' simplifies a 'Nu' pattern with an 'OrPattern'
 child.
 -}
 simplify
-    ::  ( SortedVariable variable
-        , Ord variable
-        , Show variable
-        , Unparse variable
-        )
+    :: SimplifierVariable variable
     => Nu variable (OrPattern variable)
     -> OrPattern variable
 simplify
@@ -33,11 +30,7 @@ simplify
 See 'simplify' for detailed documentation.
 -}
 makeEvaluate
-    ::  ( SortedVariable variable
-        , Ord variable
-        , Show variable
-        , Unparse variable
-        )
+    :: SimplifierVariable variable
     => SetVariable variable
     -> Pattern variable
     -> Pattern variable

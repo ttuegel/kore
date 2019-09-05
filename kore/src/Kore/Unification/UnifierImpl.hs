@@ -38,7 +38,6 @@ import           Kore.Unification.Substitution
 import qualified Kore.Unification.Substitution as Substitution
 import           Kore.Unification.Unify
                  ( MonadUnify )
-import           Kore.Unparser
 import           Kore.Variables.UnifiedVariable
                  ( UnifiedVariable (..) )
 
@@ -86,7 +85,7 @@ simplifyAnds patterns = do
         else return result
 
 groupSubstitutionByVariable
-    :: (Ord variable, SortedVariable variable)
+    :: SimplifierVariable variable
     => [(UnifiedVariable variable, TermLike variable)]
     -> [[(UnifiedVariable variable, TermLike variable)]]
 groupSubstitutionByVariable =
@@ -170,11 +169,7 @@ normalizeSubstitutionDuplication subst
             ((x, y) : ys) -> [(x, y :| (snd <$> ys))]
 
 mergePredicateList
-    :: ( Ord variable
-       , Show variable
-       , Unparse variable
-       , SortedVariable variable
-       )
+    :: SimplifierVariable variable
     => [Predicate variable]
     -> Predicate variable
 mergePredicateList [] = Predicate.top

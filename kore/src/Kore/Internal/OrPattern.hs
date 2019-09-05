@@ -20,6 +20,8 @@ module Kore.Internal.OrPattern
     ) where
 
 import qualified Data.Foldable as Foldable
+import           Data.Hashable
+                 ( Hashable )
 
 import qualified Kore.Internal.Conditional as Conditional
 import           Kore.Internal.MultiOr
@@ -65,7 +67,7 @@ See also: 'fromPattern'
 
  -}
 fromTermLike
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => TermLike variable
     -> OrPattern variable
 fromTermLike = fromPattern . Pattern.fromTermLike
@@ -92,7 +94,7 @@ isFalse = isBottom
 @
 
  -}
-top :: (Ord variable, SortedVariable variable) => OrPattern variable
+top :: (Ord variable, SortedVariable variable, Hashable variable) => OrPattern variable
 top = fromPattern Pattern.top
 
 {-| 'isTrue' checks if the 'Or' has a single top pattern.
@@ -108,6 +110,7 @@ toPattern
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => OrPattern variable -> Pattern variable
 toPattern multiOr =
@@ -128,6 +131,7 @@ toTermLike
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => OrPattern variable -> TermLike variable
 toTermLike multiOr =

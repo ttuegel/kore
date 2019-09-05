@@ -68,13 +68,9 @@ import           Kore.Step.Simplification.Data as AttemptedAxiom
                  ( AttemptedAxiom (..) )
 import           Kore.Syntax.Sentence
                  ( SentenceSort (..) )
-import           Kore.Syntax.Variable
-                 ( SortedVariable )
 import           Kore.Unification.Unify
                  ( MonadUnify )
 import qualified Kore.Unification.Unify as Monad.Unify
-import           Kore.Unparser
-                 ( Unparse )
 import           Kore.Variables.Fresh
 
 {- | Builtin name of the @Map@ sort.
@@ -209,7 +205,7 @@ expectConcreteBuiltinMap ctx _map = do
 as a function result.
 -}
 returnConcreteMap
-    :: (MonadSimplify m, Ord variable, SortedVariable variable)
+    :: (MonadSimplify m, SimplifierVariable variable)
     => Sort
     -> Map (TermLike Concrete) (Domain.MapValue (TermLike variable))
     -> m (AttemptedAxiom variable)
@@ -273,7 +269,7 @@ evalConcat =
   where
     evalConcat0
         :: forall variable m
-        .  (MonadSimplify m, Ord variable, SortedVariable variable)
+        .  (MonadSimplify m, SimplifierVariable variable)
         => TermLikeSimplifier
         -> Sort
         -> [TermLike variable]
@@ -434,7 +430,7 @@ builtinFunctions =
 -}
 asTermLike
     :: forall variable
-    .  (Ord variable, SortedVariable variable, Unparse variable)
+    .  SimplifierVariable variable
     => Domain.InternalMap (TermLike Concrete) (TermLike variable)
     -> TermLike variable
 asTermLike builtin =
@@ -493,7 +489,7 @@ internalize subterms.
 
  -}
 internalize
-    :: (Ord variable, SortedVariable variable)
+    :: SimplifierVariable variable
     => SmtMetadataTools Attribute.Symbol
     -> TermLike variable
     -> TermLike variable

@@ -47,9 +47,9 @@ import           Kore.Step.Rule
 import           Kore.Step.Simplification.AndTerms
                  ( cannotUnifyDistinctDomainValues )
 import           Kore.Step.Simplification.Data
-                 ( Simplifier, evalSimplifier )
+                 ( Simplifier, SimplifierVariable, evalSimplifier )
 import           Kore.Syntax.Variable
-                 ( SortedVariable, Variable )
+                 ( Variable )
 import           Kore.Unification.Procedure
                  ( unificationProcedure )
 import           Kore.Unification.Unify
@@ -532,7 +532,7 @@ emptyClaim =
     $ rulePatternWithName mkBottom_ mkBottom_ "emptyClaim"
 
 rulePatternWithName
-    :: (Ord variable, SortedVariable variable)
+    :: SimplifierVariable variable
     => TermLike variable
     -> TermLike variable
     -> String

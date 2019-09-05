@@ -76,9 +76,9 @@ import           Kore.Step.Axiom.Identifier
                  ( AxiomIdentifier )
 import qualified Kore.Step.Axiom.Identifier as AxiomIdentifier
                  ( AxiomIdentifier (..) )
+import           Kore.Step.Simplification.Data
+                 ( SimplifierVariable )
 import qualified Kore.Syntax.Pattern as Syntax
-import           Kore.Unparser
-import           Kore.Variables.Fresh
 
 {- | Verifiers for Kore builtin sorts.
 
@@ -193,7 +193,7 @@ See also: 'asPattern'
  -}
 externalizePattern
     ::  forall variable
-    .   (Ord variable, SortedVariable variable, Unparse variable)
+    .   SimplifierVariable variable
     =>  TermLike variable
     ->  Syntax.Pattern variable Attribute.Null
 externalizePattern =
@@ -281,7 +281,7 @@ representations are fully normalized.
 
  -}
 internalize
-    :: (Ord variable, SortedVariable variable)
+    :: SimplifierVariable variable
     => SmtMetadataTools Attribute.Symbol
     -> TermLike variable
     -> TermLike variable
@@ -296,11 +296,7 @@ internalize tools =
 {- | Renormalize builtin types after substitution.
  -}
 renormalize
-    ::  ( FreshVariable variable
-        , SortedVariable variable
-        , Show variable
-        , Unparse variable
-        )
+    :: SimplifierVariable variable
     => TermLike variable -> TermLike variable
 renormalize termLike =
     case termLike of

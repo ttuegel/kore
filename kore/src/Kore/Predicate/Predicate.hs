@@ -182,6 +182,7 @@ makeMultipleAndPredicate
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => [Predicate variable]
     -> Predicate variable
@@ -198,6 +199,7 @@ makeMultipleOrPredicate
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => [Predicate variable]
     -> Predicate variable
@@ -213,6 +215,7 @@ makeAndPredicate
     ::  ( SortedVariable variable
         , Ord variable
         , Unparse variable
+        , Hashable variable
         )
     => Predicate variable
     -> Predicate variable
@@ -234,6 +237,7 @@ makeOrPredicate
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => Predicate variable
     -> Predicate variable
@@ -255,6 +259,7 @@ makeImpliesPredicate
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => Predicate variable
     -> Predicate variable
@@ -274,6 +279,7 @@ makeIffPredicate
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => Predicate variable
     -> Predicate variable
@@ -293,6 +299,7 @@ makeNotPredicate
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => Predicate variable
     -> Predicate variable
@@ -309,6 +316,7 @@ makeEqualsPredicate
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => TermLike variable
     -> TermLike variable
@@ -324,6 +332,7 @@ makeInPredicate
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => TermLike variable
     -> TermLike variable
@@ -339,6 +348,7 @@ makeCeilPredicate
         , SortedVariable variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => TermLike variable
     -> Predicate variable
@@ -353,6 +363,7 @@ makeFloorPredicate
         , Show variable
         , SortedVariable variable
         , Unparse variable
+        , Hashable variable
         )
     => TermLike variable
     -> Predicate variable
@@ -366,6 +377,7 @@ makeExistsPredicate
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => ElementVariable variable
     -> Predicate variable
@@ -383,6 +395,7 @@ makeMultipleExists
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => f (ElementVariable variable)
     -> Predicate variable
@@ -397,6 +410,7 @@ makeForallPredicate
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => ElementVariable variable
     -> Predicate variable
@@ -413,6 +427,7 @@ makeMuPredicate
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => SetVariable variable
     -> Predicate variable
@@ -429,6 +444,7 @@ makeNuPredicate
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => SetVariable variable
     -> Predicate variable
@@ -441,13 +457,13 @@ makeNuPredicate v (GenericPredicate p) =
 {-| 'makeTruePredicate' produces a predicate wrapping a 'top'.
 -}
 makeTruePredicate
-    :: (Ord variable, SortedVariable variable) => Predicate variable
+    :: (Ord variable, SortedVariable variable, Hashable variable) => Predicate variable
 makeTruePredicate = GenericPredicate TermLike.mkTop_
 
 {-| 'makeFalsePredicate' produces a predicate wrapping a 'bottom'.
 -}
 makeFalsePredicate
-    :: (Ord variable, SortedVariable variable) => Predicate variable
+    :: (Ord variable, SortedVariable variable, Hashable variable) => Predicate variable
 makeFalsePredicate = GenericPredicate TermLike.mkBottom_
 
 makePredicate
@@ -456,6 +472,7 @@ makePredicate
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => TermLike variable
     -> Either (Error e) (Predicate variable)
@@ -548,6 +565,7 @@ substitutionToPredicate
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => Substitution variable
     -> Predicate variable
@@ -561,6 +579,7 @@ singleSubstitutionToPredicate
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => (UnifiedVariable variable, TermLike variable)
     -> Predicate variable
@@ -578,6 +597,7 @@ fromSubstitution
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => Substitution variable
     -> Predicate variable
@@ -593,6 +613,7 @@ substitute
     ::  ( FreshVariable variable
         , SortedVariable variable
         , Show variable
+        , Hashable variable
         )
     => Map (UnifiedVariable variable) (TermLike variable)
     -> Predicate variable

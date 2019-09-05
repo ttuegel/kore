@@ -12,6 +12,7 @@ import Test.Tasty.HUnit.Extensions
 import           Control.Exception
                  ( ErrorCall (ErrorCall), catch, evaluate )
 import qualified Data.Bifunctor as Bifunctor
+import           Data.Hashable
 import           Data.List.NonEmpty
                  ( NonEmpty ((:|)) )
 import qualified Data.Map as Map
@@ -540,15 +541,7 @@ test_unsupportedConstructs =
 newtype V = V Integer
     deriving (Show, Eq, Ord)
 
-newtype W = W String
-    deriving (Show, Eq, Ord)
-
 instance SortedVariable V where
-    sortedVariableSort _ = sortVar
-    fromVariable = error "Not implemented"
-    toVariable = error "Not implemented"
-
-instance SortedVariable W where
     sortedVariableSort _ = sortVar
     fromVariable = error "Not implemented"
     toVariable = error "Not implemented"
@@ -557,9 +550,23 @@ instance EqualWithExplanation V where
     compareWithExplanation = rawCompareWithExplanation
     printWithExplanation = show
 
+instance Hashable V where
+    hashWithSalt salt (V i) = hashWithSalt salt i
+
+newtype W = W String
+    deriving (Show, Eq, Ord)
+
+instance SortedVariable W where
+    sortedVariableSort _ = sortVar
+    fromVariable = error "Not implemented"
+    toVariable = error "Not implemented"
+
 instance EqualWithExplanation W where
     compareWithExplanation = rawCompareWithExplanation
     printWithExplanation = show
+
+instance Hashable W where
+    hashWithSalt salt (W s) = hashWithSalt salt s
 
 showVar :: V -> W
 showVar (V i) = W (show i)

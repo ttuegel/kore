@@ -80,6 +80,10 @@ instance FreshVariable Variable where
         pivotMin = variable { variableCounter = Nothing }
         fixSort var = var { variableSort = variableSort variable }
 
+instance FreshVariable Concrete where
+    refreshVariable _ = \case {}
+    {-# INLINE refreshVariable #-}
+
 {- | Rename one set of variables while avoiding another.
 
 If any of the variables to rename occurs in the set of avoided variables, it

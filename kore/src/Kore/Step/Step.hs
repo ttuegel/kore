@@ -141,11 +141,7 @@ unwrapRule = Rule.mapVariables Target.unwrapVariable
  -}
 unwrapAndQuantifyConfiguration
     :: forall variable
-    .   ( Ord variable
-        , Show variable
-        , SortedVariable variable
-        , Unparse variable
-        )
+    .  SimplifierVariable variable
     => Pattern (Target variable)
     -> Pattern variable
 unwrapAndQuantifyConfiguration config@Conditional { substitution } =
@@ -455,10 +451,7 @@ the axiom variables from the substitution and unwrap all the 'Target's.
 -}
 checkSubstitutionCoverage
     ::  forall variable unifier
-    .   ( SortedVariable variable
-        , Ord     variable
-        , Show    variable
-        , Unparse variable
+    .   ( SimplifierVariable variable
         , MonadUnify unifier
         )
     => Pattern (Target variable)

@@ -26,6 +26,7 @@ import Kore.Attribute.Pattern.Defined
 import Kore.Attribute.Pattern.FreeVariables
 import Kore.Attribute.Pattern.Function
 import Kore.Attribute.Pattern.Functional
+import Kore.Attribute.Pattern.Hash
 import Kore.Attribute.Synthetic
 import Kore.Debug
 import Kore.Sort
@@ -44,6 +45,7 @@ data Pattern variable =
         , functional :: !Functional
         , function :: !Function
         , defined :: !Defined
+        , patternHash :: !Hash
         }
     deriving (Eq, GHC.Generic, Show)
 
@@ -63,6 +65,7 @@ instance
     , Synthetic Functional base
     , Synthetic Function base
     , Synthetic Defined base
+    , Synthetic Hash base
     ) =>
     Synthetic (Pattern variable) base
   where
@@ -73,6 +76,7 @@ instance
             , functional = synthetic (functional <$> base)
             , function = synthetic (function <$> base)
             , defined = synthetic (defined <$> base)
+            , patternHash = synthetic (patternHash <$> base)
             }
 
 {- | Use the provided mapping to replace all variables in a 'Pattern'.

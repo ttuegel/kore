@@ -57,6 +57,8 @@ import qualified Kore.Domain.Builtin as Domain
 import qualified Kore.Error
 import           Kore.Internal.Pattern as Pattern
 import           Kore.Internal.TermLike
+import           Kore.Step.Simplification.Data
+                 ( SimplifierVariable )
 
 {- | Builtin name of the @Bool@ sort.
  -}
@@ -148,7 +150,7 @@ parse = (Parsec.<|>) true false
 
  -}
 asInternal
-    :: (Ord variable, SortedVariable variable)
+    :: SimplifierVariable variable
     => Sort  -- ^ resulting sort
     -> Bool  -- ^ builtin value to render
     -> TermLike variable
@@ -168,7 +170,7 @@ asInternal builtinBoolSort builtinBoolValue =
 
  -}
 asTermLike
-    :: (Ord variable, SortedVariable variable)
+    :: SimplifierVariable variable
     => Domain.InternalBool  -- ^ builtin value to render
     -> TermLike variable
 asTermLike builtin =
@@ -184,7 +186,7 @@ asTermLike builtin =
       | otherwise = "false"
 
 asPattern
-    :: (Ord variable, SortedVariable variable)
+    :: SimplifierVariable variable
     => Sort  -- ^ resulting sort
     -> Bool  -- ^ builtin value to render
     -> Pattern variable

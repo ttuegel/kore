@@ -16,7 +16,8 @@ import           Kore.Internal.OrPattern
 import qualified Kore.Internal.OrPattern as OrPattern
 import qualified Kore.Internal.Pattern as Pattern
 import           Kore.Internal.TermLike
-import           Kore.Unparser
+import           Kore.Step.Simplification.Data
+                 ( SimplifierVariable )
 
 -- TODO: Move Next up in the other simplifiers or something similar. Note
 -- that it messes up top/bottom testing so moving it up must be done
@@ -27,21 +28,13 @@ child.
 Right now this does not do any actual simplification.
 -}
 simplify
-    ::  ( SortedVariable variable
-        , Ord variable
-        , Show variable
-        , Unparse variable
-        )
+    :: SimplifierVariable variable
     => Next Sort (OrPattern variable)
     -> OrPattern variable
 simplify Next { nextChild = child } = simplifyEvaluated child
 
 simplifyEvaluated
-    ::  ( SortedVariable variable
-        , Ord variable
-        , Show variable
-        , Unparse variable
-        )
+    :: SimplifierVariable variable
     => OrPattern variable
     -> OrPattern variable
 simplifyEvaluated simplified =

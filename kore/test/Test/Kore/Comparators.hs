@@ -32,6 +32,7 @@ import qualified Kore.Attribute.Pattern.Defined as Attribute.Pattern
 import qualified Kore.Attribute.Pattern.FreeVariables as Attribute
 import qualified Kore.Attribute.Pattern.Function as Attribute.Pattern
 import qualified Kore.Attribute.Pattern.Functional as Attribute.Pattern
+import qualified Kore.Attribute.Pattern.Hash as Attribute.Pattern
 import qualified Kore.Attribute.Source as Attribute
 import           Kore.Domain.Builtin as Domain
 import           Kore.Error
@@ -1448,8 +1449,8 @@ instance
     ) => StructEqualWithExplanation (Attribute.Pattern variable)
   where
     structFieldsWithNames
-        expected@(Attribute.Pattern _ _ _ _ _)
-        actual@(Attribute.Pattern _ _ _ _ _)
+        expected@(Attribute.Pattern _ _ _ _ _ _)
+        actual
       =
         [ EqWrap
             "patternSort = "
@@ -1471,6 +1472,10 @@ instance
             "defined = "
             (Attribute.defined expected)
             (Attribute.defined actual)
+        , EqWrap
+            "patternHash = "
+            (Attribute.patternHash expected)
+            (Attribute.patternHash actual)
         ]
     structConstructorName _ = "Pattern"
 
@@ -1515,6 +1520,14 @@ instance WrapperEqualWithExplanation Attribute.Pattern.Defined where
     wrapperConstructorName _ = "Defined"
     wrapperField =
         Function.on (EqWrap "isDefined = ") Attribute.Pattern.isDefined
+
+instance EqualWithExplanation Attribute.Pattern.Hash where
+    compareWithExplanation = wrapperCompareWithExplanation
+    printWithExplanation = show
+
+instance WrapperEqualWithExplanation Attribute.Pattern.Hash where
+    wrapperConstructorName _ = "Hash"
+    wrapperField = Function.on (EqWrap "getHash = ") Attribute.Pattern.getHash
 
 instance
     ( EqualWithExplanation variable, Show variable

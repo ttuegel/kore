@@ -15,6 +15,8 @@ module Kore.Internal.OrPredicate
     ) where
 
 import qualified Data.Foldable as Foldable
+import           Data.Hashable
+                 ( Hashable )
 
 import           Kore.Internal.MultiOr
                  ( MultiOr )
@@ -68,7 +70,7 @@ bottom = fromPredicates []
 @
 
  -}
-top :: (Ord variable, SortedVariable variable) => OrPredicate variable
+top :: (Ord variable, SortedVariable variable, Hashable variable) => OrPredicate variable
 top = fromPredicate Predicate.top
 
 {-| 'isFalse' checks if the 'OrPredicate' is composed only of bottom items.
@@ -87,6 +89,7 @@ toPredicate
         , Ord variable
         , Show variable
         , Unparse variable
+        , Hashable variable
         )
     => MultiOr (Syntax.Predicate variable) -> Syntax.Predicate variable
 toPredicate multiOr =

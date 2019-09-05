@@ -71,6 +71,8 @@ import           Kore.Internal.Pattern
                  ( Pattern )
 import qualified Kore.Internal.Pattern as Pattern
 import           Kore.Internal.TermLike as TermLike
+import           Kore.Step.Simplification.Data
+                 ( SimplifierVariable )
 
 {- | Builtin name of the @String@ sort.
  -}
@@ -230,7 +232,7 @@ asInternal internalStringSort internalStringValue =
 
  -}
 asTermLike
-    :: (Ord variable, SortedVariable variable)
+    :: SimplifierVariable variable
     => Domain.InternalString  -- ^ builtin value to render
     -> TermLike variable
 asTermLike internal =
@@ -243,7 +245,7 @@ asTermLike internal =
     Domain.InternalString { internalStringValue } = internal
 
 asPattern
-    :: (Ord variable, SortedVariable variable)
+    :: SimplifierVariable variable
     => Sort  -- ^ resulting sort
     -> Text  -- ^ builtin value to render
     -> Pattern variable
@@ -251,7 +253,7 @@ asPattern resultSort =
     Pattern.fromTermLike . asInternal resultSort
 
 asPartialPattern
-    :: (Ord variable, SortedVariable variable)
+    :: SimplifierVariable variable
     => Sort  -- ^ resulting sort
     -> Maybe Text  -- ^ builtin value to render
     -> Pattern variable

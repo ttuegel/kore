@@ -38,12 +38,10 @@ import           Kore.Internal.TermLike as TermLike
 import           Kore.Predicate.Predicate
                  ( makeTruePredicate )
 import           Kore.Step.Simplification.Data
-                 ( MonadSimplify )
+                 ( MonadSimplify, SimplifierVariable )
 import           Kore.Unification.Error
                  ( SubstitutionError (..) )
 import qualified Kore.Unification.Substitution as Substitution
-import           Kore.Unparser
-import           Kore.Variables.Fresh
 import           Kore.Variables.UnifiedVariable
                  ( UnifiedVariable (..) )
 import qualified Kore.Variables.UnifiedVariable as UnifiedVariable
@@ -66,12 +64,8 @@ x = f(x) or something equivalent).
 -}
 normalizeSubstitution
     ::  forall m variable
-     .  ( Ord variable
+     .  ( SimplifierVariable variable
         , MonadSimplify m
-        , FreshVariable variable
-        , SortedVariable variable
-        , Show variable
-        , Unparse variable
         )
     => Map (UnifiedVariable variable) (TermLike variable)
     -> ExceptT SubstitutionError m (Predicate variable)
@@ -166,11 +160,8 @@ variableToSubstitution varToPattern var =
         Nothing   -> error ("variable " ++ show var ++ " not found.")
 
 normalizeSortedSubstitution
-    ::  ( Ord variable
+    ::  ( SimplifierVariable variable
         , Monad m
-        , FreshVariable variable
-        , SortedVariable variable
-        , Show variable
         )
     => [(UnifiedVariable variable, TermLike variable)]
     -> [(UnifiedVariable variable, TermLike variable)]

@@ -22,6 +22,8 @@ import           Control.Applicative
                  ( Alternative (..) )
 import           Control.DeepSeq
                  ( NFData )
+import           Data.Hashable
+                 ( Hashable )
 import qualified Data.Set as Set
 import           GHC.Exts
                  ( IsList )
@@ -163,7 +165,7 @@ filterGeneric andFilter (MultiAnd patts) =
             AndUnknown -> go filterAnd' (element:filtered) unfiltered
 
 toPredicate
-    :: (Ord variable, SortedVariable variable, Unparse variable)
+    :: (Ord variable, SortedVariable variable, Unparse variable, Hashable variable)
     => MultiAnd (Predicate variable)
     -> Predicate variable
 toPredicate (MultiAnd predicates) =

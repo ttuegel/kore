@@ -463,7 +463,7 @@ maybeTransformTerm
 -- | Simplify the conjunction of terms where one is a predicate.
 boolAnd
     :: MonadUnify unifier
-    => (Ord variable, SortedVariable variable, Unparse variable)
+    => SimplifierVariable variable
     => TermLike variable
     -> TermLike variable
     -> MaybeT unifier (Pattern variable)
@@ -490,7 +490,7 @@ explainBoolAndBottom term1 term2 =
 
 -- | Unify two identical ('==') patterns.
 equalAndEquals
-    :: (Ord variable, SortedVariable variable)
+    :: SimplifierVariable variable
     => Monad unifier
     => TermLike variable
     -> TermLike variable
@@ -648,9 +648,7 @@ when @src1@ is a subsort of @src2@.
  -}
 sortInjectionAndEqualsAssumesDifferentHeads
     ::  forall variable unifier
-    .   ( Ord variable
-        , SortedVariable variable
-        , Unparse variable
+    .   ( SimplifierVariable variable
         , MonadUnify unifier
         )
     => GHC.HasCallStack
@@ -711,7 +709,7 @@ data SortInjectionSimplification variable
 
 simplifySortInjections
     :: forall variable
-    .  (Ord variable, SortedVariable variable, Unparse variable)
+    .  SimplifierVariable variable
     => GHC.HasCallStack
     => SmtMetadataTools Attribute.Symbol
     -> TermLike variable
@@ -1005,11 +1003,7 @@ The function patterns are unified by creating an @\\equals@ predicate.
 
 -}
 functionAnd
-    ::  ( SortedVariable variable
-        , Ord variable
-        , Show variable
-        , Unparse variable
-        )
+    :: SimplifierVariable variable
     => GHC.HasCallStack
     => TermLike variable
     -> TermLike variable

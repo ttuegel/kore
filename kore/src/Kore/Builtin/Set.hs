@@ -76,13 +76,9 @@ import           Kore.Syntax.Sentence
                  ( SentenceSort (SentenceSort) )
 import qualified Kore.Syntax.Sentence as Sentence.DoNotUse
                  ( SentenceSort (..) )
-import           Kore.Syntax.Variable
-                 ( SortedVariable )
 import           Kore.Unification.Unify
                  ( MonadUnify )
 import qualified Kore.Unification.Unify as Monad.Unify
-import           Kore.Unparser
-                 ( Unparse )
 
 {- | Builtin name of the @Set@ sort.
  -}
@@ -212,8 +208,7 @@ as a function result.
 -}
 returnConcreteSet
     ::  ( MonadSimplify m
-        , Ord variable
-        , SortedVariable variable
+        , SimplifierVariable variable
         )
     => Sort
     -> Map (TermLike Concrete) (Domain.SetValue (TermLike variable))
@@ -277,7 +272,7 @@ evalConcat =
   where
     evalConcat0
         :: forall variable m
-        .  (Ord variable, SortedVariable variable)
+        .  SimplifierVariable variable
         => MonadSimplify m
         => TermLikeSimplifier
         -> Sort
@@ -411,7 +406,7 @@ builtinFunctions =
 -}
 asTermLike
     :: forall variable
-    .  (Ord variable, SortedVariable variable, Unparse variable)
+    .  SimplifierVariable variable
     => Domain.InternalSet (TermLike Concrete) (TermLike variable)
     -> TermLike variable
 asTermLike builtin =
@@ -469,7 +464,7 @@ internalize subterms.
 
  -}
 internalize
-    :: (Ord variable, SortedVariable variable)
+    :: SimplifierVariable variable
     => SmtMetadataTools Attribute.Symbol
     -> TermLike variable
     -> TermLike variable

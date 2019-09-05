@@ -28,9 +28,6 @@ import           Kore.Step.Simplification.Data hiding
 import qualified Kore.Step.Simplification.Predicate as PSSimplifier
                  ( create )
 import qualified Kore.Unification.Substitution as Substitution
-import           Kore.Unparser
-import           Kore.Variables.Fresh
-                 ( FreshVariable )
 import           Kore.Variables.UnifiedVariable
                  ( UnifiedVariable (..) )
 import qualified SMT
@@ -286,10 +283,7 @@ simplificationEvaluator = firstFullEvaluation
 
 makeEvaluator
     ::  (forall variable
-        .   ( FreshVariable variable
-            , SortedVariable variable
-            , Unparse variable
-            )
+        .  SimplifierVariable variable
         => [(TermLike variable, TermLike variable)]
         )
     -> BuiltinAndAxiomSimplifier
@@ -298,8 +292,7 @@ makeEvaluator mapping =
     $ const $ const $ const $ simpleEvaluator mapping
 
 simpleEvaluator
-    ::  ( FreshVariable variable
-        , SortedVariable variable
+    ::  ( SimplifierVariable variable
         , MonadSimplify simplifier
         )
     => [(TermLike variable, TermLike variable)]

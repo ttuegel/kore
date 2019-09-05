@@ -198,6 +198,7 @@ import qualified Kore.Attribute.Pattern.Defined as Pattern
 import           Kore.Attribute.Pattern.FreeVariables
 import qualified Kore.Attribute.Pattern.Function as Pattern
 import qualified Kore.Attribute.Pattern.Functional as Pattern
+import qualified Kore.Attribute.Pattern.Hash as Pattern
 import           Kore.Attribute.Synthetic
 import           Kore.Debug
 import qualified Kore.Domain.Builtin as Domain
@@ -313,6 +314,10 @@ data TermLikeF variable child
         , Synthetic Pattern.Functional, Synthetic Pattern.Function
         , Synthetic Pattern.Defined
         ) via (Generically1 (TermLikeF variable))
+
+instance Hashable variable => Synthetic Pattern.Hash (TermLikeF variable) where
+    synthetic termLikeF = Pattern.Hash (hash termLikeF)
+    {-# INLINE synthetic #-}
 
 instance SOP.Generic (TermLikeF variable child)
 
@@ -563,7 +568,7 @@ extractAttributes :: TermLike variable -> Attribute.Pattern variable
 extractAttributes = extract . getTermLike
 
 instance
-    (Ord variable, SortedVariable variable, Show variable) =>
+    (Hashable variable, Ord variable, SortedVariable variable, Show variable) =>
     Binding (TermLike variable)
   where
     type VariableType (TermLike variable) = UnifiedVariable variable
@@ -738,6 +743,7 @@ substitute
         , Ord variable
         , SortedVariable variable
         , Show variable
+        , Hashable variable
         )
     =>  Map (UnifiedVariable variable) (TermLike variable)
     ->  TermLike variable
@@ -1030,6 +1036,7 @@ mkAnd
     ::  ( Ord variable
         , SortedVariable variable
         , Unparse variable
+        , Hashable variable
         , GHC.HasCallStack
         )
     => TermLike variable
@@ -1079,7 +1086,11 @@ See also: 'applyAlias', 'applySymbol'
 
  -}
 mkApplyAlias
-    :: (Ord variable, SortedVariable variable, Unparse variable)
+    ::  ( Ord variable
+        , SortedVariable variable
+        , Unparse variable
+        , Hashable variable
+        )
     => GHC.HasCallStack
     => Alias
     -- ^ Application symbol or alias
@@ -1106,7 +1117,11 @@ See also: 'applyAlias', 'applySymbol'
 
  -}
 mkApplySymbol
-    :: (Ord variable, SortedVariable variable, Unparse variable)
+    ::  ( Ord variable
+        , SortedVariable variable
+        , Unparse variable
+        , Hashable variable
+        )
     => GHC.HasCallStack
     => Symbol
     -- ^ Application symbol or alias
@@ -1131,7 +1146,11 @@ See also: 'mkApplyAlias', 'applyAlias_', 'applySymbol', 'mkAlias'
 
  -}
 applyAlias
-    :: (Ord variable, SortedVariable variable, Unparse variable)
+    ::  ( Ord variable
+        , SortedVariable variable
+        , Unparse variable
+        , Hashable variable
+        )
     => GHC.HasCallStack
     => SentenceAlias (TermLike variable)
     -- ^ 'Alias' declaration
@@ -1187,6 +1206,7 @@ applyAlias_
     ::  ( Ord variable
         , SortedVariable variable
         , Unparse variable
+        , Hashable variable
         , GHC.HasCallStack
         )
     => SentenceAlias (TermLike variable)
@@ -1202,7 +1222,11 @@ See also: 'mkApp', 'applySymbol_', 'mkSymbol'
 
  -}
 applySymbol
-    :: (Ord variable, SortedVariable variable, Unparse variable)
+    ::  ( Ord variable
+        , SortedVariable variable
+        , Unparse variable
+        , Hashable variable
+        )
     => GHC.HasCallStack
     => SentenceSymbol pattern''
     -- ^ 'Symbol' declaration
@@ -1234,7 +1258,11 @@ See also: 'mkApplySymbol', 'applySymbol'
 
  -}
 applySymbol_
-    :: (Ord variable, SortedVariable variable, Unparse variable)
+    ::  ( Ord variable
+        , SortedVariable variable
+        , Unparse variable
+        , Hashable variable
+        )
     => GHC.HasCallStack
     => SentenceSymbol pattern''
     -> [TermLike variable]
@@ -1246,7 +1274,10 @@ applySymbol_ sentence = applySymbol sentence []
 See also: 'mkBottom_'
 
  -}
-mkBottom :: (Ord variable, SortedVariable variable) => Sort -> TermLike variable
+mkBottom
+    :: (Ord variable, SortedVariable variable, Hashable variable)
+    => Sort
+    -> TermLike variable
 mkBottom bottomSort = synthesize (BottomF Bottom { bottomSort })
 
 {- | Construct a 'Bottom' pattern in 'predicateSort'.
@@ -1257,7 +1288,9 @@ This should not be used outside "Kore.Predicate.Predicate"; please use
 See also: 'mkBottom'
 
  -}
-mkBottom_ :: (Ord variable, SortedVariable variable) => TermLike variable
+mkBottom_
+    :: (Ord variable, SortedVariable variable, Hashable variable)
+    => TermLike variable
 mkBottom_ = mkBottom predicateSort
 
 {- | Construct a 'Ceil' pattern in the given sort.
@@ -1266,7 +1299,7 @@ See also: 'mkCeil_'
 
  -}
 mkCeil
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => Sort
     -> TermLike variable
     -> TermLike variable
@@ -1284,7 +1317,7 @@ See also: 'mkCeil'
 
  -}
 mkCeil_
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => TermLike variable
     -> TermLike variable
 mkCeil_ = mkCeil predicateSort
@@ -1292,7 +1325,7 @@ mkCeil_ = mkCeil predicateSort
 {- | Construct a builtin pattern.
  -}
 mkBuiltin
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => Domain.Builtin (TermLike Concrete) (TermLike variable)
     -> TermLike variable
 mkBuiltin = synthesize . BuiltinF
@@ -1300,7 +1333,7 @@ mkBuiltin = synthesize . BuiltinF
 {- | Construct a builtin list pattern.
  -}
 mkBuiltinList
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => Domain.InternalList (TermLike variable)
     -> TermLike variable
 mkBuiltinList = synthesize . BuiltinF . Domain.BuiltinList
@@ -1308,7 +1341,7 @@ mkBuiltinList = synthesize . BuiltinF . Domain.BuiltinList
 {- | Construct a builtin map pattern.
  -}
 mkBuiltinMap
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => Domain.InternalMap (TermLike Concrete) (TermLike variable)
     -> TermLike variable
 mkBuiltinMap = synthesize . BuiltinF . Domain.BuiltinMap
@@ -1316,7 +1349,7 @@ mkBuiltinMap = synthesize . BuiltinF . Domain.BuiltinMap
 {- | Construct a builtin set pattern.
  -}
 mkBuiltinSet
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => Domain.InternalSet (TermLike Concrete) (TermLike variable)
     -> TermLike variable
 mkBuiltinSet = synthesize . BuiltinF . Domain.BuiltinSet
@@ -1324,7 +1357,7 @@ mkBuiltinSet = synthesize . BuiltinF . Domain.BuiltinSet
 {- | Construct a 'DomainValue' pattern.
  -}
 mkDomainValue
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => DomainValue Sort (TermLike variable)
     -> TermLike variable
 mkDomainValue = synthesize . DomainValueF
@@ -1335,7 +1368,11 @@ See also: 'mkEquals_'
 
  -}
 mkEquals
-    :: (Ord variable, SortedVariable variable, Unparse variable)
+    ::  ( Ord variable
+        , SortedVariable variable
+        , Unparse variable
+        , Hashable variable
+        )
     => GHC.HasCallStack
     => Sort
     -> TermLike variable
@@ -1367,6 +1404,7 @@ mkEquals_
     ::  ( Ord variable
         , SortedVariable variable
         , Unparse variable
+        , Hashable variable
         , GHC.HasCallStack
         )
     => TermLike variable
@@ -1377,7 +1415,7 @@ mkEquals_ = mkEquals predicateSort
 {- | Construct an 'Exists' pattern.
  -}
 mkExists
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => ElementVariable variable
     -> TermLike variable
     -> TermLike variable
@@ -1389,7 +1427,7 @@ mkExists existsVariable existsChild =
 {- | Construct a sequence of 'Exists' patterns over several variables.
  -}
 mkExistsN
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => Foldable foldable
     => foldable (ElementVariable variable)
     -> TermLike variable
@@ -1402,7 +1440,7 @@ See also: 'mkFloor_'
 
  -}
 mkFloor
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => Sort
     -> TermLike variable
     -> TermLike variable
@@ -1420,14 +1458,14 @@ See also: 'mkFloor'
 
  -}
 mkFloor_
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => TermLike variable -> TermLike variable
 mkFloor_ = mkFloor predicateSort
 
 {- | Construct a 'Forall' pattern.
  -}
 mkForall
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => ElementVariable variable
     -> TermLike variable
     -> TermLike variable
@@ -1439,7 +1477,7 @@ mkForall forallVariable forallChild =
 {- | Construct a sequence of 'Forall' patterns over several variables.
  -}
 mkForallN
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => Foldable foldable
     => foldable (ElementVariable variable)
     -> TermLike variable
@@ -1449,7 +1487,11 @@ mkForallN = appEndo . foldMap (Endo . mkForall)
 {- | Construct an 'Iff' pattern.
  -}
 mkIff
-    :: (Ord variable, SortedVariable variable, Unparse variable)
+    ::  ( Ord variable
+        , SortedVariable variable
+        , Unparse variable
+        , Hashable variable
+        )
     => GHC.HasCallStack
     => TermLike variable
     -> TermLike variable
@@ -1462,7 +1504,11 @@ mkIff = makeSortsAgree mkIffWorker
 {- | Construct an 'Implies' pattern.
  -}
 mkImplies
-    :: (Ord variable, SortedVariable variable, Unparse variable)
+    ::  ( Ord variable
+        , SortedVariable variable
+        , Unparse variable
+        , Hashable variable
+        )
     => GHC.HasCallStack
     => TermLike variable
     -> TermLike variable
@@ -1480,7 +1526,11 @@ See also: 'mkIn_'
 
  -}
 mkIn
-    :: (Ord variable, SortedVariable variable, Unparse variable)
+    ::  ( Ord variable
+        , SortedVariable variable
+        , Unparse variable
+        , Hashable variable
+        )
     => GHC.HasCallStack
     => Sort
     -> TermLike variable
@@ -1508,7 +1558,11 @@ See also: 'mkIn'
 
  -}
 mkIn_
-    :: (Ord variable, SortedVariable variable, Unparse variable)
+    ::  ( Ord variable
+        , SortedVariable variable
+        , Unparse variable
+        , Hashable variable
+        )
     => GHC.HasCallStack
     => TermLike variable
     -> TermLike variable
@@ -1521,6 +1575,7 @@ mkMu
     :: Ord variable
     => SortedVariable variable
     => Unparse variable
+    => Hashable variable
     => SetVariable variable
     -> TermLike variable
     -> TermLike variable
@@ -1533,7 +1588,7 @@ mkMu muVar = makeSortsAgree mkMuWorker (mkSetVar muVar)
 {- | Construct a 'Next' pattern.
  -}
 mkNext
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => TermLike variable
     -> TermLike variable
 mkNext nextChild =
@@ -1544,7 +1599,7 @@ mkNext nextChild =
 {- | Construct a 'Not' pattern.
  -}
 mkNot
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => TermLike variable
     -> TermLike variable
 mkNot notChild =
@@ -1558,6 +1613,7 @@ mkNu
     :: Ord variable
     => SortedVariable variable
     => Unparse variable
+    => Hashable variable
     => SetVariable variable
     -> TermLike variable
     -> TermLike variable
@@ -1570,7 +1626,7 @@ mkNu nuVar = makeSortsAgree mkNuWorker (mkSetVar nuVar)
 {- | Construct an 'Or' pattern.
  -}
 mkOr
-    :: (Ord variable, SortedVariable variable, Unparse variable)
+    :: (Ord variable, SortedVariable variable, Unparse variable, Hashable variable)
     => GHC.HasCallStack
     => TermLike variable
     -> TermLike variable
@@ -1583,7 +1639,7 @@ mkOr = makeSortsAgree mkOrWorker
 {- | Construct a 'Rewrites' pattern.
  -}
 mkRewrites
-    :: (Ord variable, SortedVariable variable, Unparse variable)
+    :: (Ord variable, SortedVariable variable, Unparse variable, Hashable variable)
     => GHC.HasCallStack
     => TermLike variable
     -> TermLike variable
@@ -1600,7 +1656,7 @@ mkRewrites = makeSortsAgree mkRewritesWorker
 See also: 'mkTop_'
 
  -}
-mkTop :: (Ord variable, SortedVariable variable) => Sort -> TermLike variable
+mkTop :: (Ord variable, SortedVariable variable, Hashable variable) => Sort -> TermLike variable
 mkTop topSort = synthesize (TopF Top { topSort })
 
 {- | Construct a 'Top' pattern in 'predicateSort'.
@@ -1611,7 +1667,7 @@ This should not be used outside "Kore.Predicate.Predicate"; please use
 See also: 'mkTop'
 
  -}
-mkTop_ :: (Ord variable, SortedVariable variable) => TermLike variable
+mkTop_ :: (Ord variable, SortedVariable variable, Hashable variable) => TermLike variable
 mkTop_ = mkTop predicateSort
 
 {- | Construct a variable pattern.
@@ -1619,6 +1675,7 @@ mkTop_ = mkTop predicateSort
 mkVar
     :: Ord variable
     => SortedVariable variable
+    => Hashable variable
     => UnifiedVariable variable -> TermLike variable
 mkVar = synthesize . VariableF . Const
 
@@ -1627,6 +1684,7 @@ mkVar = synthesize . VariableF . Const
 mkElemVar
     :: Ord variable
     => SortedVariable variable
+    => Hashable variable
     => ElementVariable variable -> TermLike variable
 mkElemVar = mkVar . ElemVar
 
@@ -1635,13 +1693,14 @@ mkElemVar = mkVar . ElemVar
 mkSetVar
     :: Ord variable
     => SortedVariable variable
+    => Hashable variable
     => SetVariable variable -> TermLike variable
 mkSetVar = mkVar . SetVar
 
 {- | Construct a 'StringLiteral' pattern.
  -}
 mkStringLiteral
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => Text
     -> TermLike variable
 mkStringLiteral = synthesize . StringLiteralF . Const . StringLiteral
@@ -1649,19 +1708,19 @@ mkStringLiteral = synthesize . StringLiteralF . Const . StringLiteral
 {- | Construct a 'CharLiteral' pattern.
  -}
 mkCharLiteral
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => Char
     -> TermLike variable
 mkCharLiteral = synthesize . CharLiteralF . Const . CharLiteral
 
 mkInhabitant
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => Sort
     -> TermLike variable
 mkInhabitant = synthesize . InhabitantF . Inhabitant
 
 mkEvaluated
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => TermLike variable
     -> TermLike variable
 mkEvaluated = synthesize . EvaluatedF . Evaluated

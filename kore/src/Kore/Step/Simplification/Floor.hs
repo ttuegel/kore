@@ -21,7 +21,8 @@ import           Kore.Internal.Pattern as Pattern
 import           Kore.Internal.TermLike
 import           Kore.Predicate.Predicate
                  ( makeAndPredicate, makeFloorPredicate )
-import           Kore.Unparser
+import           Kore.Step.Simplification.Data
+                 ( SimplifierVariable )
 
 {-| 'simplify' simplifies a 'Floor' of 'OrPattern'.
 
@@ -35,11 +36,7 @@ However, we don't take into account things like
 floor(a and b) = floor(a) and floor(b).
 -}
 simplify
-    ::  ( SortedVariable variable
-        , Unparse variable
-        , Show variable
-        , Ord variable
-        )
+    :: SimplifierVariable variable
     => Floor Sort (OrPattern variable)
     -> OrPattern variable
 simplify Floor { floorChild = child } =
@@ -59,11 +56,7 @@ to carry around.
 
 -}
 simplifyEvaluatedFloor
-    ::  ( SortedVariable variable
-        , Show variable
-        , Ord variable
-        , Unparse variable
-        )
+    :: SimplifierVariable variable
     => OrPattern variable
     -> OrPattern variable
 simplifyEvaluatedFloor child =
@@ -78,11 +71,7 @@ simplifyEvaluatedFloor child =
 See 'simplify' for details.
 -}
 makeEvaluateFloor
-    ::  ( SortedVariable variable
-        , Show variable
-        , Ord variable
-        , Unparse variable
-        )
+    :: SimplifierVariable variable
     => Pattern variable
     -> OrPattern variable
 makeEvaluateFloor child
@@ -91,11 +80,7 @@ makeEvaluateFloor child
   | otherwise              = makeEvaluateNonBoolFloor child
 
 makeEvaluateNonBoolFloor
-    ::  ( SortedVariable variable
-        , Show variable
-        , Ord variable
-        , Unparse variable
-        )
+    :: SimplifierVariable variable
     => Pattern variable
     -> OrPattern variable
 makeEvaluateNonBoolFloor patt@Conditional { term = Top_ _ } =

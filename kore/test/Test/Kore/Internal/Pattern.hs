@@ -6,6 +6,7 @@ module Test.Kore.Internal.Pattern
 import Test.Tasty
 import Test.Tasty.HUnit
 
+import Data.Hashable
 import Data.Text.Prettyprint.Doc
 
 import           Kore.Internal.Pattern as Pattern
@@ -17,8 +18,11 @@ import           Kore.Internal.TermLike
 import           Kore.Predicate.Predicate
                  ( Predicate, makeEqualsPredicate, makeFalsePredicate,
                  makeTruePredicate )
+import           Kore.Step.Simplification.Data
+                 ( SimplifierVariable )
 import qualified Kore.Unification.Substitution as Substitution
 import           Kore.Unparser
+import           Kore.Variables.Fresh
 import           Kore.Variables.UnifiedVariable
                  ( UnifiedVariable (..) )
 
@@ -123,15 +127,9 @@ test_expandedPattern =
 
 newtype V = V Integer
     deriving (Show, Eq, Ord)
-newtype W = W String
-    deriving (Show, Eq, Ord)
 
 instance Unparse V where
     unparse (V n) = "V" <> pretty n <> ":" <> unparse sortVariable
-    unparse2 = error "Not implemented"
-
-instance Unparse W where
-    unparse (W name) = "W" <> pretty name <> ":" <> unparse sortVariable
     unparse2 = error "Not implemented"
 
 instance SortedVariable V where
@@ -139,28 +137,37 @@ instance SortedVariable V where
     fromVariable = error "Not implemented"
     toVariable = error "Not implemented"
 
-instance SumEqualWithExplanation V where
-    sumConstructorPair (V a1) (V a2) =
-        SumConstructorSameWithArguments
-            (EqWrap "V" a1 a2)
-
 instance EqualWithExplanation V where
-    compareWithExplanation = sumCompareWithExplanation
+    compareWithExplanation = rawCompareWithExplanation
     printWithExplanation = show
+
+instance Hashable V where
+    hashWithSalt salt (V i) = hashWithSalt salt i
+
+instance FreshVariable V where
+    refreshVariable = undefined
+
+newtype W = W String
+    deriving (Show, Eq, Ord)
+
+instance Unparse W where
+    unparse (W name) = "W" <> pretty name <> ":" <> unparse sortVariable
+    unparse2 = error "Not implemented"
 
 instance SortedVariable W where
     sortedVariableSort _ = sortVariable
     fromVariable = error "Not implemented"
     toVariable = error "Not implemented"
 
-instance SumEqualWithExplanation W where
-    sumConstructorPair (W a1) (W a2) =
-        SumConstructorSameWithArguments (EqWrap "W" a1 a2)
-
 instance EqualWithExplanation W where
-    compareWithExplanation = sumCompareWithExplanation
+    compareWithExplanation = rawCompareWithExplanation
     printWithExplanation = show
 
+instance Hashable W where
+    hashWithSalt salt (W s) = hashWithSalt salt s
+
+instance FreshVariable W where
+    refreshVariable = undefined
 
 showVar :: V -> W
 showVar (V i) = W (show i)
@@ -172,21 +179,21 @@ war :: String -> TermLike W
 war = mkElemVar . ElementVariable . W
 
 makeEq
-    :: (SortedVariable var, Ord var, Show var, Unparse var)
+    :: SimplifierVariable var
     => TermLike var
     -> TermLike var
     -> TermLike var
 makeEq = mkEquals sortVariable
 
 makeAnd
-    :: (SortedVariable var, Ord var, Show var, Unparse var)
+    :: SimplifierVariable var
     => TermLike var
     -> TermLike var
     -> TermLike var
 makeAnd p1 p2 = mkAnd p1 p2
 
 makeEquals
-    :: (SortedVariable var, Ord var, Show var, Unparse var)
+    :: SimplifierVariable var
     => TermLike var -> TermLike var -> Predicate var
 makeEquals p1 p2 = makeEqualsPredicate p1 p2
 

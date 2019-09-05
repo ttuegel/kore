@@ -44,7 +44,6 @@ import qualified Kore.Unification.Substitution as Substitution
 import           Kore.Unification.Unify
                  ( runUnifierT )
 import           Kore.Unparser
-import           Kore.Variables.Fresh
 import           Kore.Variables.UnifiedVariable
                  ( UnifiedVariable (..) )
 
@@ -147,10 +146,7 @@ makeEvaluate variable original
                     normalized { substitution = boundSubstitution }
 
 matchesToVariableSubstitution
-    ::  ( FreshVariable variable
-        , Show variable
-        , Unparse variable
-        , SortedVariable variable
+    ::  ( SimplifierVariable variable
         , MonadSimplify simplifier
         )
     => ElementVariable variable
@@ -246,10 +242,7 @@ See also: 'quantifyPattern'
 
  -}
 makeEvaluateBoundRight
-    ::  ( Ord variable
-        , Show variable
-        , Unparse variable
-        , SortedVariable variable
+    ::  ( SimplifierVariable variable
         , MonadSimplify simplifier
         )
     => ElementVariable variable  -- ^ variable to be quantified
@@ -283,12 +276,8 @@ The result is a pair of:
 
  -}
 splitSubstitution
-    ::  ( FreshVariable variable
-        , HasCallStack
-        , Ord variable
-        , Show variable
-        , SortedVariable variable
-        , Unparse variable
+    ::  ( HasCallStack
+        , SimplifierVariable variable
         )
     => ElementVariable variable
     -> Substitution variable
@@ -316,11 +305,7 @@ is lowered onto the 'term' or 'predicate' alone, or omitted, if possible.
 
  -}
 quantifyPattern
-    ::  ( Ord variable
-        , Show variable
-        , Unparse variable
-        , SortedVariable variable
-        )
+    :: SimplifierVariable variable
     => ElementVariable variable
     -> Pattern variable
     -> Pattern variable

@@ -28,8 +28,6 @@ import           Kore.Internal.TermLike
 import           Kore.Step.Simplification.Data as Simplifier
 import           Kore.Step.Simplification.NoConfusion
 import           Kore.Unification.Unify as Unify
-import           Kore.Unparser
-import           Kore.Variables.Fresh
 
 {- | Unify an overloaded constructor application pattern with a sort injection
 pattern over an (overloaded) constructor.
@@ -43,11 +41,7 @@ otherwise, return bottom, as the constructors are incompatible
 
  -}
 overloadedConstructorSortInjectionAndEquals
-    ::  ( Eq variable
-        , FreshVariable variable
-        , Show variable
-        , SortedVariable variable
-        , Unparse variable
+    ::  ( SimplifierVariable variable
         , MonadUnify unifier
         )
     => GHC.HasCallStack
@@ -74,11 +68,7 @@ overloadedConstructorSortInjectionAndEquals
 overloadedConstructorSortInjectionAndEquals _ _ _ = empty
 
 overloadedAndEqualsOverloading
-    ::  ( Eq variable
-        , FreshVariable variable
-        , Show variable
-        , SortedVariable variable
-        , Unparse variable
+    ::  ( SimplifierVariable variable
         , MonadUnify unifier
         )
     => GHC.HasCallStack
@@ -107,9 +97,7 @@ overloadedAndEqualsOverloading
 overloadedAndEqualsOverloading _ _ _ _ = empty
 
 resolveOverloading
-    :: Ord variable
-    => SortedVariable variable
-    => Unparse variable
+    :: SimplifierVariable variable
     => GHC.HasCallStack
     => Symbol
     -> Symbol
@@ -135,4 +123,3 @@ resolveOverloading
         Symbol.applicationSortsOperands (symbolSorts overloadedHead)
     overloadingChildrenSorts =
         Symbol.applicationSortsOperands (symbolSorts overloadingHead)
-

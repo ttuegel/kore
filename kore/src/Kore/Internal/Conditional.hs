@@ -98,6 +98,7 @@ instance
     ( Ord variable
     , Unparse variable
     , SortedVariable variable
+    , Hashable variable
     , Semigroup term
     ) =>
     Semigroup (Conditional variable term)
@@ -109,6 +110,7 @@ instance
     ( Ord variable
     , Unparse variable
     , SortedVariable variable
+    , Hashable variable
     , Monoid term
     ) =>
     Monoid (Conditional variable term)
@@ -128,6 +130,7 @@ instance
     ( SortedVariable variable
     , Ord variable
     , Unparse variable
+    , Hashable variable
     ) =>
     Applicative (Conditional variable)
   where
@@ -160,6 +163,7 @@ instance ( SortedVariable variable
          , Ord variable
          , Show variable
          , Unparse variable
+         , Hashable variable
          ) => Unparse (Conditional variable (TermLike variable)) where
     unparse Conditional { term, predicate, substitution } =
         unparseAnd
@@ -232,6 +236,7 @@ andCondition
         , Show variable
         , Unparse variable
         , SortedVariable variable
+        , Hashable variable
         )
     => Conditional variable term
     -> Conditional variable ()
@@ -256,7 +261,7 @@ The result has a true 'Predicate'.
 
  -}
 fromSubstitution
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => Substitution variable
     -> Conditional variable ()
 fromSubstitution substitution =
@@ -272,7 +277,7 @@ The result has a true 'Predicate'.
 
  -}
 fromSingleSubstitution
-    :: (Ord variable, SortedVariable variable)
+    :: (Ord variable, SortedVariable variable, Hashable variable)
     => (UnifiedVariable variable, TermLike variable)
     -> Conditional variable ()
 fromSingleSubstitution pair =
@@ -289,6 +294,7 @@ andPredicate
         , Show variable
         , Unparse variable
         , SortedVariable variable
+        , Hashable variable
         )
     => Conditional variable term
     -> Predicate variable
@@ -328,6 +334,7 @@ toPredicate
        , Ord variable
        , Show variable
        , Unparse variable
+       , Hashable variable
        )
     => Conditional variable term
     -> Predicate variable
