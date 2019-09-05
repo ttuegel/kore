@@ -425,6 +425,7 @@ instance
         (Recursive.project -> _ :< pat1)
         (Recursive.project -> _ :< pat2)
       = pat1 == pat2
+    {-# INLINE (==) #-}
 
 instance
     (Ord variable, Ord (TermLikeF variable (TermLike variable))) =>
@@ -434,6 +435,7 @@ instance
         (Recursive.project -> _ :< pat1)
         (Recursive.project -> _ :< pat2)
       = compare pat1 pat2
+    {-# INLINE compare #-}
 
 instance Hashable variable => Hashable (TermLike variable) where
     hashWithSalt salt (Recursive.project -> _ :< pat) = hashWithSalt salt pat
