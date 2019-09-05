@@ -16,7 +16,6 @@ module Kore.ASTVerifier.PatternVerifier
     , runPatternVerifier
     , Context (..)
     , DeclaredVariables (..), emptyDeclaredVariables
-    , assertExpectedSort
     , assertSameSort
     ) where
 
@@ -250,12 +249,12 @@ verifyAliasLeftPattern
 verifyAliasLeftPattern alias aliasSorts leftPattern = do
     koreFailWhen (declaredHead /= symbolOrAlias) aliasDeclarationMismatch
     let expect = expectVariable . ElemVar <$> applicationChildren leftPattern
-    verified <- verifyPatternsWithSorts snd aliasSorts expect
-    declaredVariables <- uniqueDeclaredVariables (fst <$> verified)
+    verified <- verifyPatternsWithSorts unifiedVariableSort aliasSorts expect
+    declaredVariables <- uniqueDeclaredVariables verified
     let verifiedLeftPattern =
             traverse
                 extractElementVariable
-                leftPattern { applicationChildren = fst <$> verified }
+                leftPattern { applicationChildren = verified }
     case verifiedLeftPattern of
         Just result -> return (declaredVariables, result)
         Nothing -> error "Impossible change from element var to set var"
@@ -275,12 +274,10 @@ verifyAliasLeftPattern alias aliasSorts leftPattern = do
             ]
     expectVariable
         :: UnifiedVariable Variable
-        -> PatternVerifier
-            (UnifiedVariable Variable, Attribute.Pattern Variable)
+        -> PatternVerifier (UnifiedVariable Variable)
     expectVariable var = do
         verifyVariableDeclaration var
-        let attrs = synthetic (Const var)
-        return (var, attrs)
+        return var
 
 {- | Verify that a Kore pattern is well-formed.
 
@@ -297,7 +294,7 @@ verifyPattern
     -> PatternVerifier Verified.Pattern
 verifyPattern expectedSort korePattern = do
     verified <- Recursive.fold verifyPatternWorker korePattern
-    assertExpectedSort expectedSort (Internal.extractAttributes verified)
+    assertExpectedSort expectedSort (Internal.termLikeSort verified)
     return verified
   where
     verifyPatternWorker base = Recursive.embed <$> verifyObjectPattern base
@@ -347,7 +344,7 @@ verifyPatternHead (_ :< patternF) = do
         Syntax.AndF and' ->
             Internal.AndF <$> verifyAnd and'
         Syntax.ApplicationF app ->
-            verifyApplication Internal.extractAttributes app
+            verifyApplication Internal.termLikeSort app
         Syntax.BottomF bottom ->
             Internal.BottomF <$> verifyBottom bottom
         Syntax.CeilF ceil' ->
@@ -409,7 +406,7 @@ verifyOperands operandSort = \operator -> do
     verifyPatternSort patternSort
     let verifyChildWithSort verify = do
             child <- verify
-            assertExpectedSort expectedSort (Internal.extractAttributes child)
+            assertExpectedSort expectedSort (Internal.termLikeSort child)
             return child
     traverse verifyChildWithSort operator
 {-# INLINE verifyOperands #-}
@@ -492,7 +489,7 @@ verifyNext
 verifyNext = verifyOperands nextSort
 
 verifyPatternsWithSorts
-    :: (child -> Attribute.Pattern Variable)
+    :: (child -> Sort)
     -> [Sort]
     -> [PatternVerifier child]
     -> PatternVerifier [child]
@@ -517,57 +514,55 @@ verifyPatternsWithSorts getChildAttributes sorts operands = do
     actualOperandCount = length operands
 
 verifyApplyAlias
-    :: (child -> Attribute.Pattern Variable)
+    :: (child -> Sort)
     -> Application SymbolOrAlias (PatternVerifier child)
     -> MaybeT PatternVerifier (Application Internal.Alias child)
-verifyApplyAlias getChildAttributes application =
+verifyApplyAlias getChildSort application =
     lookupAlias symbolOrAlias >>= \alias -> Trans.lift $ do
     let verified = application { applicationSymbolOrAlias = alias }
         sorts = Internal.aliasSorts alias
-    verifyApplicationChildren getChildAttributes verified sorts
+    verifyApplicationChildren getChildSort verified sorts
   where
     Application { applicationSymbolOrAlias = symbolOrAlias } = application
 
 verifyApplySymbol
-    :: (child -> Attribute.Pattern Variable)
+    :: (child -> Sort)
     -> Application SymbolOrAlias (PatternVerifier child)
     -> MaybeT PatternVerifier (Application Internal.Symbol child)
-verifyApplySymbol getChildAttributes application =
+verifyApplySymbol getChildSort application =
     lookupSymbol symbolOrAlias >>= \symbol -> Trans.lift $ do
     let verified = application { applicationSymbolOrAlias = symbol }
         sorts = Internal.symbolSorts symbol
-    verifyApplicationChildren getChildAttributes verified sorts
+    verifyApplicationChildren getChildSort verified sorts
   where
     Application { applicationSymbolOrAlias = symbolOrAlias } = application
 
 verifyApplicationChildren
-    :: (child -> Attribute.Pattern Variable)
+    :: (child -> Sort)
     -> Application head (PatternVerifier child)
     -> ApplicationSorts
     -> PatternVerifier (Application head child)
-verifyApplicationChildren getChildAttributes application sorts = do
+verifyApplicationChildren getChildSort application sorts = do
     let operandSorts = applicationSortsOperands sorts
     verifiedChildren <- verifyChildren operandSorts children
     return application { applicationChildren = verifiedChildren }
   where
-    verifyChildren = verifyPatternsWithSorts getChildAttributes
+    verifyChildren = verifyPatternsWithSorts getChildSort
     Application { applicationChildren = children } = application
 
 verifyApplication
-    ::  (Verified.Pattern -> Attribute.Pattern Variable)
+    ::  (Verified.Pattern -> Sort)
     ->  Application SymbolOrAlias (PatternVerifier Verified.Pattern)
     ->  PatternVerifier (TermLikeF Variable Verified.Pattern)
-verifyApplication getChildAttributes application = do
+verifyApplication getChildSort application = do
     result <- verifyApplyAlias' <|> verifyApplySymbol' & runMaybeT
     maybe (koreFail . noHead $ symbolOrAlias) return result
   where
     symbolOrAlias = applicationSymbolOrAlias application
     verifyApplyAlias' =
-        Internal.ApplyAliasF
-        <$> verifyApplyAlias getChildAttributes application
+        Internal.ApplyAliasF <$> verifyApplyAlias getChildSort application
     verifyApplySymbol' =
-        Internal.ApplySymbolF
-        <$> verifyApplySymbol getChildAttributes application
+        Internal.ApplySymbolF <$> verifyApplySymbol getChildSort application
 
 verifyBinder
     :: Traversable binder
@@ -728,11 +723,10 @@ assertSameSort expectedSort actualSort =
 
 assertExpectedSort
     :: Maybe Sort
-    -> Attribute.Pattern variable
+    -> Sort
     -> PatternVerifier ()
 assertExpectedSort Nothing _ = return ()
-assertExpectedSort (Just expected) attrs =
-    assertSameSort expected (Attribute.patternSort attrs)
+assertExpectedSort (Just expected) sort = assertSameSort expected sort
 
 verifyFreeVariables
     :: ParsedPattern
