@@ -731,8 +731,8 @@ assertExpectedSort
     -> Attribute.Pattern variable
     -> PatternVerifier ()
 assertExpectedSort Nothing _ = return ()
-assertExpectedSort (Just expected) Attribute.Pattern { patternSort } =
-    assertSameSort expected patternSort
+assertExpectedSort (Just expected) attrs =
+    assertSameSort expected (Attribute.patternSort attrs)
 
 verifyFreeVariables
     :: ParsedPattern

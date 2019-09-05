@@ -7,7 +7,13 @@ License     : NCSA
 {-# LANGUAGE UndecidableInstances #-}
 
 module Kore.Attribute.Pattern
-    ( Pattern (..)
+    ( Pattern
+    , patternSort
+    , freeVariables
+    , functional
+    , function
+    , defined
+    , patternHash
     , deleteFreeVariable
     ) where
 

@@ -703,7 +703,7 @@ functionEvaluator impl =
         impl simplifier resultSort applicationChildren
       where
         Application { applicationChildren } = app
-        Attribute.Pattern { Attribute.patternSort = resultSort } = valid
+        resultSort = Attribute.patternSort valid
 
 {- | Run a parser on a verified domain value.
 

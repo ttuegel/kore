@@ -19,7 +19,6 @@ import qualified Data.Text as Text
 
 import           Kore.ASTVerifier.DefinitionVerifier
 import qualified Kore.Attribute.Axiom as Attribute
-import qualified Kore.Attribute.Pattern as Attribute
 import           Kore.Attribute.Pattern.FreeVariables as FreeVariables
 import qualified Kore.Attribute.Symbol as Attribute
 import qualified Kore.Builtin as Builtin
@@ -271,7 +270,7 @@ applyInj
 applyInj sortTo child =
     applySymbol symbolInj [sortFrom, sortTo] [child]
   where
-    Attribute.Pattern { patternSort = sortFrom } = extractAttributes child
+    sortFrom = termLikeSort child
 
 symbolSentenceInj :: Sentence (TermLike Variable)
 symbolSentenceInj = asSentence symbolInj

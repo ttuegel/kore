@@ -904,9 +904,10 @@ forceSort
     -> TermLike variable
 forceSort forcedSort = forceSortWorker
   where
-    forceSortWorker original@(Recursive.project -> attrs :< termLikeF) =
-        case attrs of
-            Attribute.Pattern { patternSort = sort }
+    forceSortWorker original@(Recursive.project -> _ :< termLikeF) =
+        let sort = termLikeSort original in
+        case () of
+            ()
               | sort == forcedSort    -> original
               | sort == predicateSort -> synthesize termLikeF'
               | otherwise             -> illSorted
