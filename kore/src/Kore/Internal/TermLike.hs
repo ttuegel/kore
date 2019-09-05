@@ -443,7 +443,8 @@ instance
     {-# INLINE compare #-}
 
 instance Hashable variable => Hashable (TermLike variable) where
-    hashWithSalt salt (Recursive.project -> _ :< pat) = hashWithSalt salt pat
+    hashWithSalt salt termLike =
+        hashWithSalt salt (Attribute.patternHash (extractAttributes termLike))
     {-# INLINE hashWithSalt #-}
 
 instance NFData variable => NFData (TermLike variable) where
