@@ -41,6 +41,7 @@ import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
 import qualified Kore.Attribute.Null as Attribute
+import           Kore.Attribute.Synthetic
 import           Kore.Debug
 import           Kore.Syntax.PatternF
                  ( Const (..), PatternF (..) )
@@ -288,14 +289,17 @@ See also: 'traverseVariables'
 
  -}
 mapVariables
-    :: (variable1 -> variable2)
+    :: Synthetic annotation (PatternF variable2)
+    => (variable1 -> variable2)
     -> Pattern variable1 annotation
     -> Pattern variable2 annotation
 mapVariables mapping =
     Recursive.ana (mapVariablesWorker . Recursive.project)
   where
-    mapVariablesWorker (a :< pat) =
-        a :< PatternF.mapVariables mapping pat
+    mapVariablesWorker (_ :< patt) =
+        let patt' = PatternF.mapVariables mapping patt
+            attrs = synthetic (extract <$> patt')
+        in attrs :< patt'
 
 {- | Construct a 'ConcretePattern' from a 'Pattern'.
 
@@ -326,6 +330,7 @@ composes with other tree transformations without allocating intermediates.
 
  -}
 fromConcretePattern
-    :: Pattern Concrete annotation
+    :: Synthetic annotation (PatternF variable)
+    => Pattern Concrete annotation
     -> Pattern variable annotation
 fromConcretePattern = mapVariables (\case {})

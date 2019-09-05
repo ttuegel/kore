@@ -113,7 +113,7 @@ toPredicate
 toPredicate = Conditional.toPredicate
 
 mapVariables
-    :: (Ord variable1, Ord variable2)
+    :: (Ord variable1, Hashable variable2, Ord variable2, SortedVariable variable2)
     => (variable1 -> variable2)
     -> Predicate variable1
     -> Predicate variable2

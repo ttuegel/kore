@@ -212,7 +212,7 @@ See also: 'sort'
 
  -}
 asInternal
-    :: Ord variable
+    :: SimplifierVariable variable
     => Sort  -- ^ resulting sort
     -> Text  -- ^ builtin value to render
     -> TermLike variable

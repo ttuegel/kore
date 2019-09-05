@@ -14,6 +14,8 @@ import qualified Kore.Builtin as Kore
 import           Kore.IndexedModule.MetadataTools
                  ( SmtMetadataTools )
 import           Kore.Internal.TermLike
+import           Kore.Step.Simplification.Data
+                 ( SimplifierVariable )
 
 import qualified Test.Kore.Builtin.Builtin as Builtin
 import qualified Test.Kore.Builtin.Definition as Builtin
@@ -112,10 +114,10 @@ test_internalize =
     mkSet = Set.asInternal . Data.Set.fromList
     s = mkElemVar (elemVarS "s" setSort)
 
-    mkInt :: Ord variable => Integer -> TermLike variable
+    mkInt :: SimplifierVariable variable => Integer -> TermLike variable
     mkInt = Int.asInternal
     intSort = Builtin.intSort
-    zero, one :: Ord variable => TermLike variable
+    zero, one :: SimplifierVariable variable => TermLike variable
     zero = mkInt 0
     one = mkInt 1
     x = mkElemVar (elemVarS "x" intSort)

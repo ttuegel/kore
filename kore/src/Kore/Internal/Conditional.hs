@@ -347,7 +347,7 @@ toPredicate Conditional { predicate, substitution } =
 
 -}
 mapVariables
-    :: (Ord variableFrom, Ord variableTo)
+    :: (Ord variableFrom, Hashable variableTo, Ord variableTo, SortedVariable variableTo)
     => ((variableFrom -> variableTo) -> termFrom -> termTo)
     -> (variableFrom -> variableTo)
     -> Conditional variableFrom termFrom

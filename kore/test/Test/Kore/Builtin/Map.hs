@@ -1045,7 +1045,7 @@ test_renormalize =
   where
     x = mkIntVar (testId "x")
     v = mkIntVar (testId "v")
-    k1, k2 :: Ord variable => TermLike variable
+    k1, k2 :: SimplifierVariable variable => TermLike variable
     k1 = Test.Int.asInternal 1
     k2 = Test.Int.asInternal 2
 

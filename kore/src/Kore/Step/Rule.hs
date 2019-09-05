@@ -588,7 +588,7 @@ freeVariables RulePattern { left, right, requires } =
 {- | Apply the given function to all variables in a 'RulePattern'.
  -}
 mapVariables
-    :: Ord variable2
+    :: (Hashable variable2, Ord variable2, SortedVariable variable2)
     => (variable1 -> variable2)
     -> RulePattern variable1
     -> RulePattern variable2

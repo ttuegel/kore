@@ -23,6 +23,8 @@ import qualified Kore.Builtin.Int as Int
 import           Kore.Internal.Pattern
 import           Kore.Internal.TermLike
 import           Kore.Predicate.Predicate
+import           Kore.Step.Simplification.Data
+                 ( SimplifierVariable )
 
 import           Test.Kore
                  ( elementVariableGen, standaloneGen )
@@ -301,7 +303,7 @@ intLiteral :: Integer -> TermLike Variable
 intLiteral = asInternal
 
 -- | Specialize 'Int.asInternal' to the builtin sort 'intSort'.
-asInternal :: Ord variable => Integer -> TermLike variable
+asInternal :: SimplifierVariable variable => Integer -> TermLike variable
 asInternal = Int.asInternal intSort
 
 -- | Specialize 'asInternal' to the builtin sort 'intSort'.

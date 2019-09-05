@@ -340,18 +340,6 @@ instance
     unparse = Unparser.unparseGeneric
     unparse2 = Unparser.unparse2Generic
 
-{- | Use the provided mapping to replace all variables in a 'TermLikeF' head.
-
-__Warning__: @mapVariablesF@ will capture variables if the provided mapping is
-not injective!
-
--}
-mapVariablesF
-    :: (variable1 -> variable2)
-    -> TermLikeF variable1 child
-    -> TermLikeF variable2 child
-mapVariablesF mapping = runIdentity . traverseVariablesF (Identity . mapping)
-
 {- | Use the provided traversal to replace all variables in a 'TermLikeF' head.
 
 __Warning__: @traverseVariablesF@ will capture variables if the provided
@@ -655,15 +643,13 @@ See also: 'traverseVariables'
 
  -}
 mapVariables
-    :: Ord variable2
+    :: forall variable1 variable2
+    .  (Hashable variable2, Ord variable2, SortedVariable variable2)
     => (variable1 -> variable2)
     -> TermLike variable1
     -> TermLike variable2
-mapVariables mapping =
-    Recursive.unfold (mapVariablesWorker . Recursive.project)
-  where
-    mapVariablesWorker (attrs :< pat) =
-        Attribute.mapVariables mapping attrs :< mapVariablesF mapping pat
+mapVariables mapping termLike =
+    runIdentity (traverseVariables (return . mapping) termLike)
 
 {- | Use the provided traversal to replace all variables in a 'TermLike'.
 
@@ -680,20 +666,16 @@ See also: 'mapVariables'
  -}
 traverseVariables
     ::  forall m variable1 variable2.
-        (Monad m, Ord variable2)
+        (Monad m, Hashable variable2, Ord variable2, SortedVariable variable2)
     => (variable1 -> m variable2)
     -> TermLike variable1
     -> m (TermLike variable2)
 traverseVariables traversing =
     Recursive.fold traverseVariablesWorker
   where
-    traverseVariablesWorker (attrs :< pat) =
-        Recursive.embed <$> projected
-      where
-        projected =
-            (:<)
-                <$> Attribute.traverseVariables traversing attrs
-                <*> (traverseVariablesF traversing =<< sequence pat)
+    traverseVariablesWorker (_ :< termLikeF) = do
+        termLikeF' <- traverseVariablesF traversing =<< sequence termLikeF
+        return (synthesize termLikeF')
 
 {- | Construct a @'TermLike' 'Concrete'@ from any 'TermLike'.
 
@@ -724,7 +706,7 @@ composes with other tree transformations without allocating intermediates.
 
  -}
 fromConcrete
-    :: Ord variable
+    :: (Hashable variable, Ord variable, SortedVariable variable)
     => TermLike Concrete
     -> TermLike variable
 fromConcrete = mapVariables (\case {})
@@ -759,7 +741,7 @@ ensuring that no 'Variable' in the result is accidentally captured.
  -}
 externalizeFreshVariables :: TermLike Variable -> TermLike Variable
 externalizeFreshVariables termLike =
-    Reader.runReader
+    resynthesize $ Reader.runReader
         (Recursive.fold externalizeFreshVariablesWorker termLike)
         renamedFreeVariables
   where
@@ -839,8 +821,10 @@ externalizeFreshVariables termLike =
                 (Map Variable Variable)
                 (TermLike Variable)
     externalizeFreshVariablesWorker (attrs :< patt) = do
-        attrs' <- Attribute.traverseVariables lookupVariable attrs
-        let freeVariables' = Attribute.freeVariables attrs'
+        freeVariables' <-
+            traverseFreeVariables
+                lookupVariable
+                (Attribute.freeVariables attrs)
         patt' <-
             case patt of
                 ExistsF exists -> do
@@ -901,7 +885,8 @@ externalizeFreshVariables termLike =
                     return (NuF nu')
                 _ ->
                     traverseVariablesF lookupVariable patt >>= sequence
-        (return . Recursive.embed) (attrs' :< patt')
+        return (synthesize patt')
+
     --TODO(traiansf): consider removing this usage of asVariable
     asVariable :: UnifiedVariable variable -> variable
     asVariable = foldMapVariable id
@@ -912,22 +897,21 @@ termLikeSort = Attribute.patternSort . extractAttributes
 
 -- | Attempts to modify p to have sort s.
 forceSort
-    :: (SortedVariable variable, Unparse variable, GHC.HasCallStack)
+    :: forall variable
+    .  (Hashable variable, Ord variable, SortedVariable variable, Unparse variable, GHC.HasCallStack)
     => Sort
     -> TermLike variable
     -> TermLike variable
-forceSort forcedSort = Recursive.apo forceSortWorker
+forceSort forcedSort = forceSortWorker
   where
-    forceSortWorker original@(Recursive.project -> attrs :< pattern') =
-        (:<)
-            (attrs { Attribute.patternSort = forcedSort })
-            (case attrs of
-                Attribute.Pattern { patternSort = sort }
-                  | sort == forcedSort    -> Left <$> pattern'
-                  | sort == predicateSort -> forceSortWorkerPredicate
-                  | otherwise             -> illSorted
-            )
+    forceSortWorker original@(Recursive.project -> attrs :< termLikeF) =
+        case attrs of
+            Attribute.Pattern { patternSort = sort }
+              | sort == forcedSort    -> original
+              | sort == predicateSort -> synthesize termLikeF'
+              | otherwise             -> illSorted
       where
+        illSorted :: forall a. a
         illSorted =
             (error . show . Pretty.vsep)
             [ Pretty.cat
@@ -939,51 +923,53 @@ forceSort forcedSort = Recursive.apo forceSortWorker
                 ]
             , Pretty.indent 4 (unparse original)
             ]
-        forceSortWorkerPredicate =
-            case pattern' of
+        termLikeF' =
+            case termLikeF of
                 -- Recurse
-                EvaluatedF evaluated -> EvaluatedF (Right <$> evaluated)
+                EvaluatedF evaluated ->
+                    EvaluatedF (forceSortWorker <$> evaluated)
                 -- Predicates: Force sort and stop.
                 BottomF bottom' -> BottomF bottom' { bottomSort = forcedSort }
                 TopF top' -> TopF top' { topSort = forcedSort }
-                CeilF ceil' -> CeilF (Left <$> ceil'')
+                CeilF ceil' -> CeilF ceil''
                   where
                     ceil'' = ceil' { ceilResultSort = forcedSort }
-                FloorF floor' -> FloorF (Left <$> floor'')
+                FloorF floor' -> FloorF floor''
                   where
                     floor'' = floor' { floorResultSort = forcedSort }
-                EqualsF equals' -> EqualsF (Left <$> equals'')
+                EqualsF equals' -> EqualsF equals''
                   where
                     equals'' = equals' { equalsResultSort = forcedSort }
-                InF in' -> InF (Left <$> in'')
+                InF in' -> InF in''
                   where
                     in'' = in' { inResultSort = forcedSort }
                 -- Connectives: Force sort and recurse.
-                AndF and' -> AndF (Right <$> and'')
+                AndF and' -> AndF (forceSortWorker <$> and'')
                   where
                     and'' = and' { andSort = forcedSort }
-                OrF or' -> OrF (Right <$> or'')
+                OrF or' -> OrF (forceSortWorker <$> or'')
                   where
                     or'' = or' { orSort = forcedSort }
-                IffF iff' -> IffF (Right <$> iff'')
+                IffF iff' -> IffF (forceSortWorker <$> iff'')
                   where
                     iff'' = iff' { iffSort = forcedSort }
-                ImpliesF implies' -> ImpliesF (Right <$> implies'')
+                ImpliesF implies' -> ImpliesF (forceSortWorker <$> implies'')
                   where
                     implies'' = implies' { impliesSort = forcedSort }
-                NotF not' -> NotF (Right <$> not'')
+                NotF not' -> NotF (forceSortWorker <$> not'')
                   where
                     not'' = not' { notSort = forcedSort }
-                NextF next' -> NextF (Right <$> next'')
+                NextF next' -> NextF (forceSortWorker <$> next'')
                   where
                     next'' = next' { nextSort = forcedSort }
-                RewritesF rewrites' -> RewritesF (Right <$> rewrites'')
+                RewritesF rewrites' ->
+                    RewritesF (forceSortWorker <$> rewrites'')
                   where
                     rewrites'' = rewrites' { rewritesSort = forcedSort }
-                ExistsF exists' -> ExistsF (Right <$> exists'')
+                ExistsF exists' -> ExistsF (forceSortWorker <$> exists'')
                   where
                     exists'' = exists' { existsSort = forcedSort }
-                ForallF forall' -> ForallF (Right <$> forall'')
+                ForallF forall' -> ForallF (forceSortWorker <$> forall'')
                   where
                     forall'' = forall' { forallSort = forcedSort }
                 -- Rigid: These patterns should never have sort _PREDICATE{}.
@@ -1008,7 +994,7 @@ same sort.
 
  -}
 makeSortsAgree
-    :: (SortedVariable variable, Unparse variable, GHC.HasCallStack)
+    :: (Hashable variable, Ord variable, SortedVariable variable, Unparse variable, GHC.HasCallStack)
     => (TermLike variable -> TermLike variable -> Sort -> a)
     -> TermLike variable
     -> TermLike variable
@@ -1057,7 +1043,7 @@ See also: 'forceSort'
 
  -}
 forceSorts
-    :: (Ord variable, SortedVariable variable, Unparse variable)
+    :: (Hashable variable, Ord variable, SortedVariable variable, Unparse variable)
     => GHC.HasCallStack
     => [Sort]
     -> [TermLike variable]

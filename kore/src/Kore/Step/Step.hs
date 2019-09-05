@@ -133,7 +133,7 @@ isNarrowingResult Step.Result { appliedRule } =
 {- | Unwrap the variables in a 'RulePattern'.
  -}
 unwrapRule
-    :: Ord variable
+    :: SimplifierVariable variable
     => RulePattern (Target variable) -> RulePattern variable
 unwrapRule = Rule.mapVariables Target.unwrapVariable
 
@@ -342,13 +342,13 @@ applyRemainder initial remainder = do
     return normalizedCondition { Conditional.term = finalTerm }
 
 toAxiomVariables
-    :: Ord variable
+    :: SimplifierVariable variable
     => RulePattern variable
     -> RulePattern (Target variable)
 toAxiomVariables = RulePattern.mapVariables Target.Target
 
 toConfigurationVariables
-    :: Ord variable
+    :: SimplifierVariable variable
     => Pattern variable
     -> Pattern (Target variable)
 toConfigurationVariables = Pattern.mapVariables Target.NonTarget

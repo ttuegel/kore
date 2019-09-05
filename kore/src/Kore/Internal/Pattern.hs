@@ -88,7 +88,7 @@ freeElementVariables =
 in an Pattern.
 -}
 mapVariables
-    :: (Ord variableFrom, Ord variableTo)
+    :: (Ord variableFrom, Hashable variableTo, Ord variableTo, SortedVariable variableTo)
     => (variableFrom -> variableTo)
     -> Pattern variableFrom
     -> Pattern variableTo

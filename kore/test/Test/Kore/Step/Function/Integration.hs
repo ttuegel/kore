@@ -69,7 +69,6 @@ import qualified Kore.Step.Simplification.TermLike as TermLike
 import           Kore.Syntax.Definition hiding
                  ( Symbol (..) )
 import qualified Kore.Unification.Substitution as Substitution
-import           Kore.Variables.Fresh
 import           Kore.Variables.UnifiedVariable
                  ( UnifiedVariable (..) )
 import qualified SMT
@@ -1074,9 +1073,7 @@ appliedMockEvaluator result =
         }
 
 mapVariables
-    ::  ( FreshVariable variable
-        , SortedVariable variable
-        )
+    :: SimplifierVariable variable
     => Pattern Variable
     -> Pattern variable
 mapVariables =

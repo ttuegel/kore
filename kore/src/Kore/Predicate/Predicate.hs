@@ -152,7 +152,7 @@ the resulting pattern into a particular sort.
 
  -}
 fromPredicate
-    :: (SortedVariable variable, Unparse variable, HasCallStack)
+    :: (Hashable variable, Ord variable, SortedVariable variable, Unparse variable, HasCallStack)
     => Sort  -- ^ Sort of resulting pattern
     -> Predicate variable
     -> TermLike variable
@@ -520,7 +520,7 @@ makePredicate = Recursive.elgot makePredicateBottomUp makePredicateTopDown
 
 {- | Replace all variables in a @Predicate@ using the provided mapping.
 -}
-mapVariables :: Ord to => (from -> to) -> Predicate from -> Predicate to
+mapVariables :: (Hashable to, Ord to, SortedVariable to) => (from -> to) -> Predicate from -> Predicate to
 mapVariables f = fmap (TermLike.mapVariables f)
 
 {- | Extract the set of free variables from a @Predicate@.

@@ -15,6 +15,8 @@ import           Kore.Internal.Symbol
                  ( applicationSorts, toSymbolOrAlias )
 import           Kore.Internal.TermLike
 import qualified Kore.Proof.Value as Value
+import           Kore.Step.Simplification.Data
+                 ( SimplifierVariable )
 
 import           Test.Kore
 import           Test.Kore.Builtin.Definition
@@ -114,10 +116,10 @@ mkSet = mkBuiltin . Domain.BuiltinSet . builtinSet
 unitPattern :: TermLike Variable
 unitPattern = mkApplySymbol unitSymbol []
 
-oneInternal :: Ord variable => TermLike variable
+oneInternal :: SimplifierVariable variable => TermLike variable
 oneInternal = Builtin.Int.asInternal intSort 1
 
-zeroInternal :: Ord variable => TermLike variable
+zeroInternal :: SimplifierVariable variable => TermLike variable
 zeroInternal = Builtin.Int.asInternal intSort 0
 
 oneTermLike :: TermLike Variable

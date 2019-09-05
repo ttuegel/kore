@@ -33,14 +33,13 @@ import           Kore.Step.Simplification.Data
                  AttemptedAxiomResults (AttemptedAxiomResults),
                  BuiltinAndAxiomSimplifier (BuiltinAndAxiomSimplifier),
                  BuiltinAndAxiomSimplifierMap, Env (..), MonadSimplify,
-                 PredicateSimplifier, TermLikeSimplifier, evalSimplifier )
+                 PredicateSimplifier, SimplifierVariable, TermLikeSimplifier,
+                 evalSimplifier )
 import qualified Kore.Step.Simplification.Data as AttemptedAxiomResults
                  ( AttemptedAxiomResults (..) )
 import qualified Kore.Step.Simplification.Data as AttemptedAxiom
                  ( AttemptedAxiom (..) )
 import qualified Kore.Unification.Substitution as Substitution
-import           Kore.Variables.Fresh
-                 ( FreshVariable )
 import           Kore.Variables.UnifiedVariable
                  ( UnifiedVariable (..) )
 import qualified SMT
@@ -511,10 +510,7 @@ mockEvaluator evaluation _ _ _ _ _ =
     return evaluation
 
 mapVariables
-    ::  ( FreshVariable variable
-        , SortedVariable variable
-        , Ord variable
-        )
+    :: SimplifierVariable variable
     => Pattern Variable
     -> Pattern variable
 mapVariables =

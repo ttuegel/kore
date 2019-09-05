@@ -8,8 +8,6 @@ License     : NCSA
 
 module Kore.Attribute.Pattern
     ( Pattern (..)
-    , mapVariables
-    , traverseVariables
     , deleteFreeVariable
     ) where
 
@@ -78,32 +76,6 @@ instance
             , defined = synthetic (defined <$> base)
             , patternHash = synthetic (patternHash <$> base)
             }
-
-{- | Use the provided mapping to replace all variables in a 'Pattern'.
-
-See also: 'traverseVariables'
-
- -}
-mapVariables
-    :: Ord variable2
-    => (variable1 -> variable2)
-    -> Pattern variable1 -> Pattern variable2
-mapVariables mapping =
-    Lens.over (field @"freeVariables") (mapFreeVariables mapping)
-
-{- | Use the provided traversal to replace the free variables in a 'Pattern'.
-
-See also: 'mapVariables'
-
- -}
-traverseVariables
-    ::  forall m variable1 variable2.
-        (Monad m, Ord variable2)
-    => (variable1 -> m variable2)
-    -> Pattern variable1
-    -> m (Pattern variable2)
-traverseVariables traversing =
-    field @"freeVariables" (traverseFreeVariables traversing)
 
 {- | Delete the given variable from the set of free variables.
  -}
