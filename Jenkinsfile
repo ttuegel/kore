@@ -62,24 +62,49 @@ pipeline {
         }
       }
     }
-    stage('K Integration') {
+    stage('Integration: K') {
       options {
         timeout(time: 16, unit: 'MINUTES')
       }
       steps {
         sh '''
-          ./scripts/ktest.sh
+          ./scripts/integration-k.sh
         '''
       }
     }
-    stage('KEVM Integration') {
-      options {
-        timeout(time: 24, unit: 'MINUTES')
-      }
+    stage('Checkout: KEVM') {
       steps {
         sh '''
-          ./scripts/kevm-integration.sh
+          . ./scripts/config.sh
+          ./scripts/checkout-kevm.sh
         '''
+      }
+    }
+    stage('Integration: KEVM') {
+      failFast true
+      parallel {
+        stage('Upstream') {
+          options {
+            timeout(time: 24, unit: 'MINUTES')
+          }
+          steps {
+            sh '''
+              . ./scripts/config.sh
+              ./scripts/integration-kevm-upstream.sh
+            '''
+          }
+        }
+        stage('Downstream') {
+          options {
+            timeout(time: 48, unit: 'MINUTES')
+          }
+          steps {
+            sh '''
+              . ./scripts/config.sh
+              ./scripts/integration-kevm-downstream.sh
+            '''
+          }
+        }
       }
     }
     stage('Update K Submodules') {
