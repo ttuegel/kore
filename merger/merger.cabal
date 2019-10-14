@@ -1,0 +1,34 @@
+cabal-version: 2.2
+
+-- This file has been generated from package.yaml by hpack version 0.32.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: a4214f0b79dd31c101acc0cba452b20fbac8d17577a990f9543f147857ae38b7
+
+name:           merger
+version:        0.0.1.0
+description:    Please see the [README](README.md) file.
+author:         Thomas Tuegel
+maintainer:     thomas.tuegel@runtimeverification.com
+copyright:      2019 Runtime Verification Inc
+license:        NCSA
+build-type:     Simple
+
+executable merger
+  main-is: Main.hs
+  other-modules:
+      Paths_merger
+  hs-source-dirs:
+      src
+  default-extensions: BlockArguments DuplicateRecordFields NamedFieldPuns OverloadedStrings
+  ghc-options: -fno-ignore-asserts
+  build-depends:
+      base >=4.7
+    , exceptions
+    , generic-lens
+    , github
+    , lens
+    , mtl
+    , vector
+  default-language: Haskell2010
