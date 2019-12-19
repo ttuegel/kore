@@ -152,6 +152,9 @@ instance (Monad f, Foldable f) => Foldable (ListT f) where
 cons :: a -> ListT m a -> ListT m a
 cons a as = ListT $ \yield -> yield a . foldListT as yield
 
+snoc :: ListT m a -> a -> ListT m a
+snoc as a = ListT $ \yield -> foldListT as yield . yield a
+
 {- | Collect all values produced by a @'ListT' m@ as a list in @m@.
  -}
 gather :: Monad m => ListT m a -> m [a]
@@ -163,7 +166,8 @@ Usually, @f ~ []@.
 
  -}
 scatter :: Foldable f => f a -> ListT m a
-scatter = foldr cons empty
+-- scatter = foldr cons empty
+scatter = foldl' snoc empty
 
 {- | Apply a transformation of the 'Monad' @m@ underlying @'ListT' m@.
 
