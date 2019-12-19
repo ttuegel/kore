@@ -331,10 +331,7 @@ termLikeSimplifier simplifier =
         => Condition variable
         -> TermLike variable
         -> BranchT m (Pattern variable)
-    termLikeSimplifierWorker
-        initialCondition
-        termLike
-      = do
+    termLikeSimplifierWorker initialCondition termLike = do
         results <- Monad.Trans.lift $ simplifier initialCondition termLike
         scatter results
 
