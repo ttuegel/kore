@@ -25,7 +25,7 @@ import Kore.Step.Simplification.Simplify
     ( MonadSimplify
     , SimplifierVariable
     , simplifyCondition
-    , simplifyConditionalTermToOr
+    , simplifyConditionalTerm
     )
 
 simplifyAndRemoveTopExists
@@ -49,10 +49,9 @@ simplify
     => MonadSimplify simplifier
     => Pattern variable
     -> simplifier (OrPattern variable)
-simplify pattern' = do
-    orSimplifiedTerms <- simplifyConditionalTermToOr predicate term
+simplify pattern' =
     fmap OrPattern.fromPatterns . Branch.gather $ do
-        simplifiedTerm <- Branch.scatter orSimplifiedTerms
+        simplifiedTerm <- simplifyConditionalTerm predicate term
         simplifyCondition $ Conditional.andCondition simplifiedTerm predicate
   where
     (term, predicate) = Conditional.splitTerm pattern'
