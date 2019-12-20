@@ -204,7 +204,8 @@ distributeAnd = sequenceA
 {- | Distribute 'MultiAnd' over 'MultiOr' and 'scatter' into 'BranchT'.
  -}
 scatterAnd
-    :: MultiAnd (MultiOr child)
+    :: Functor m
+    => MultiAnd (MultiOr child)
     -> BranchT m (MultiAnd child)
 scatterAnd = scatter . distributeAnd
 
@@ -220,7 +221,7 @@ mkMultiAndPattern patterns =
 {- | Conjoin and simplify a 'MultiAnd' of 'Condition'.
  -}
 mkMultiAndPredicate
-    :: SimplifierVariable variable
+    :: (Monad simplifier, SimplifierVariable variable)
     => MultiAnd (Condition variable)
     -> BranchT simplifier (Condition variable)
 mkMultiAndPredicate predicates =

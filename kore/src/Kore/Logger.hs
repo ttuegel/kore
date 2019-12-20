@@ -84,6 +84,9 @@ import qualified Type.Reflection as Reflection
 import Control.Monad.Counter
     ( CounterT
     )
+import ListT
+    ( ListT
+    )
 
 -- | Log level used to describe each log message. It is also used to set the
 -- minimum level to be outputted.
@@ -249,6 +252,8 @@ instance MonadLog log => MonadLog (CounterT log)
 instance MonadLog log => MonadLog (ExceptT error log)
 
 instance MonadLog log => MonadLog (IdentityT log)
+
+instance MonadLog log => MonadLog (ListT log)
 
 instance MonadLog log => MonadLog (MaybeT log)
 

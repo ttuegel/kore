@@ -39,11 +39,21 @@ import Control.Applicative
     ( Alternative
     )
 import Control.Concurrent.MVar
+import Control.Monad
+    ( MonadPlus
+    )
+import Control.Monad.Morph
+    ( MFunctor (..)
+    )
 import Control.Monad.Trans.Accum
     ( AccumT
+    , mapAccumT
     , runAccumT
     )
 import qualified Control.Monad.Trans.Accum as Monad.Accum
+import Control.Monad.Trans.Class
+    ( MonadTrans (..)
+    )
 import qualified Control.Monad.Trans.Class as Monad.Trans
 import qualified Data.Graph.Inductive.Graph as Graph
 import Data.Graph.Inductive.PatriciaTree
@@ -461,17 +471,26 @@ newtype UnifierWithExplanation m a =
         { getUnifierWithExplanation
             :: UnifierT (AccumT (First ReplOutput) m) a
         }
-  deriving (Alternative, Applicative, Functor, Monad)
+  deriving (Alternative, Applicative, Functor, Monad, MonadPlus)
+
+instance MonadTrans UnifierWithExplanation where
+    lift = UnifierWithExplanation . lift . lift
+
+instance MFunctor UnifierWithExplanation where
+    hoist morph =
+        UnifierWithExplanation
+        . hoist (mapAccumT morph)
+        . getUnifierWithExplanation
 
 deriving instance MonadSMT m => MonadSMT (UnifierWithExplanation m)
 
-deriving instance MonadProfiler m => MonadProfiler (UnifierWithExplanation m)
+instance MonadProfiler m => MonadProfiler (UnifierWithExplanation m)
 
 instance Logger.MonadLog m => Logger.MonadLog (UnifierWithExplanation m) where
     logM entry = UnifierWithExplanation $ Logger.logM entry
     {-# INLINE logM #-}
 
-deriving instance MonadSimplify m => MonadSimplify (UnifierWithExplanation m)
+instance MonadSimplify m => MonadSimplify (UnifierWithExplanation m)
 
 instance MonadSimplify m => MonadUnify (UnifierWithExplanation m) where
     throwSubstitutionError =

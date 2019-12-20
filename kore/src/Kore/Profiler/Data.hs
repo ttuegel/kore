@@ -57,7 +57,7 @@ import System.Clock
     )
 
 import ListT
-    ( ListT (..)
+    ( ListT
     )
 
 {- Monad that can also handle profiling events.

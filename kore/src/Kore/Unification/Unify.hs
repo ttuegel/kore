@@ -8,8 +8,10 @@ module Kore.Unification.Unify
     ) where
 
 import Control.Applicative
-    ( Alternative
-    , empty
+    ( empty
+    )
+import Control.Monad
+    ( MonadPlus
     )
 import Control.Monad.Trans.Class
     ( MonadTrans (..)
@@ -38,7 +40,7 @@ import Kore.Unparser
 -- 'MonadUnify' chooses its error/left type to 'UnificationOrSubstitutionError'
 -- and provides functions to throw these errors. The point of this is to be able
 -- to display information about unification failures through 'explainFailure'.
-class (Alternative unifier, MonadSimplify unifier) => MonadUnify unifier where
+class (MonadPlus unifier, MonadSimplify unifier) => MonadUnify unifier where
     throwSubstitutionError
         :: SubstitutionError
         -> unifier a

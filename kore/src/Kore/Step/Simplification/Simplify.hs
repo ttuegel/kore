@@ -117,7 +117,7 @@ import Kore.Step.Simplification.InjSimplifier
 import Kore.Syntax.Application
 import Kore.Unparser
 import ListT
-    ( ListT (..)
+    ( ListT
     , mapListT
     )
 import SMT
@@ -227,7 +227,7 @@ instance (WithLog LogMessage m, MonadSimplify m, Monoid w)
         mapAccumT (localSimplifierAxioms locally)
     {-# INLINE localSimplifierAxioms #-}
 
-deriving instance MonadSimplify m => MonadSimplify (BranchT m)
+instance MonadSimplify m => MonadSimplify (BranchT m)
 
 instance MonadSimplify simplifier => MonadSimplify (Codensity simplifier) where
     {-# INLINE localSimplifierTermLike #-}
@@ -368,7 +368,7 @@ newtype ConditionSimplifier monad =
             -> BranchT monad (Conditional variable term)
         }
 
-emptyConditionSimplifier :: ConditionSimplifier monad
+emptyConditionSimplifier :: Monad monad => ConditionSimplifier monad
 emptyConditionSimplifier = ConditionSimplifier return
 
 liftConditionSimplifier

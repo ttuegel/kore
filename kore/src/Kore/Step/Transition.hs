@@ -107,9 +107,14 @@ instance MonadReader e m => MonadReader e (TransitionT rule m) where
 
 deriving instance MonadSMT m => MonadSMT (TransitionT rule m)
 
-deriving instance MonadProfiler m => MonadProfiler (TransitionT rule m)
+instance MonadProfiler m => MonadProfiler (TransitionT rule m)
 
-deriving instance MonadSimplify m => MonadSimplify (TransitionT rule m)
+instance MonadSimplify m => MonadSimplify (TransitionT rule m) where
+    localSimplifierTermLike locally (TransitionT m) =
+        TransitionT (Accum.mapAccumT (localSimplifierTermLike locally) m)
+
+    localSimplifierAxioms locally (TransitionT m) =
+        TransitionT (Accum.mapAccumT (localSimplifierAxioms locally) m)
 
 instance MonadThrow m => MonadThrow (TransitionT rule m) where
     throwM = Monad.Trans.lift . throwM
@@ -130,7 +135,7 @@ tryTransitionT
     -> TransitionT rule' m [(a, Seq rule)]
 tryTransitionT = Monad.Trans.lift . runTransitionT
 
-scatter :: [(a, Seq rule)] -> TransitionT rule m a
+scatter :: Monad m => [(a, Seq rule)] -> TransitionT rule m a
 scatter edges = do
     (a, rules) <- TransitionT (Monad.Trans.lift (ListT.scatter edges))
     addRules rules
@@ -140,6 +145,7 @@ scatter edges = do
  -}
 addRules
     :: Foldable f
+    => Monad m
     => f rule
     -- ^ Sequence of applied rules
     -> TransitionT rule m ()
@@ -147,7 +153,7 @@ addRules = TransitionT . Accum.add . Seq.fromList . Foldable.toList
 
 {- | Record the application of a single rule.
  -}
-addRule :: rule -> TransitionT rule m ()
+addRule :: Monad m => rule -> TransitionT rule m ()
 addRule = TransitionT . Accum.add . Seq.singleton
 
 mapRules

@@ -386,7 +386,8 @@ instance Diff (Goal.Rule Goal)
 
 -- | The destination-removal rule for our unit test goal.
 removeDestination
-    :: ProofState
+    :: Monad m
+    => ProofState
     -> Strategy.TransitionT (Goal.Rule Goal) m ProofState
 removeDestination (ProofState.Goal (src, dst)) =
     return . ProofState.Goal $ (difference src dst, dst)
@@ -418,7 +419,7 @@ derivePar rules (src, dst) =
     applied = Maybe.mapMaybe applyRule rules
     goals = Foldable.asum (goal <$> applied)
 
-simplify :: Goal -> Strategy.TransitionT (Goal.Rule Goal) m Goal
+simplify :: Monad m => Goal -> Strategy.TransitionT (Goal.Rule Goal) m Goal
 simplify = return
 
 deriveSeq

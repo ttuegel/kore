@@ -22,10 +22,10 @@ import Control.Error
 import Control.Monad
     ( MonadPlus
     )
-import Control.Monad.Codensity
-    ( Codensity (..)
-    )
 import qualified Control.Monad.Except as Error
+import Control.Monad.Morph
+    ( MFunctor (..)
+    )
 import Control.Monad.Trans.Class
     ( MonadTrans (..)
     )
@@ -72,11 +72,17 @@ instance MonadTrans UnifierT where
     lift = UnifierT . lift . lift
     {-# INLINE lift #-}
 
+instance MFunctor UnifierT where
+    hoist morph =
+        UnifierT
+        . hoist (hoist morph)
+        . getUnifierT
+
 deriving instance MonadLog m => MonadLog (UnifierT m)
 
 deriving instance MonadSMT m => MonadSMT (UnifierT m)
 
-deriving instance MonadProfiler m => MonadProfiler (UnifierT m)
+instance MonadProfiler m => MonadProfiler (UnifierT m)
 
 instance MonadSimplify m => MonadSimplify (UnifierT m) where
     localSimplifierTermLike locally (UnifierT m) =
