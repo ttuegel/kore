@@ -51,7 +51,6 @@ import Kore.Step.Simplification.Simplify
     )
 import ListT
     ( ListT
-    , mapListT
     )
 import qualified ListT
 import SMT
@@ -82,10 +81,7 @@ newtype TransitionT rule m a =
         , Typeable
         )
 
-instance MonadLog m => MonadLog (TransitionT rule m) where
-    logScope locally =
-        mapTransitionT (logScope locally)
-    {-# INLINE logScope #-}
+instance MonadLog m => MonadLog (TransitionT rule m)
 
 instance MonadTrans (TransitionT rule) where
     lift = TransitionT . Monad.Trans.lift . Monad.Trans.lift
@@ -133,14 +129,6 @@ tryTransitionT
     => TransitionT rule m a
     -> TransitionT rule' m [(a, Seq rule)]
 tryTransitionT = Monad.Trans.lift . runTransitionT
-
-mapTransitionT
-    :: Monad m
-    => (forall x. m x -> m x)
-    -> TransitionT rule m a
-    -> TransitionT rule m a
-mapTransitionT mapping =
-    TransitionT . mapAccumT (mapListT mapping) . getTransitionT
 
 scatter :: [(a, Seq rule)] -> TransitionT rule m a
 scatter edges = do

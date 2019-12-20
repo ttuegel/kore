@@ -440,7 +440,6 @@ newtype AllPathIdentity a = AllPathIdentity { unAllPathIdentity :: Identity a }
 
 instance MonadLog AllPathIdentity where
     logM = undefined
-    logScope _ = undefined
 
 instance MonadSMT AllPathIdentity where
     withSolver = undefined

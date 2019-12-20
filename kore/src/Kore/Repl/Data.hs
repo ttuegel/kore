@@ -471,10 +471,6 @@ instance Logger.MonadLog m => Logger.MonadLog (UnifierWithExplanation m) where
     logM entry = UnifierWithExplanation $ Logger.logM entry
     {-# INLINE logM #-}
 
-    logScope locally (UnifierWithExplanation unifierT) =
-        UnifierWithExplanation (Logger.logScope locally unifierT)
-    {-# INLINE logScope #-}
-
 deriving instance MonadSimplify m => MonadSimplify (UnifierWithExplanation m)
 
 instance MonadSimplify m => MonadUnify (UnifierWithExplanation m) where

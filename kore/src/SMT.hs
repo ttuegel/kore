@@ -50,9 +50,6 @@ module SMT
 import qualified Colog
 import Control.Concurrent.MVar
 import qualified Control.Exception as Exception
-import qualified Control.Lens as Lens hiding
-    ( makeLenses
-    )
 import qualified Control.Monad as Monad
 import Control.Monad.Catch
     ( MonadCatch
@@ -85,7 +82,6 @@ import qualified Control.Monad.Trans.Maybe as Maybe
 import Data.Functor.Contravariant
     ( contramap
     )
-import Data.Generics.Product
 import Data.Limit
 import Data.Text
     ( Text
@@ -231,7 +227,6 @@ instance MonadLog NoSMT where
     logM entry =
         NoSMT $ ReaderT $ \logger ->
             Colog.unLogAction logger (Logger.toEntry entry)
-    logScope locally = NoSMT . Reader.local (contramap locally) . getNoSMT
 
 instance MonadSMT NoSMT where
     withSolver = id
@@ -295,13 +290,6 @@ instance MonadUnliftIO m => MonadLog (SmtT m) where
     logM entry = withSolverT' $ \solver -> do
         let logAction = contramap Logger.toEntry $ SimpleSMT.logger solver
         liftIO $ Colog.unLogAction logAction entry
-
-    logScope mapping (SmtT action) =
-        withSolverT' $ \solver -> do
-            let mapping' =
-                    Lens.over (field @"logger")
-                    $ contramap mapping
-            runReaderT action =<< liftIO (newMVar $ mapping' solver)
 
 instance (MonadIO m, MonadUnliftIO m) => MonadSMT (SmtT m) where
     withSolver (SmtT action) =

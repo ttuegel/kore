@@ -116,9 +116,7 @@ instance MonadTrans ListT where
     {-# INLINE lift #-}
     lift m = ListT $ \yield next -> m >>= \a -> yield a next
 
-instance MonadLog log => MonadLog (ListT log) where
-    {-# INLINE logScope #-}
-    logScope locally = mapListT (logScope locally)
+instance MonadLog log => MonadLog (ListT log)
 
 instance MonadReader r m => MonadReader r (ListT m) where
     {-# INLINE ask #-}
