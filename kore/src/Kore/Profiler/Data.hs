@@ -20,16 +20,15 @@ import Control.Monad.Codensity
 import Control.Monad.IO.Class
     ( MonadIO (liftIO)
     )
-import Control.Monad.Morph
-    ( MFunctor (..)
-    )
 import Control.Monad.Reader
     ( ReaderT
     )
 import qualified Control.Monad.State.Strict as Strict
 import Control.Monad.Trans.Accum
-    ( AccumT (AccumT)
-    , runAccumT
+    ( AccumT
+    )
+import Control.Monad.Trans.Class
+    ( MonadTrans (..)
     )
 import Control.Monad.Trans.Except
     ( ExceptT
@@ -48,41 +47,40 @@ import Data.List
     )
 import qualified Data.List as List
 import Debug.Trace
-    ( traceIO
-    , traceM
+    ( traceM
     )
 import Debug.Trace.String
     ( traceEventIO
     )
 import System.Clock
-    ( Clock (Monotonic)
-    , TimeSpec
-    , diffTimeSpec
-    , getTime
-    , toNanoSecs
+    ( TimeSpec
     )
 
 import ListT
     ( ListT (..)
     )
-import qualified ListT
-    ( mapListT
-    )
 
 {- Monad that can also handle profiling events.
 -}
 class Monad profiler => MonadProfiler profiler where
+    profileStart :: [String] -> profiler (profiler ())
+    default profileStart
+        :: (MonadProfiler m, MonadTrans t, profiler ~ t m)
+        => [String] -> profiler (profiler ())
+    profileStart event = do
+        profileStop <- lift (profileStart event)
+        return (lift profileStop)
+
     profile
         :: [String]
         -> profiler a
         -> profiler a
-    default profile
-        :: (MonadProfiler m, MFunctor t, profiler ~ t m)
-        => [String]
-        -> profiler a
-        -> profiler a
-    profile a = hoist (profile a)
     {-# INLINE profile #-}
+    profile strings profiler = do
+        profileStop <- profileStart strings
+        a <- profiler
+        profileStop
+        return a
 
     -- TODO(virgil): Add a command line flag for this.
     profileConfiguration :: profiler Configuration
@@ -108,14 +106,17 @@ profileValue tags value = do
 
 -- Instance for tests.
 instance MonadProfiler Identity where
-    profile = \_ x -> x
+    {-# INLINE profileStart #-}
+    profileStart = \_ -> return (return ())
+
     {-# INLINE profile #-}
+    profile = \_ x -> x
 
     profileConfiguration =
         return Configuration
             { identifierFilter = Nothing
             , dumpIdentifier = Nothing
-            , destination = HumanReadable
+            , destination = GhcEventsAnalyze
             , logBranching = False
             , logStrategy = False
             , logSimplification = False
@@ -127,8 +128,6 @@ instance MonadProfiler Identity where
 
 data Destination =
     GhcEventsAnalyze
-  | KoreProfiler
-  | HumanReadable
     -- ^ Suggestions for the human readable output:
     --
     -- * Pipe through @sed 's/-/ /g' | sed "s/'//g"@ to remove characters
@@ -181,94 +180,23 @@ data ProfileEvent
     deriving (Show, Read)
 
 isHumanReadable :: Destination -> Bool
-isHumanReadable HumanReadable = True
 isHumanReadable _ = False
 
-nanosToSeconds :: Integer -> Double
-nanosToSeconds nanos =
-    fromInteger nanos / (1000 * 1000 * 1000)
-
-traceStderr
-    :: ProfileEvent -> IO ()
-traceStderr
-    ProfileEvent { end = Nothing, tags }
-  =
-    traceIO (intercalate "-" tags ++ " {")
-traceStderr
-    ProfileEvent { start, end = Just endTime, tags }
-  =
-    traceIO
-        (  "} "
-        ++ intercalate "-" tags
-        ++ " "
-        ++ show (nanosToSeconds (toNanoSecs (diffTimeSpec endTime start)))
-        ++ "s"
-        )
-
 profileEvent
-    :: (MonadIO profiler)
-    => Configuration -> [String] -> profiler a -> profiler a
-profileEvent
-    Configuration {destination}
-    event
-    action
-  = case destination of
-        GhcEventsAnalyze -> profileGhcEventsAnalyze event action
-        KoreProfiler -> profileKoreProfiler event action
-        HumanReadable -> profileHumanReadable event action
-
-{- Times an action in a human readable way.
--}
-profileHumanReadable
-    :: MonadIO profiler
-    => [String] -> profiler a -> profiler a
-profileHumanReadable tags action = do
-    startTime <- liftIO (getTime Monotonic)
-    let event = ProfileEvent
-            { start = startTime
-            , end = Nothing
-            , tags
-            }
-    liftIO $ traceStderr event
-    a <- action
-    endTime <- liftIO (getTime Monotonic)
-    liftIO $ traceStderr
-        event {end = Just endTime}
-    return a
-
-{- Times an action for the kore-profiler tool.
--}
-profileKoreProfiler
-    :: MonadIO profiler
-    => [String] -> profiler a -> profiler a
-profileKoreProfiler tags action = do
-    startTime <- liftIO (getTime Monotonic)
-    let event = ProfileEvent
-            { start = startTime
-            , end = Nothing
-            , tags
-            }
-    liftIO $ traceEventIO (show event)
-    a <- action
-    endTime <- liftIO (getTime Monotonic)
-    liftIO $ traceEventIO $ show
-        event {end = Just endTime}
-    return a
+    :: MonadIO profiler => Configuration -> [String] -> profiler (profiler ())
+profileEvent Configuration {destination} =
+    case destination of
+        GhcEventsAnalyze -> profileGhcEventsAnalyze
 
 {- Times an action in the format required by @ghc-events-analyze@.
 -}
 profileGhcEventsAnalyze
-    :: MonadIO profiler
-    => [String] -> profiler a -> profiler a
-profileGhcEventsAnalyze event action = do
+    :: MonadIO profiler => [String] -> profiler (profiler ())
+profileGhcEventsAnalyze event = do
     liftIO $ traceEventIO ("START " ++ List.intercalate "/" event)
-    a <- action
-    liftIO $ traceEventIO ("STOP " ++ List.intercalate "/" event)
-    return a
+    return $ liftIO $ traceEventIO ("STOP " ++ List.intercalate "/" event)
 
-instance MonadProfiler m => MonadProfiler (Codensity m) where
-    {-# INLINE profile #-}
-    profile _ = id
+instance MonadProfiler m => MonadProfiler (Codensity m)
 
 instance MonadProfiler m => MonadProfiler (ReaderT thing m )
 
@@ -278,14 +206,14 @@ instance MonadProfiler m => MonadProfiler (MaybeT m)
 
 instance MonadProfiler m => MonadProfiler (IdentityT m)
 
+instance MonadProfiler IO where
+    {-# INLINE profileStart #-}
+    profileStart event = do
+        configuration <- profileConfiguration
+        profileEvent configuration event
+
 instance MonadProfiler m => MonadProfiler (ExceptT e m)
 
-instance MonadProfiler m => MonadProfiler (ListT m) where
-    profile a action =
-        ListT.mapListT (profile a) action
-    {-# INLINE profile #-}
+instance MonadProfiler m => MonadProfiler (ListT m)
 
 instance (MonadProfiler m, Monoid w) => MonadProfiler (AccumT w m)
-  where
-    profile a action = AccumT (profile a . runAccumT action)
-    {-# INLINE profile #-}

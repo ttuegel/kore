@@ -46,9 +46,7 @@ import Kore.Logger
     ( MonadLog (..)
     )
 import Kore.Profiler.Data
-    ( Configuration (..)
-    , Destination (..)
-    , MonadProfiler (..)
+    ( MonadProfiler (..)
     )
 import Kore.Step.Simplification.Data
     ( MonadSimplify (..)
@@ -454,19 +452,7 @@ instance MonadSMT AllPathIdentity where
     loadFile = undefined
 
 instance MonadProfiler AllPathIdentity where
-    profile _ = id
-    profileConfiguration =
-        return Configuration
-            { identifierFilter = Nothing
-            , dumpIdentifier = Nothing
-            , destination = HumanReadable
-            , logBranching = False
-            , logStrategy = False
-            , logSimplification = False
-            , logInitialization = False
-            , logEvaluation = False
-            , logSmt = False
-            }
+    profileStart _ = return (return ())
 
 instance MonadThrow AllPathIdentity where
     throwM _ = error "Unimplemented"

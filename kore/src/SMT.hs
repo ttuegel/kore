@@ -96,7 +96,6 @@ import Kore.Logger
 import qualified Kore.Logger as Logger
 import Kore.Profiler.Data
     ( MonadProfiler (..)
-    , profileEvent
     )
 import ListT
     ( ListT
@@ -243,10 +242,7 @@ instance MonadSMT NoSMT where
     assert _ = return ()
     check = return Unknown
 
-instance MonadProfiler NoSMT where
-    profile a action = do
-        configuration <- profileConfiguration
-        profileEvent configuration a action
+deriving instance MonadProfiler NoSMT
 
 deriving instance MonadUnliftIO NoSMT
 
@@ -268,6 +264,7 @@ newtype SmtT m a = SmtT { runSmtT :: ReaderT (MVar Solver) m a }
         , MonadCatch
         , MonadIO
         , MonadThrow
+        , Trans.MonadTrans
         , Morph.MFunctor
         )
 
@@ -338,12 +335,7 @@ instance (MonadSMT m, Monoid w) => MonadSMT (AccumT w m) where
     withSolver = mapAccumT withSolver
     {-# INLINE withSolver #-}
 
-instance (MonadIO m) => MonadProfiler (SmtT m)
-  where
-    profile a action = do
-        configuration <- profileConfiguration
-        SmtT (profileEvent configuration a (runSmtT action))
-    {-# INLINE profile #-}
+instance MonadProfiler m => MonadProfiler (SmtT m)
 
 instance MonadSMT m => MonadSMT (Codensity m) where
     withSolver codensity =
