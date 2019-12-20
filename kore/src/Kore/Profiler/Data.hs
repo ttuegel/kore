@@ -14,6 +14,9 @@ module Kore.Profiler.Data
 import Control.Monad
     ( when
     )
+import Control.Monad.Codensity
+    ( Codensity
+    )
 import Control.Monad.IO.Class
     ( MonadIO (liftIO)
     )
@@ -263,7 +266,11 @@ profileGhcEventsAnalyze event action = do
     liftIO $ traceEventIO ("STOP " ++ List.intercalate "/" event)
     return a
 
-instance (MonadProfiler m) => MonadProfiler (ReaderT thing m )
+instance MonadProfiler m => MonadProfiler (Codensity m) where
+    {-# INLINE profile #-}
+    profile _ = id
+
+instance MonadProfiler m => MonadProfiler (ReaderT thing m )
 
 instance MonadProfiler m => MonadProfiler (Strict.StateT s m)
 

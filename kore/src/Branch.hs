@@ -9,7 +9,6 @@ License     : NCSA
 
 module Branch
     ( BranchT (..)
-    , mapBranchT
     , gather
     , gatherAll
     , scatter
@@ -19,6 +18,11 @@ module Branch
 
 import Control.Applicative
 import qualified Control.Monad as Monad
+import Control.Monad.Codensity
+import Control.Monad.Codensity
+    ( Codensity
+    , lowerCodensity
+    )
 import Control.Monad.Reader
 import Control.Monad.State.Class
     ( MonadState
@@ -34,7 +38,6 @@ import Kore.Profiler.Data
     )
 import ListT
     ( ListT (..)
-    , mapListT
     )
 import qualified ListT
 import SMT
@@ -66,34 +69,29 @@ simplify = do
 Use 'scatter' and 'gather' to translate between the two forms of branches.
 
 -}
+-- Pay no attention to the Kan extension behind the curtain!
 -- TODO (thomas.tuegel): Replace Alternative with an interface that doesn't
 -- assume associativity, then replace ListT with a free monad.
 -- TODO (thomas.tuegel): Do not export constructors of BranchT.
-newtype BranchT m a =
-    -- Pay no attention to the ListT behind the curtain!
-    BranchT (ListT.ListT m a)
+newtype BranchT m a = BranchT (Codensity (ListT.ListT m) a)
     deriving (Functor, Applicative, Monad)
-    deriving (Alternative, MonadPlus, Foldable)
-    deriving MonadTrans
+    deriving (Alternative, MonadPlus)
     deriving MonadIO
     deriving Typeable
+
+instance MonadTrans BranchT where
+    {-# INLINE lift #-}
+    lift = BranchT . lift . lift
 
 deriving instance MonadLog log => MonadLog (BranchT log)
 
 deriving instance MonadReader r m => MonadReader r (BranchT m)
 
-deriving instance MonadState s m => MonadState s (BranchT m)
+deriving instance MonadReader s m => MonadState s (BranchT m)
 
 deriving instance MonadSMT m => MonadSMT (BranchT m)
 
 deriving instance MonadProfiler m => MonadProfiler (BranchT m)
-
-mapBranchT
-    :: (Monad m, Monad n)
-    => (forall x. m x -> n x)
-    -> BranchT m a
-    -> BranchT n a
-mapBranchT f (BranchT listT) = BranchT (ListT.mapListT f listT)
 
 {- | Collect results from many simplification branches into one result.
 
@@ -113,7 +111,7 @@ See also: 'scatter'
 
  -}
 gather :: Monad m => BranchT m a -> m [a]
-gather (BranchT simpl) = ListT.gather simpl
+gather (BranchT simpl) = ListT.gather (lowerCodensity simpl)
 
 {- | Collect results from many simplification branches into one result.
 
@@ -143,7 +141,7 @@ See also: 'gather'
 
  -}
 scatter :: Foldable f => f a -> BranchT m a
-scatter = BranchT . ListT.scatter . Foldable.toList
+scatter = BranchT . lift . ListT.scatter . Foldable.toList
 
 {- | Fold down a 'BranchT' into its base 'Monad'.
 
@@ -151,7 +149,8 @@ See also: 'foldListT'
 
  -}
 foldBranchT :: (a -> m r -> m r) -> m r -> BranchT m a -> m r
-foldBranchT f mr (BranchT listT) = foldListT listT f mr
+foldBranchT f mr (BranchT codensity) =
+    let listT = lowerCodensity codensity in foldListT listT f mr
 
 {- | Fold down a 'BranchT' using an underlying 'Alternative'.
 

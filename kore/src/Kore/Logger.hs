@@ -36,6 +36,9 @@ import qualified Control.Lens as Lens
 import Control.Lens.Prism
     ( Prism
     )
+import Control.Monad.Codensity
+    ( Codensity
+    )
 import Control.Monad.Except
     ( ExceptT
     )
@@ -238,6 +241,8 @@ class Monad m => MonadLog m where
     {-# INLINE logM #-}
 
 instance (Monoid acc, MonadLog log) => MonadLog (AccumT acc log)
+
+instance MonadLog log => MonadLog (Codensity log)
 
 instance MonadLog log => MonadLog (CounterT log)
 

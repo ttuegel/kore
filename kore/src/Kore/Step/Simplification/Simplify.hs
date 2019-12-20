@@ -42,6 +42,9 @@ import Control.Applicative
 import Control.Comonad.Trans.Cofree
 import Control.DeepSeq
 import qualified Control.Monad as Monad
+import Control.Monad.Codensity
+    ( Codensity (..)
+    )
 import Control.Monad.Morph
     ( MFunctor
     )
@@ -225,6 +228,21 @@ instance (WithLog LogMessage m, MonadSimplify m, Monoid w)
     {-# INLINE localSimplifierAxioms #-}
 
 deriving instance MonadSimplify m => MonadSimplify (BranchT m)
+
+instance MonadSimplify simplifier => MonadSimplify (Codensity simplifier) where
+    {-# INLINE localSimplifierTermLike #-}
+    localSimplifierTermLike f m =
+        Codensity $ \c -> do
+            simplifier <- askSimplifierTermLike
+            localSimplifierTermLike f . runCodensity m
+                $ localSimplifierTermLike (const simplifier) . c
+
+    {-# INLINE localSimplifierAxioms #-}
+    localSimplifierAxioms f m =
+        Codensity $ \c -> do
+            simplifier <- askSimplifierAxioms
+            localSimplifierAxioms f . runCodensity m
+                $ localSimplifierAxioms (const simplifier) . c
 
 instance MonadSimplify m => MonadSimplify (ExceptT e m)
 

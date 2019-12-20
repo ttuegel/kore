@@ -55,6 +55,9 @@ import Control.Monad.Catch
     ( MonadCatch
     , MonadThrow
     )
+import Control.Monad.Codensity
+    ( Codensity (..)
+    )
 import qualified Control.Monad.Counter as Counter
 import Control.Monad.IO.Class
     ( MonadIO
@@ -341,6 +344,10 @@ instance (MonadIO m) => MonadProfiler (SmtT m)
         configuration <- profileConfiguration
         SmtT (profileEvent configuration a (runSmtT action))
     {-# INLINE profile #-}
+
+instance MonadSMT m => MonadSMT (Codensity m) where
+    withSolver codensity =
+        Codensity (withSolver . runCodensity codensity )
 
 instance MonadSMT m => MonadSMT (IdentityT m)
 

@@ -22,8 +22,10 @@ import Control.Error
 import Control.Monad
     ( MonadPlus
     )
+import Control.Monad.Codensity
+    ( Codensity (..)
+    )
 import qualified Control.Monad.Except as Error
-import qualified Control.Monad.Morph as Morph
 import Control.Monad.Trans.Class
     ( MonadTrans (..)
     )
@@ -77,22 +79,12 @@ deriving instance MonadSMT m => MonadSMT (UnifierT m)
 deriving instance MonadProfiler m => MonadProfiler (UnifierT m)
 
 instance MonadSimplify m => MonadSimplify (UnifierT m) where
-    localSimplifierTermLike locally =
-        \(UnifierT branchT) ->
-            UnifierT
-                (BranchT.mapBranchT
-                    (Morph.hoist (localSimplifierTermLike locally))
-                    branchT
-                )
+    localSimplifierTermLike locally (UnifierT m) =
+        UnifierT (localSimplifierTermLike locally m)
     {-# INLINE localSimplifierTermLike #-}
 
-    localSimplifierAxioms locally =
-        \(UnifierT branchT) ->
-            UnifierT
-                (BranchT.mapBranchT
-                    (Morph.hoist (localSimplifierAxioms locally))
-                    branchT
-                )
+    localSimplifierAxioms locally (UnifierT m) =
+        UnifierT (localSimplifierAxioms locally m)
     {-# INLINE localSimplifierAxioms #-}
 
     simplifyCondition condition =
