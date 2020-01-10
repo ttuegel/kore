@@ -1,4 +1,4 @@
-name:                custom-prelude
+name:                import-plugin
 version:             0.0.1.0
 github:              "kframework/kore"
 license:             NCSA
@@ -22,6 +22,7 @@ description: A compiler plugin to set a custom prelude.
 dependencies:
   - base >=4.7
   - ghc >=8.6
+  - lens >=4.17
   - optparse-applicative >=0.14
 
 default-extensions:
@@ -72,3 +73,5 @@ ghc-options:
 
 library:
   source-dirs: src
+  other-modules:
+    - Import.Options
