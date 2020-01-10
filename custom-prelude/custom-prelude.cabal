@@ -1,0 +1,39 @@
+cabal-version: 2.2
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 7bcb3cfc74893fe20b119e4397a1c897ce9ccdd07df9d58b9d4c4f90696df9bd
+
+name:           custom-prelude
+version:        0.0.1.0
+description:    A compiler plugin to set a custom prelude.
+category:       Plugin
+homepage:       https://github.com/kframework/kore#readme
+bug-reports:    https://github.com/kframework/kore/issues
+author:         Thomas Tuegel
+maintainer:     thomas.tuegel@runtimeverification.com
+copyright:      2020 Runtime Verification Inc
+license:        NCSA
+license-file:   LICENSE
+build-type:     Simple
+
+source-repository head
+  type: git
+  location: https://github.com/kframework/kore
+
+library
+  exposed-modules:
+      Plugins.CustomPrelude
+  other-modules:
+      Paths_custom_prelude
+  hs-source-dirs:
+      src
+  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingVia DuplicateRecordFields EmptyCase ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses NamedFieldPuns OverloadedStrings PatternSynonyms RankNTypes ScopedTypeVariables StandaloneDeriving TypeApplications TypeFamilies TypeOperators TypeSynonymInstances ViewPatterns
+  ghc-options: -fno-ignore-asserts -Wall -Wcompat -Widentities -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Wredundant-constraints -Wmissing-export-lists
+  build-depends:
+      base >=4.7
+    , ghc >=8.6
+    , optparse-applicative >=0.14
+  default-language: Haskell2010

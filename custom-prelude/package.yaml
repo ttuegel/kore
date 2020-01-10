@@ -1,0 +1,74 @@
+name:                custom-prelude
+version:             0.0.1.0
+github:              "kframework/kore"
+license:             NCSA
+license-file:        LICENSE
+author:              "Thomas Tuegel"
+maintainer:          "thomas.tuegel@runtimeverification.com"
+copyright:           "2020 Runtime Verification Inc"
+category:            Plugin
+
+# extra-source-files:
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description: A compiler plugin to set a custom prelude.
+
+dependencies:
+  - base >=4.7
+  - ghc >=8.6
+  - optparse-applicative >=0.14
+
+default-extensions:
+  - BangPatterns
+  - ConstraintKinds
+  - DataKinds
+  - DefaultSignatures
+  - DeriveDataTypeable
+  - DeriveFoldable
+  - DeriveFunctor
+  - DeriveGeneric
+  - DeriveTraversable
+  - DerivingVia
+  - DuplicateRecordFields
+  - EmptyCase
+  - ExistentialQuantification
+  - FlexibleContexts
+  - FlexibleInstances
+  - FunctionalDependencies
+  - GADTs
+  - GeneralizedNewtypeDeriving
+  - InstanceSigs
+  - KindSignatures
+  - LambdaCase
+  - MultiParamTypeClasses
+  - NamedFieldPuns
+  - OverloadedStrings
+  - PatternSynonyms
+  - RankNTypes
+  - ScopedTypeVariables
+  - StandaloneDeriving
+  - TypeApplications
+  - TypeFamilies
+  - TypeOperators
+  - TypeSynonymInstances
+  - ViewPatterns
+
+ghc-options:
+  - -fno-ignore-asserts
+  - -Wall
+  - -Wcompat
+  - -Widentities
+  - -Wincomplete-uni-patterns
+  - -Wincomplete-record-updates
+  - -Wpartial-fields
+  - -Wredundant-constraints
+  - -Wmissing-export-lists
+
+library:
+  source-dirs: src

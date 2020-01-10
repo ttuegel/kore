@@ -40,6 +40,7 @@ dependencies:
   - clock >=0.8
   - co-log >=0.3
   - cryptonite >=0.25
+  - custom-prelude
   - data-default >=0.7
   - deepseq >=1.4
   - directory >=1.3
@@ -131,6 +132,7 @@ ghc-options:
   - -Wpartial-fields
   - -Wredundant-constraints
   - -Wmissing-export-lists
+  - -fplugin=Plugins.CustomPrelude
 
 library:
   source-dirs: src
