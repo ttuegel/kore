@@ -8,6 +8,8 @@ module Kore.Step.Simplification.Or
     , simplify
     ) where
 
+import Prelude ()
+
 import qualified Kore.Internal.MultiOr as MultiOr
 import Kore.Internal.OrPattern
     ( OrPattern

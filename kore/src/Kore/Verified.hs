@@ -15,6 +15,8 @@ module Kore.Verified
     , SentenceSymbol
     ) where
 
+import Prelude ()
+
 import qualified Kore.Internal.Alias as Internal
     ( Alias
     )

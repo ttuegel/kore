@@ -3,6 +3,8 @@ module Kore.Step.Simplification.Ceil
     , makeEvaluateTerm
     ) where
 
+import Prelude ()
+
 import Kore.Internal.OrCondition
     ( OrCondition
     )

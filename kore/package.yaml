@@ -111,6 +111,7 @@ default-extensions:
   - LambdaCase
   - MultiParamTypeClasses
   - NamedFieldPuns
+  - NoImplicitPrelude
   - OverloadedStrings
   - PatternSynonyms
   - RankNTypes
@@ -133,6 +134,7 @@ ghc-options:
   - -Wredundant-constraints
   - -Wmissing-export-lists
   - -fplugin=Plugins.CustomPrelude
+  - -fplugin-opt=Plugins.CustomPrelude:Prelude
 
 library:
   source-dirs: src
