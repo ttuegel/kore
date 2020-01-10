@@ -11,7 +11,7 @@ module Kore.IndexedModule.MetadataToolsBuilder
     ( build
     ) where
 
-import Prelude ()
+import Prelude.Kore ()
 
 import qualified Kore.Attribute.Axiom as Attribute
     ( Axiom

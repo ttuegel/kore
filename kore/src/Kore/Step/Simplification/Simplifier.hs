@@ -12,7 +12,7 @@ module Kore.Step.Simplification.Simplifier
     ( create
     ) where
 
-import Prelude ()
+import Prelude.Kore ()
 
 import Kore.Step.Simplification.Simplify
 import qualified Kore.Step.Simplification.TermLike as TermLike

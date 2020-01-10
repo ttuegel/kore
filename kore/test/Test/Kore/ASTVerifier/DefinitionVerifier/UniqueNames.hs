@@ -2,7 +2,7 @@ module Test.Kore.ASTVerifier.DefinitionVerifier.UniqueNames
     ( test_uniqueNames
     ) where
 
-import Prelude ()
+import Prelude.Kore ()
 
 import Test.Tasty
     ( TestTree

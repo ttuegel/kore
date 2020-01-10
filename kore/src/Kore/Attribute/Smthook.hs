@@ -10,6 +10,6 @@ module Kore.Attribute.Smthook
     ( module Kore.Attribute.Smtlib.Smthook
     ) where
 
-import Prelude ()
+import Prelude.Kore ()
 
 import Kore.Attribute.Smtlib.Smthook

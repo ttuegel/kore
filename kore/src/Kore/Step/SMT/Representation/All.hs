@@ -10,7 +10,7 @@ module Kore.Step.SMT.Representation.All
     ( build
     ) where
 
-import Prelude ()
+import Prelude.Kore ()
 
 import qualified Data.Map.Strict as Map
 

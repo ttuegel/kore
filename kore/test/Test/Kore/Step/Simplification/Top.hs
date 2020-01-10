@@ -2,7 +2,7 @@ module Test.Kore.Step.Simplification.Top
     ( test_topSimplification
     ) where
 
-import Prelude ()
+import Prelude.Kore ()
 
 import Test.Tasty
 
