@@ -48,6 +48,9 @@ import Kore.Internal.Predicate
     , makeTruePredicate_
     )
 import qualified Kore.Internal.Predicate as Predicate
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( top
+    )
 import Kore.Internal.TermLike
 import Kore.Step.Axiom.EvaluationStrategy
     ( builtinEvaluation
@@ -59,10 +62,10 @@ import qualified Kore.Step.Axiom.Identifier as AxiomIdentifier
 import Kore.Step.Axiom.Registry
     ( axiomPatternsToEvaluators
     )
-import Kore.Step.Rule
-    ( EqualityRule (EqualityRule)
-    , RulePattern (..)
-    , rulePattern
+import Kore.Step.EqualityPattern
+    ( EqualityPattern (..)
+    , EqualityRule (EqualityRule)
+    , equalityPattern
     )
 import qualified Kore.Step.Simplification.Pattern as Pattern
     ( simplify
@@ -198,7 +201,7 @@ test_simplificationIntegration =
                     (Map.fromList
                         [   ( AxiomIdentifier.Application
                                 Mock.function20MapTestId
-                            ,   [ EqualityRule $ rulePattern
+                            ,   [ EqualityRule $ equalityPattern
                                     (Mock.function20MapTest
                                         (Mock.concatMap
                                             (Mock.elementMap
@@ -279,7 +282,7 @@ test_simplificationIntegration =
                 ( axiomPatternsToEvaluators
                     ( Map.fromList
                         [   (AxiomIdentifier.Application Mock.fIntId
-                            ,   [ EqualityRule $ rulePattern
+                            ,   [ EqualityRule $ equalityPattern
                                     (Mock.fInt (mkElemVar Mock.xInt))
                                     (mkElemVar Mock.xInt)
                                 ]
@@ -324,7 +327,7 @@ test_simplificationIntegration =
                 ( axiomPatternsToEvaluators
                     ( Map.fromList
                         [   (AxiomIdentifier.Application Mock.fIntId
-                            ,   [ EqualityRule $ rulePattern
+                            ,   [ EqualityRule $ equalityPattern
                                     (Mock.fInt (mkElemVar Mock.xInt))
                                     (mkElemVar Mock.xInt)
                                 ]
@@ -415,7 +418,7 @@ test_simplificationIntegration =
             evaluateWithAxioms
                 (axiomPatternsToEvaluators $ Map.fromList
                     [   ( AxiomIdentifier.Application Mock.cfId
-                        ,   [ EqualityRule $ rulePattern
+                        ,   [ EqualityRule $ equalityPattern
                                 Mock.cf
                                 (Mock.f (mkElemVar Mock.x))
                             ]
@@ -958,19 +961,19 @@ simplificationRulePattern
     :: InternalVariable variable
     => TermLike variable
     -> TermLike variable
-    -> RulePattern variable
+    -> EqualityPattern variable
 simplificationRulePattern left right =
     patt & Lens.set (field @"attributes" . field @"simplification")
         (Simplification True)
   where
-    patt = rulePattern left right
+    patt = equalityPattern left right
 
 conditionalSimplificationRulePattern
     :: InternalVariable variable
     => TermLike variable
     -> Predicate.Predicate variable
     -> TermLike variable
-    -> RulePattern variable
+    -> EqualityPattern variable
 conditionalSimplificationRulePattern left requires right =
     patt & Lens.set (field @"requires") requires
   where
@@ -1111,7 +1114,8 @@ evaluateWithAxioms
     :: BuiltinAndAxiomSimplifierMap
     -> Pattern Variable
     -> IO (OrPattern Variable)
-evaluateWithAxioms axioms = runSimplifier env . Pattern.simplify
+evaluateWithAxioms axioms =
+    runSimplifier env . Pattern.simplify SideCondition.top
   where
     env = Mock.env { simplifierAxioms }
     simplifierAxioms :: BuiltinAndAxiomSimplifierMap
@@ -1168,13 +1172,12 @@ axiom
     -> TermLike Variable
     -> Predicate.Predicate Variable
     -> EqualityRule Variable
-axiom left right predicate =
-    EqualityRule RulePattern
+axiom left right requires =
+    EqualityRule EqualityPattern
         { left
-        , antiLeft = Nothing
+        , requires
         , right
-        , requires = predicate
-        , ensures = makeTruePredicate_
+        , ensures = Predicate.makeTruePredicate_
         , attributes = Default.def
         }
 

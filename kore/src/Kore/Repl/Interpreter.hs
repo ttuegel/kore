@@ -126,28 +126,37 @@ import qualified Kore.Attribute.Axiom as Attribute
     , sourceLocation
     )
 import qualified Kore.Attribute.Label as AttrLabel
+import Kore.Attribute.Pattern.FreeVariables
+    ( freeVariables
+    )
 import Kore.Attribute.RuleIndex
 import Kore.Internal.Condition
     ( Condition
     )
-import Kore.Internal.Conditional
-    ( Conditional (..)
+import Kore.Internal.Pattern
+    ( Pattern
     )
 import qualified Kore.Internal.Pattern as Pattern
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( assumeTrueCondition
+    )
 import Kore.Internal.TermLike
     ( TermLike
     )
 import qualified Kore.Internal.TermLike as TermLike
-import qualified Kore.Logger.Output as Logger
+import qualified Kore.Log as Log
 import Kore.Repl.Data
 import Kore.Repl.Parser
 import Kore.Repl.State
-import Kore.Step.Rule
+import Kore.Step.RulePattern
     ( ReachabilityRule (..)
     , RulePattern (..)
     )
-import qualified Kore.Step.Rule as Rule
-import qualified Kore.Step.Rule as Axiom
+import qualified Kore.Step.RulePattern as Rule
+import qualified Kore.Step.RulePattern as Axiom
     ( attributes
     )
 import Kore.Step.Simplification.Data
@@ -235,37 +244,37 @@ replInterpreter0
     -> ReaderT (Config claim m) (StateT (ReplState claim) m) ReplStatus
 replInterpreter0 printAux printKore replCmd = do
     let command = case replCmd of
-                ShowUsage          -> showUsage          $> Continue
-                Help               -> help               $> Continue
-                ShowClaim mc       -> showClaim mc       $> Continue
-                ShowAxiom ea       -> showAxiom ea       $> Continue
-                Prove i            -> prove i            $> Continue
-                ShowGraph mfile    -> showGraph mfile    $> Continue
-                ProveSteps n       -> proveSteps n       $> Continue
-                ProveStepsF n      -> proveStepsF n      $> Continue
-                SelectNode i       -> selectNode i       $> Continue
-                ShowConfig mc      -> showConfig mc      $> Continue
-                OmitCell c         -> omitCell c         $> Continue
-                ShowLeafs          -> showLeafs          $> Continue
-                ShowRule   mc      -> showRule mc        $> Continue
-                ShowPrecBranch mn  -> showPrecBranch mn  $> Continue
-                ShowChildren mn    -> showChildren mn    $> Continue
-                Label ms           -> label ms           $> Continue
-                LabelAdd l mn      -> labelAdd l mn      $> Continue
-                LabelDel l         -> labelDel l         $> Continue
-                Redirect inn file  -> redirect inn file  $> Continue
-                Try ref            -> tryAxiomClaim ref  $> Continue
-                TryF ac            -> tryFAxiomClaim ac  $> Continue
-                Clear n            -> clear n            $> Continue
-                SaveSession file   -> saveSession file   $> Continue
-                Pipe inn file args -> pipe inn file args $> Continue
-                AppendTo inn file  -> appendTo inn file  $> Continue
-                Alias a            -> alias a            $> Continue
-                TryAlias name      -> tryAlias name printAux printKore
-                LoadScript file    -> loadScript file    $> Continue
-                ProofStatus        -> proofStatus        $> Continue
-                Log opts           -> handleLog opts     $> Continue
-                Exit               -> exit
+                ShowUsage           -> showUsage           $> Continue
+                Help                -> help                $> Continue
+                ShowClaim mc        -> showClaim mc        $> Continue
+                ShowAxiom ea        -> showAxiom ea        $> Continue
+                Prove i             -> prove i             $> Continue
+                ShowGraph mfile out -> showGraph mfile out $> Continue
+                ProveSteps n        -> proveSteps n        $> Continue
+                ProveStepsF n       -> proveStepsF n       $> Continue
+                SelectNode i        -> selectNode i        $> Continue
+                ShowConfig mc       -> showConfig mc       $> Continue
+                OmitCell c          -> omitCell c          $> Continue
+                ShowLeafs           -> showLeafs           $> Continue
+                ShowRule   mc       -> showRule mc         $> Continue
+                ShowPrecBranch mn   -> showPrecBranch mn   $> Continue
+                ShowChildren mn     -> showChildren mn     $> Continue
+                Label ms            -> label ms            $> Continue
+                LabelAdd l mn       -> labelAdd l mn       $> Continue
+                LabelDel l          -> labelDel l          $> Continue
+                Redirect inn file   -> redirect inn file   $> Continue
+                Try ref             -> tryAxiomClaim ref   $> Continue
+                TryF ac             -> tryFAxiomClaim ac   $> Continue
+                Clear n             -> clear n             $> Continue
+                SaveSession file    -> saveSession file    $> Continue
+                Pipe inn file args  -> pipe inn file args  $> Continue
+                AppendTo inn file   -> appendTo inn file   $> Continue
+                Alias a             -> alias a             $> Continue
+                TryAlias name       -> tryAlias name printAux printKore
+                LoadScript file     -> loadScript file     $> Continue
+                ProofStatus         -> proofStatus         $> Continue
+                Log opts            -> handleLog opts      $> Continue
+                Exit                -> exit
     (ReplOutput output, shouldContinue) <- evaluateCommand command
     liftIO $ Foldable.traverse_
             ( replOut
@@ -426,16 +435,18 @@ showGraph
     => MonadWriter ReplOutput m
     => Claim claim
     => Maybe FilePath
+    -> Maybe Graph.GraphvizOutput
     -> MonadState (ReplState claim) m
     => m ()
-showGraph mfile = do
+showGraph mfile out = do
+    let format = fromMaybe Graph.Svg out
     graph <- getInnerGraph
     axioms <- Lens.use (field @"axioms")
     installed <- liftIO Graph.isGraphvizInstalled
     if installed
        then liftIO $ maybe
                         (showDotGraph (length axioms) graph)
-                        (saveDotGraph (length axioms) graph)
+                        (saveDotGraph (length axioms) graph format)
                         mfile
        else putStrLn' "Graphviz is not installed."
 
@@ -481,7 +492,7 @@ loadScript file = parseEvalScript file
 
 handleLog
     :: MonadState (ReplState claim) m
-    => Logger.KoreLogOptions
+    => Log.KoreLogOptions
     -> m ()
 handleLog t = field @"koreLogOptions" .= t
 
@@ -608,9 +619,10 @@ allProofs = do
     findProofStatus :: Map.Map NodeState [Graph.Node] -> GraphProofStatus
     findProofStatus m =
         case Map.lookup StuckNode m of
-            Nothing -> case Map.lookup UnevaluatedNode m of
-                           Nothing -> Completed
-                           Just ns -> InProgress ns
+            Nothing ->
+                case Map.lookup UnevaluatedNode m of
+                    Nothing -> Completed
+                    Just ns -> InProgress ns
             Just ns -> StuckProof ns
 
 showRule
@@ -862,12 +874,21 @@ tryAxiomClaimWorker mode ref = do
                 proofState
                     ProofStateTransformer
                         { provenValue        = putStrLn' "Cannot unify bottom"
-                        , goalTransformer    = runUnifier' first . term
-                        , goalRemainderTransformer = runUnifier' first . term
-                        , goalRewrittenTransformer = runUnifier' first . term
-                        , goalStuckTransformer = runUnifier' first . term
+                        , goalTransformer = patternUnifier
+                        , goalRemainderTransformer = patternUnifier
+                        , goalRewrittenTransformer = patternUnifier
+                        , goalStuckTransformer = patternUnifier
                         }
                     second
+              where
+                patternUnifier :: Pattern Variable -> ReplM claim m ()
+                patternUnifier
+                    (Pattern.splitTerm -> (secondTerm, secondCondition))
+                  =
+                    runUnifier' sideCondition first secondTerm
+                  where
+                    sideCondition =
+                        SideCondition.assumeTrueCondition secondCondition
 
     tryForceAxiomOrClaim
         :: Either axiom claim
@@ -889,14 +910,15 @@ tryAxiomClaimWorker mode ref = do
                 updateExecutionGraph graph
 
     runUnifier'
-        :: TermLike Variable
+        :: SideCondition Variable
+        -> TermLike Variable
         -> TermLike Variable
         -> ReplM claim m ()
-    runUnifier' first second =
-        runUnifier first' second
+    runUnifier' sideCondition first second =
+        runUnifier sideCondition first' second
         >>= tell . formatUnificationMessage
       where
-        first' = TermLike.refreshVariables (TermLike.freeVariables second) first
+        first' = TermLike.refreshVariables (freeVariables second) first
 
     extractLeftPattern :: Either axiom claim -> TermLike Variable
     extractLeftPattern = left . either toRulePattern toRulePattern
@@ -1138,12 +1160,9 @@ showRewriteRule rule =
   where
     rule' = toRulePattern rule
 
-    extractSourceAndLocation
-        :: RulePattern Variable
-        -> SourceLocation
-    extractSourceAndLocation
-        (RulePattern { Axiom.attributes }) =
-            Attribute.sourceLocation attributes
+    extractSourceAndLocation :: RulePattern Variable -> SourceLocation
+    extractSourceAndLocation RulePattern { Axiom.attributes } =
+        Attribute.sourceLocation attributes
 
 -- | Unparses a strategy node, using an omit list to hide specified children.
 unparseStrategy
@@ -1211,18 +1230,21 @@ saveDotGraph
     :: ToRulePattern axiom
     => Int
     -> InnerGraph axiom
+    -> Graph.GraphvizOutput
     -> FilePath
     -> IO ()
-saveDotGraph len gr file =
+saveDotGraph len gr format file =
     withExistingDirectory file saveGraphImg
   where
     saveGraphImg :: FilePath -> IO ()
     saveGraphImg path =
         void
-        . Graph.runGraphviz
-            (Graph.graphToDot (graphParams len) gr)
-            Graph.Jpeg
-        $ path <> ".jpeg"
+        $ Graph.addExtension
+            (Graph.runGraphviz
+                (Graph.graphToDot (graphParams len) gr)
+            )
+            format
+            path
 
 graphParams
     :: ToRulePattern axiom

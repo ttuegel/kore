@@ -36,19 +36,22 @@ import qualified Kore.Internal.Predicate as Predicate
     ( coerceSort
     , unwrapPredicate
     )
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( top
+    )
 import Kore.Internal.TermLike
     ( mkAnd
     , mkCeil_
     , termLikeSort
     )
-import Kore.Step.Rule
+import Kore.Step.RulePattern
     ( AllPathRule (..)
     , OnePathRule (..)
     , ReachabilityRule (..)
     , RewriteRule (..)
     , RulePattern (RulePattern)
     )
-import qualified Kore.Step.Rule as RulePattern
+import qualified Kore.Step.RulePattern as RulePattern
     ( RulePattern (..)
     , applySubstitution
     )
@@ -56,7 +59,7 @@ import Kore.Step.Simplification.OrPattern
     ( simplifyConditionsWithSmt
     )
 import qualified Kore.Step.Simplification.Pattern as Pattern
-    ( simplifyAndRemoveTopExists
+    ( simplifyTopConfiguration
     )
 import Kore.Step.Simplification.Simplify
     ( MonadSimplify
@@ -76,12 +79,13 @@ class SimplifyRuleLHS rule where
 
 instance SimplifierVariable variable => SimplifyRuleLHS (RulePattern variable)
   where
-    simplifyRuleLhs rule@(RulePattern _ _ _ _ _ _) = do
+    simplifyRuleLhs rule@(RulePattern _ _ _ _ _) = do
         let lhsWithPredicate = Pattern.fromTermLike left
-        simplifiedTerms <- Pattern.simplifyAndRemoveTopExists lhsWithPredicate
+        simplifiedTerms <-
+            Pattern.simplifyTopConfiguration lhsWithPredicate
         fullySimplified <-
             simplifyConditionsWithSmt
-                makeTruePredicate_
+                SideCondition.top
                 simplifiedTerms
         let rules =
                 map (setRuleLeft rule) (MultiOr.extractPatterns fullySimplified)
@@ -128,7 +132,7 @@ simplifyClaimRule
     :: (MonadSimplify simplifier, SimplifierVariable variable)
     => RulePattern variable
     -> simplifier (MultiAnd (RulePattern variable))
-simplifyClaimRule rule@(RulePattern _ _ _ _ _ _) =
+simplifyClaimRule rule@(RulePattern _ _ _ _ _) =
     simplifyRuleLhs rule
         { RulePattern.left =
             mkAnd

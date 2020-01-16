@@ -21,32 +21,37 @@ import qualified Data.Text as Text
 import qualified Data.Text.Prettyprint.Doc as Pretty
 
 import qualified Kore.Attribute.Symbol as Attribute
-import Kore.Internal.Condition
-    ( Condition
-    )
-import qualified Kore.Internal.Condition as Condition
 import qualified Kore.Internal.MultiOr as MultiOr
     ( extractPatterns
     )
 import qualified Kore.Internal.OrPattern as OrPattern
 import qualified Kore.Internal.Pattern as Pattern
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
 import Kore.Internal.Symbol
 import Kore.Internal.TermLike as TermLike
-import Kore.Logger.WarnSimplificationWithRemainder
+import Kore.Log.WarnBottomHook
+    ( warnBottomHook
+    )
+import Kore.Log.WarnSimplificationWithRemainder
     ( warnSimplificationWithRemainder
     )
 import Kore.Step.Axiom.Evaluate
-import qualified Kore.Step.EquationalStep as Step
-import Kore.Step.Result as Results
-import Kore.Step.Rule
+import Kore.Step.EqualityPattern
     ( EqualityRule (..)
     )
+import qualified Kore.Step.EquationalStep as Step
+import Kore.Step.Result as Results
 import Kore.Step.Simplification.Simplify
 import qualified Kore.Step.Simplification.Simplify as AttemptedAxiom
     ( AttemptedAxiom (..)
     )
 import qualified Kore.Step.Simplification.Simplify as AttemptedAxiomResults
     ( AttemptedAxiomResults (..)
+    )
+import Kore.TopBottom
+    ( isBottom
     )
 import Kore.Unparser
     ( unparse
@@ -71,10 +76,9 @@ definitionEvaluation
     -> BuiltinAndAxiomSimplifier
 definitionEvaluation rules =
     BuiltinAndAxiomSimplifier $ \term condition -> do
-        let predicate = Condition.toPredicate condition
-        results <- evaluateAxioms rules term predicate
-        let attempted = Results.toAttemptedAxiom results
-        Step.assertFunctionLikeResults term results
+        results' <- evaluateAxioms rules condition term
+        let attempted = Results.toAttemptedAxiom results'
+        Step.assertFunctionLikeResults term results'
         return attempted
 
 -- | Create an evaluator from a single simplification rule.
@@ -83,8 +87,7 @@ simplificationEvaluation
     -> BuiltinAndAxiomSimplifier
 simplificationEvaluation rule =
     BuiltinAndAxiomSimplifier $ \term condition -> do
-        let predicate = Condition.toPredicate condition
-        results <- evaluateAxioms [rule] term predicate
+        results <- evaluateAxioms [rule] condition term
         let initial = Step.toConfigurationVariables (Pattern.fromTermLike term)
         Step.recoveryFunctionLikeResults initial results
         return $ Results.toAttemptedAxiom results
@@ -110,11 +113,10 @@ totalDefinitionEvaluation rules =
            , MonadSimplify simplifier
            )
         => TermLike variable
-        -> Condition variable
+        -> SideCondition variable
         -> simplifier (AttemptedAxiom variable)
-    totalDefinitionEvaluationWorker term condition = do
-        let predicate = Condition.toPredicate condition
-        results <- evaluateAxioms rules term predicate
+    totalDefinitionEvaluationWorker term sideCondition = do
+        results <- evaluateAxioms rules sideCondition term
         let attempted = rejectRemainders $ Results.toAttemptedAxiom results
         Step.assertFunctionLikeResults term results
         return attempted
@@ -156,7 +158,6 @@ builtinEvaluation
 builtinEvaluation evaluator =
     BuiltinAndAxiomSimplifier (evaluateBuiltin evaluator)
 
-
 evaluateBuiltin
     :: forall variable simplifier
     .  ( SimplifierVariable variable
@@ -165,14 +166,14 @@ evaluateBuiltin
     => BuiltinAndAxiomSimplifier
     -- ^ Map from axiom IDs to axiom evaluators
     -> TermLike variable
-    -> Condition variable
+    -> SideCondition variable
     -> simplifier (AttemptedAxiom variable)
 evaluateBuiltin
     (BuiltinAndAxiomSimplifier builtinEvaluator)
     patt
-    predicate
+    sideCondition
   = do
-    result <- builtinEvaluator patt predicate
+    result <- builtinEvaluator patt sideCondition
     case result of
         AttemptedAxiom.NotApplicable
           | App_ appHead children <- patt
@@ -184,10 +185,17 @@ evaluateBuiltin
                     <> " to reduce concrete pattern:"
                 , Pretty.indent 4 (unparse patt)
                 ]
+        Applied AttemptedAxiomResults { results , remainders }
+          | App_ appHead _ <- patt
+          , Just hook_ <- Attribute.getHook (symbolHook appHead)
+          , isBottom results
+          , isBottom remainders -> do
+              warnBottomHook hook_ patt
+              return result
         _ -> return result
   where
     isValue pat =
-        maybe False TermLike.isNonSimplifiable $ asConcrete pat
+        maybe False TermLike.isConstructorLike $ asConcrete pat
 
 applyFirstSimplifierThatWorks
     :: forall variable simplifier
@@ -197,7 +205,7 @@ applyFirstSimplifierThatWorks
     => [BuiltinAndAxiomSimplifier]
     -> AcceptsMultipleResults
     -> TermLike variable
-    -> Condition variable
+    -> SideCondition variable
     -> simplifier (AttemptedAxiom variable)
 applyFirstSimplifierThatWorks [] _ _ _ =
     return AttemptedAxiom.NotApplicable
@@ -205,9 +213,9 @@ applyFirstSimplifierThatWorks
     (BuiltinAndAxiomSimplifier evaluator : evaluators)
     multipleResults
     patt
-    predicate
+    sideCondition
   = do
-    applicationResult <- evaluator patt predicate
+    applicationResult <- evaluator patt sideCondition
 
     case applicationResult of
         AttemptedAxiom.Applied AttemptedAxiomResults
@@ -237,7 +245,7 @@ applyFirstSimplifierThatWorks
           | not (OrPattern.isFalse orRemainders) ->  do
             warnSimplificationWithRemainder
                 patt
-                predicate
+                sideCondition
                 orResults
                 orRemainders
             -- TODO (traiansf): this might generate too much output
@@ -251,4 +259,4 @@ applyFirstSimplifierThatWorks
             evaluators
             multipleResults
             patt
-            predicate
+            sideCondition

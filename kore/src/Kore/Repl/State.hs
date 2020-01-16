@@ -68,10 +68,10 @@ import Data.List.Extra
 import Data.List.NonEmpty
     ( NonEmpty (..)
     )
-import qualified Data.Map as Map
 import Data.Map.Strict
     ( Map
     )
+import qualified Data.Map.Strict as Map
 import Data.Maybe
 import Data.Sequence
     ( Seq
@@ -110,18 +110,21 @@ import Kore.Internal.Pattern
     ( toTermLike
     )
 import Kore.Internal.Predicate as Predicate
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
 import Kore.Internal.TermLike
     ( Sort
     , TermLike
     )
 import qualified Kore.Internal.TermLike as TermLike
-import qualified Kore.Logger.Output as Logger
+import qualified Kore.Log as Log
 import Kore.Repl.Data
-import Kore.Step.Rule
+import Kore.Step.RulePattern
     ( RewriteRule (..)
     , RulePattern (..)
     )
-import Kore.Step.Rule as Rule
+import Kore.Step.RulePattern as Rule
 import Kore.Step.Simplification.Data
     ( MonadSimplify
     )
@@ -404,30 +407,30 @@ liftSimplifierWithLogger
     => MonadSimplify m
     => MonadIO m
     => Monad.Trans.MonadTrans t
-    => MVar (Logger.LogAction IO Logger.SomeEntry)
+    => MVar (Log.LogAction IO Log.SomeEntry)
     -> m a
     -> t m a
 liftSimplifierWithLogger mLogger simplifier = do
     ReplState { koreLogOptions } <- get
-    let Logger.KoreLogOptions { logType } = koreLogOptions
+    let Log.KoreLogOptions { logType, timestampsSwitch } = koreLogOptions
     (textLogger, maybeHandle) <- logTypeToLogger logType
     let logger =
-            Logger.koreLogFilters koreLogOptions
-            $ Logger.makeKoreLogger textLogger
+            Log.koreLogFilters koreLogOptions
+            $ Log.makeKoreLogger timestampsSwitch textLogger
     _ <- Monad.Trans.lift . liftIO $ swapMVar mLogger logger
     result <- Monad.Trans.lift simplifier
     maybe (pure ()) (Monad.Trans.lift . liftIO . hClose) maybeHandle
     pure result
   where
     logTypeToLogger
-        :: Logger.KoreLogType
-        -> t m (Logger.LogAction IO Text, Maybe Handle)
+        :: Log.KoreLogType
+        -> t m (Log.LogAction IO Text, Maybe Handle)
     logTypeToLogger =
         \case
-            Logger.LogStdErr -> pure (Logger.logTextStderr, Nothing)
-            Logger.LogFileText file -> do
+            Log.LogStdErr -> pure (Log.logTextStderr, Nothing)
+            Log.LogFileText file -> do
                 handle <- Monad.Trans.lift . liftIO $ openFile file AppendMode
-                pure (Logger.logTextHandle handle, Just handle)
+                pure (Log.logTextHandle handle, Just handle)
 
 -- | Run a single step for the data in state
 -- (claim, axioms, claims, current node and execution graph).
@@ -486,15 +489,16 @@ runUnifier
     => Monad.Trans.MonadTrans t
     => MonadSimplify m
     => MonadIO m
-    => TermLike Variable
+    => SideCondition Variable
+    -> TermLike Variable
     -> TermLike Variable
     -> t m (Either ReplOutput (NonEmpty (Condition Variable)))
-runUnifier first second = do
+runUnifier sideCondition first second = do
     unifier <- asks unifier
     mvar <- asks logger
     liftSimplifierWithLogger mvar
         . runUnifierWithExplanation
-        $ unifier first second
+        $ unifier sideCondition first second
 
 getNodeState :: InnerGraph axiom -> Graph.Node -> Maybe (NodeState, Graph.Node)
 getNodeState graph node =
@@ -607,9 +611,8 @@ createOnePathClaim (claim, cpattern) =
     $ Rule.RulePattern
         { left = cpattern
         , antiLeft = Nothing
-        , right = Rule.right . toRulePattern $ claim
         , requires = Predicate.makeTruePredicate_
-        , ensures = Rule.ensures . toRulePattern $ claim
+        , rhs = Rule.rhs . toRulePattern $ claim
         , attributes = Default.def
         }
 
@@ -621,7 +624,7 @@ conjOfOnePathClaims claims sort =
     foldr
         TermLike.mkAnd
         (TermLike.mkTop sort)
-        $ fmap Rule.onePathRuleToPattern claims
+        $ fmap Rule.onePathRuleToTerm claims
 
 generateInProgressOPClaims
     :: Claim claim
@@ -690,7 +693,7 @@ currentClaimSort
 currentClaimSort = do
     claims <- Lens.use (field @"claim")
     return . TermLike.termLikeSort
-        . Rule.onePathRuleToPattern
+        . Rule.onePathRuleToTerm
         . Rule.OnePathRule
         . toRulePattern
         $ claims

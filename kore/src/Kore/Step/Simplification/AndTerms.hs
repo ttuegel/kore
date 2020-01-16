@@ -32,6 +32,9 @@ import Control.Exception
     )
 import qualified Control.Monad.Trans as Monad.Trans
 import qualified Data.Foldable as Foldable
+import Data.Function
+    ( (&)
+    )
 import qualified Data.Text as Text
 import qualified Data.Text.Prettyprint.Doc as Pretty
 import qualified GHC.Stack as GHC
@@ -60,9 +63,14 @@ import Kore.Internal.Predicate
     , makeTruePredicate_
     )
 import qualified Kore.Internal.Predicate as Predicate
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( topTODO
+    )
 import qualified Kore.Internal.Symbol as Symbol
 import Kore.Internal.TermLike
-import qualified Kore.Logger as Logger
 import Kore.Step.Simplification.ExpandAlias
     ( expandAlias
     )
@@ -86,6 +94,7 @@ import Kore.Unparser
 import Kore.Variables.UnifiedVariable
     ( UnifiedVariable (..)
     )
+import qualified Log
 import Pair
 
 import {-# SOURCE #-} qualified Kore.Step.Simplification.Ceil as Ceil
@@ -173,7 +182,7 @@ andFunctions =
     forAnd
         :: TermTransformation variable unifier
         -> TermTransformationOld variable unifier
-    forAnd f = f Condition.topTODO SimplificationType.And
+    forAnd f = f SideCondition.topTODO SimplificationType.And
 
 equalsFunctions
     :: forall variable unifier
@@ -192,7 +201,7 @@ equalsFunctions =
     forEquals
         :: TermTransformation variable unifier
         -> TermTransformationOld variable unifier
-    forEquals f = f Condition.topTODO SimplificationType.Equals
+    forEquals f = f SideCondition.topTODO SimplificationType.Equals
 
 andEqualsFunctions
     :: forall variable unifier
@@ -236,8 +245,7 @@ andEqualsFunctions = fmap mapEqualsFunctions
             mresult <- getResult
             case mresult of
                 Nothing -> do
-                    Logger.withLogScope (Logger.Scope "AndTerms")
-                        . Logger.logDebug . Text.pack . show
+                    Log.logDebug . Text.pack . show
                         $ Pretty.hsep
                             [ "Evaluator"
                             , Pretty.pretty fnName
@@ -245,8 +253,7 @@ andEqualsFunctions = fmap mapEqualsFunctions
                             ]
                     return mresult
                 Just result -> do
-                    Logger.withLogScope (Logger.Scope "AndTerms")
-                        . Logger.logDebug . Text.pack . show
+                    Log.logDebug . Text.pack . show
                         $ Pretty.vsep
                             [ Pretty.hsep
                                 [ "Evaluator"
@@ -279,7 +286,7 @@ call 'empty' unless given patterns matching their unification case.
 
  -}
 type TermTransformation variable unifier =
-       Condition variable
+       SideCondition variable
     -> SimplificationType
     -> TermSimplifier variable unifier
     -> TermLike variable
@@ -354,16 +361,16 @@ equalAndEquals _ _ = empty
 bottomTermEquals
     :: SimplifierVariable variable
     => MonadUnify unifier
-    => Condition variable
+    => SideCondition variable
     -> TermLike variable
     -> TermLike variable
     -> MaybeT unifier (Pattern variable)
 bottomTermEquals
-    predicate
+    sideCondition
     first@(Bottom_ _)
     second
   = Monad.Trans.lift $ do -- MonadUnify
-    secondCeil <- Ceil.makeEvaluateTerm predicate second
+    secondCeil <- Ceil.makeEvaluateTerm sideCondition second
 
     case MultiOr.extractPatterns secondCeil of
         [] -> return Pattern.top
@@ -393,12 +400,12 @@ See also: 'bottomTermEquals'
 termBottomEquals
     :: SimplifierVariable variable
     => MonadUnify unifier
-    => Condition variable
+    => SideCondition variable
     -> TermLike variable
     -> TermLike variable
     -> MaybeT unifier (Pattern variable)
-termBottomEquals predicate first second =
-    bottomTermEquals predicate second first
+termBottomEquals sideCondition first second =
+    bottomTermEquals sideCondition second first
 
 {- | Unify a variable with a function pattern.
 
@@ -408,7 +415,7 @@ See also: 'isFunctionPattern'
 variableFunctionAndEquals
     :: SimplifierVariable variable
     => MonadUnify unifier
-    => Condition variable
+    => SideCondition variable
     -> SimplificationType
     -> TermLike variable
     -> TermLike variable
@@ -428,7 +435,7 @@ variableFunctionAndEquals
                 ]
         }
 variableFunctionAndEquals
-    configurationCondition
+    sideCondition
     simplificationType
     first@(ElemVar_ v)
     second
@@ -441,7 +448,7 @@ variableFunctionAndEquals
                 -- be careful to not just drop the term.
                 return Condition.top
             SimplificationType.Equals -> do
-                resultOr <- Ceil.makeEvaluateTerm configurationCondition second
+                resultOr <- Ceil.makeEvaluateTerm sideCondition second
                 case MultiOr.extractPatterns resultOr of
                     [] -> do
                         explainBottom
@@ -463,13 +470,13 @@ See also: 'variableFunctionAndEquals'
  -}
 functionVariableAndEquals
     :: (SimplifierVariable variable, MonadUnify unifier)
-    => Condition variable
+    => SideCondition variable
     -> SimplificationType
     -> TermLike variable
     -> TermLike variable
     -> MaybeT unifier (Pattern variable)
-functionVariableAndEquals predicate simplificationType first second =
-    variableFunctionAndEquals predicate simplificationType second first
+functionVariableAndEquals sideCondition simplificationType first second =
+    variableFunctionAndEquals sideCondition simplificationType second first
 
 {- | Simplify the conjunction of two sort injections.
 
@@ -497,22 +504,19 @@ sortInjectionAndEquals
     -> TermLike variable
     -> TermLike variable
     -> MaybeT unifier (Pattern variable)
-sortInjectionAndEquals
-    termMerger first@(Inj_ inj1) second@(Inj_ inj2)
-  = Monad.Trans.lift $ do
+sortInjectionAndEquals termMerger first@(Inj_ inj1) second@(Inj_ inj2) = do
     InjSimplifier { unifyInj } <- Simplifier.askInjSimplifier
-    maybe emptyIntersection merge $ unifyInj inj1 inj2
+    unifyInj inj1 inj2 & either distinct merge
   where
-    emptyIntersection = do
-        explainBottom "Empty sort intersection" first second
-        empty
-    merge inj@Inj { injChild = Pair child1 child2 } = do
-        InjSimplifier { evaluateInj } <- Simplifier.askInjSimplifier
+    emptyIntersection = explainAndReturnBottom "Empty sort intersection"
+    distinct Distinct = Monad.Trans.lift $ emptyIntersection first second
+    distinct Unknown = empty
+    merge inj@Inj { injChild = Pair child1 child2 } = Monad.Trans.lift $ do
         childPattern <- termMerger child1 child2
+        InjSimplifier { evaluateInj } <- askInjSimplifier
         let (childTerm, childCondition) = Pattern.splitTerm childPattern
-        return $ Pattern.withCondition
-            (evaluateInj inj { injChild = childTerm })
-            childCondition
+            inj' = evaluateInj inj { injChild = childTerm }
+        return $ Pattern.withCondition inj' childCondition
 sortInjectionAndEquals _ _ _ = empty
 
 {- | Unify a constructor application pattern with a sort injection pattern.

@@ -40,7 +40,7 @@ import qualified Kore.Step.Result as Result
     ( mergeResults
     )
 import qualified Kore.Step.RewriteStep as Step
-import Kore.Step.Rule
+import Kore.Step.RulePattern
     ( RewriteRule (RewriteRule)
     , RulePattern
     , isCoolingRule
@@ -48,12 +48,13 @@ import Kore.Step.Rule
     , isNormalRule
     )
 import qualified Kore.Step.Simplification.Pattern as Pattern
-    ( simplifyAndRemoveTopExists
+    ( simplifyTopConfiguration
     )
 import Kore.Step.Simplification.Simplify as Simplifier
 import qualified Kore.Step.SMT.Evaluator as SMT.Evaluator
     ( filterMultiOr
     )
+import qualified Kore.Step.Step as Step
 import Kore.Step.Strategy
 import qualified Kore.Step.Strategy as Strategy
 import qualified Kore.Step.Transition as Transition
@@ -66,6 +67,7 @@ import Kore.Unparser
 {- | A strategy primitive: a rewrite rule or builtin simplification step.
  -}
 data Prim rewrite = Simplify | Rewrite !rewrite
+    deriving (Show)
 
 -- | Apply the rewrite.
 rewrite :: rewrite -> Prim rewrite
@@ -105,7 +107,7 @@ transitionRule =
     transitionSimplify config =
         do
             configs <- Monad.Trans.lift $
-                Pattern.simplifyAndRemoveTopExists config
+                Pattern.simplifyTopConfiguration config
             filteredConfigs <- SMT.Evaluator.filterMultiOr configs
             Foldable.asum (pure <$> filteredConfigs)
     transitionRewrite rule config = do

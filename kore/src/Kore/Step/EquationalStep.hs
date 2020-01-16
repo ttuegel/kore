@@ -12,6 +12,7 @@ module Kore.Step.EquationalStep
     , applyRulesSequence
     , isNarrowingResult
     , toConfigurationVariables
+    , toConfigurationVariablesCondition
     , assertFunctionLikeResults
     , recoveryFunctionLikeResults
     ) where
@@ -43,34 +44,42 @@ import Kore.Internal.OrPattern
 import qualified Kore.Internal.OrPattern as OrPattern
 import Kore.Internal.Pattern as Pattern
 import Kore.Internal.Predicate as Predicate
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
 import Kore.Internal.TermLike as TermLike
-import qualified Kore.Logger as Log
-import Kore.Logger.DebugAppliedRule
+import Kore.Log.DebugAppliedRule
+    ( debugAppliedRule
+    )
+import Kore.Step.EqualityPattern
+    ( EqualityPattern (..)
+    )
+import qualified Kore.Step.EqualityPattern as EqualityPattern
 import qualified Kore.Step.Remainder as Remainder
 import qualified Kore.Step.Result as Result
 import qualified Kore.Step.Result as Results
 import qualified Kore.Step.Result as Step
-import Kore.Step.RewriteStep
+import qualified Kore.Step.Simplification.Simplify as Simplifier
+import qualified Kore.Step.SMT.Evaluator as SMT.Evaluator
+import Kore.Step.Step
     ( Result
     , Results
     , UnificationProcedure (..)
+    , UnifiedRule
     , applyInitialConditions
     , applyRemainder
     , assertFunctionLikeResults
     , checkFunctionLike
     , checkSubstitutionCoverage
     , simplifyPredicate
-    , toAxiomVariables
     , toConfigurationVariables
+    , toConfigurationVariablesCondition
     , unifyRules
     , wouldNarrowWith
     )
-import Kore.Step.Rule
-    ( RulePattern (RulePattern, left, requires)
+import qualified Kore.Step.Step as EqualityPattern
+    ( toAxiomVariables
     )
-import qualified Kore.Step.Rule as Rule
-import qualified Kore.Step.Simplification.Simplify as Simplifier
-import qualified Kore.Step.SMT.Evaluator as SMT.Evaluator
 import qualified Kore.Unification.Substitution as Substitution
 import Kore.Unification.Unify
     ( MonadUnify
@@ -88,6 +97,7 @@ import qualified Kore.Variables.Target as Target
 import Kore.Variables.UnifiedVariable
     ( foldMapVariable
     )
+import qualified Log
 
 {- | Is the result a symbolic rewrite, i.e. a narrowing result?
 
@@ -95,7 +105,10 @@ The result is narrowing if the unifier's substitution is missing any variable
 from the left-hand side of the rule.
 
  -}
-isNarrowingResult :: Ord variable => Result variable -> Bool
+isNarrowingResult
+    :: Ord variable
+    => Result EqualityPattern variable
+    -> Bool
 isNarrowingResult Step.Result { appliedRule } =
     (not . Set.null) (wouldNarrowWith appliedRule)
 
@@ -135,7 +148,8 @@ unwrapAndQuantifyConfiguration config@Conditional { substitution } =
         . Pattern.freeElementVariables
         $ configWithNewSubst
 
-    quantify :: TermLike variable -> ElementVariable variable -> TermLike variable
+    quantify
+        :: TermLike variable -> ElementVariable variable -> TermLike variable
     quantify = flip mkExists
 
 {- | Produce the final configurations of an applied rule.
@@ -154,13 +168,15 @@ finalizeAppliedRule
     :: forall unifier variable
     .  SimplifierVariable variable
     => MonadUnify unifier
-    => RulePattern variable
+    => SideCondition variable
+    -- ^ Top level condition
+    -> EqualityPattern variable
     -- ^ Applied rule
     -> OrCondition variable
     -- ^ Conditions of applied rule
     -> unifier (OrPattern variable)
-finalizeAppliedRule renamedRule appliedConditions =
-    Monad.liftM OrPattern.fromPatterns . Monad.Unify.gather
+finalizeAppliedRule sideCondition renamedRule appliedConditions =
+    fmap OrPattern.fromPatterns . Monad.Unify.gather
     $ finalizeAppliedRuleWorker =<< Monad.Unify.scatter appliedConditions
   where
     finalizeAppliedRuleWorker appliedCondition = do
@@ -168,41 +184,48 @@ finalizeAppliedRule renamedRule appliedConditions =
         -- axiom ensures clause. The axiom requires clause is included by
         -- unifyRule.
         let
-            RulePattern { ensures } = renamedRule
+            finalTerm = EqualityPattern.right renamedRule
+            ensures = EqualityPattern.ensures renamedRule
             ensuresCondition = Condition.fromPredicate ensures
-            preFinalCondition = appliedCondition <> ensuresCondition
-        finalCondition <- simplifyPredicate preFinalCondition
+        finalCondition <- simplifyPredicate
+            sideCondition
+            (Just appliedCondition)
+            ensuresCondition
         -- Apply the normalized substitution to the right-hand side of the
         -- axiom.
         let
             Conditional { substitution } = finalCondition
             substitution' = Substitution.toMap substitution
-            RulePattern { right = finalTerm } = renamedRule
             finalTerm' = TermLike.substitute substitution' finalTerm
-        return finalCondition { Pattern.term = finalTerm' }
+        return (finalTerm' `Pattern.withCondition` finalCondition)
 
 finalizeRule
     ::  ( SimplifierVariable variable
         , Log.WithLog Log.LogMessage unifier
         , MonadUnify unifier
         )
-    => Pattern (Target variable)
+    => SideCondition (Target variable)
+    -- Top-level condition
+    -> Pattern (Target variable)
     -- ^ Initial conditions
-    -> UnifiedRule (Target variable)
+    -> UnifiedRule (Target variable) (EqualityPattern (Target variable))
     -- ^ Rewriting axiom
-    -> unifier [Result variable]
+    -> unifier [Result EqualityPattern variable]
     -- TODO (virgil): This is broken, it should take advantage of the unifier's
     -- branching and not return a list.
-finalizeRule initial unifiedRule =
-    Log.withLogScope "finalizeRule" $ Monad.Unify.gather $ do
+finalizeRule sideCondition initial unifiedRule =
+    Monad.Unify.gather $ do
         let initialCondition = Conditional.withoutTerm initial
         let unificationCondition = Conditional.withoutTerm unifiedRule
-        applied <- applyInitialConditions initialCondition unificationCondition
+        applied <- applyInitialConditions
+            sideCondition
+            (Just initialCondition)
+            unificationCondition
         -- Log unifiedRule here since ^ guards against bottom
         debugAppliedRule unifiedRule
         checkSubstitutionCoverage initial unifiedRule
         let renamedRule = Conditional.term unifiedRule
-        final <- finalizeAppliedRule renamedRule applied
+        final <- finalizeAppliedRule sideCondition renamedRule applied
         let result = unwrapAndQuantifyConfiguration <$> final
         return Step.Result { appliedRule = unifiedRule, result }
 
@@ -218,7 +241,7 @@ recoveryFunctionLikeResults
     .  SimplifierVariable variable
     => Simplifier.MonadSimplify simplifier
     => Pattern (Target variable)
-    -> Results variable
+    -> Results EqualityPattern variable
     -> simplifier ()
 recoveryFunctionLikeResults initial results = do
     let appliedRules = Result.appliedRule <$> Results.results results
@@ -241,7 +264,7 @@ recoveryFunctionLikeResults initial results = do
 
             Conditional { term = ruleTerm, substitution = ruleSubstitution } =
                 appliedRule
-            RulePattern { left = alpha_t', requires = alpha_p'} = ruleTerm
+            EqualityPattern { left = alpha_t', requires = alpha_p'} = ruleTerm
 
             substitution' = Substitution.toMap ruleSubstitution
 
@@ -275,7 +298,6 @@ recoveryFunctionLikeResults initial results = do
         -- what we would like to check above is that phi_p -> phi_t = alpha_t,
         -- but that's hard to do for non-functional patterns,
         -- so we check for (syntactic) equality instead.
-        return ()
     fullyOverrideSort' sort term
       | sort == termLikeSort term = term
       | otherwise = fullyOverrideSort sort term
@@ -284,16 +306,18 @@ finalizeRulesSequence
     :: forall unifier variable
     .  SimplifierVariable variable
     => MonadUnify unifier
-    => Pattern (Target variable)
-    -> [UnifiedRule (Target variable)]
-    -> unifier (Results variable)
-finalizeRulesSequence initial unifiedRules
+    => SideCondition (Target variable)
+    -> Pattern (Target variable)
+    -> [UnifiedRule (Target variable) (EqualityPattern (Target variable))]
+    -> unifier (Results EqualityPattern variable)
+finalizeRulesSequence sideCondition initial unifiedRules
   = do
     (results, remainder) <-
         State.runStateT
             (traverse finalizeRuleSequence' unifiedRules)
             (Conditional.withoutTerm initial)
-    remainders' <- Monad.Unify.gather $ applyRemainder initial remainder
+    remainders' <- Monad.Unify.gather $
+        applyRemainder sideCondition initial remainder
     return Step.Results
         { results = Seq.fromList $ Foldable.fold results
         , remainders =
@@ -303,12 +327,16 @@ finalizeRulesSequence initial unifiedRules
   where
     initialTerm = Conditional.term initial
     finalizeRuleSequence'
-        :: UnifiedRule (Target variable)
-        -> State.StateT (Condition (Target variable)) unifier [Result variable]
+        :: UnifiedRule (Target variable) (EqualityPattern (Target variable))
+        -> State.StateT
+            (Condition (Target variable))
+            unifier
+            [Result EqualityPattern variable]
     finalizeRuleSequence' unifiedRule = do
         remainder <- State.get
         let remainderPattern = Conditional.withCondition initialTerm remainder
-        results <- Monad.Trans.lift $ finalizeRule remainderPattern unifiedRule
+        results <- Monad.Trans.lift $
+            finalizeRule sideCondition remainderPattern unifiedRule
         let unification = Conditional.withoutTerm unifiedRule
             remainder' =
                 Condition.fromPredicate
@@ -329,16 +357,18 @@ applyRulesSequence
         , MonadUnify unifier
         )
     => UnificationProcedure
+    -> SideCondition (Target variable)
     -> Pattern (Target variable)
     -- ^ Configuration being rewritten
-    -> [RulePattern variable]
+    -> [EqualityPattern variable]
     -- ^ Rewrite rules
-    -> unifier (Results variable)
+    -> unifier (Results EqualityPattern variable)
 applyRulesSequence
     unificationProcedure
+    sideCondition
     initial
     -- Wrap the rules so that unification prefers to substitute
     -- axiom variables.
-    (map toAxiomVariables -> rules)
-  = unifyRules unificationProcedure initial rules
-    >>= finalizeRulesSequence initial
+    (map EqualityPattern.toAxiomVariables -> rules)
+  = unifyRules unificationProcedure sideCondition initial rules
+    >>= finalizeRulesSequence sideCondition initial

@@ -281,8 +281,7 @@ evalLookupOrDefault =
             _map <- expectConcreteBuiltinMap Map.lookupKey _map
             Builtin.appliedFunction
                 . Pattern.fromTermLike
-                . fromMaybe _def
-                . fmap Domain.getMapValue
+                . maybe _def Domain.getMapValue
                 $ Map.lookup _key _map
     evalLookupOrDefault0 _ _ = Builtin.wrongArity Map.lookupOrDefaultKey
 
@@ -299,7 +298,7 @@ evalElement =
                         _ -> Builtin.wrongArity Map.elementKey
             case Builtin.toKey _key of
                 Just concrete ->
-                    TermLike.assertNonSimplifiableKeys [_key]
+                    TermLike.assertConstructorLikeKeys [_key]
                     $ returnConcreteMap
                         resultSort
                         (Map.singleton concrete (Domain.MapValue _value))
@@ -357,7 +356,7 @@ evalUpdate =
                         _ -> Builtin.wrongArity Map.updateKey
             _key <- hoistMaybe $ Builtin.toKey _key
             _map <- expectConcreteBuiltinMap Map.updateKey _map
-            TermLike.assertNonSimplifiableKeys (_key : Map.keys _map)
+            TermLike.assertConstructorLikeKeys (_key : Map.keys _map)
                 $ return ()
             returnConcreteMap
                 resultSort

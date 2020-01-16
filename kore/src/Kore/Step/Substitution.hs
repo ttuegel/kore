@@ -10,7 +10,6 @@ Portability : portable
 module Kore.Step.Substitution
     ( mergePredicatesAndSubstitutions
     , normalize
-    , normalizeExcept
     ) where
 
 import qualified Control.Monad.Trans.Class as Monad.Trans
@@ -26,6 +25,9 @@ import Kore.Internal.Predicate
     ( Predicate
     )
 import qualified Kore.Internal.Predicate as Predicate
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
 import Kore.Step.Simplification.Simplify as Simplifier
 import Kore.Step.Simplification.SubstitutionSimplifier
     ( SubstitutionSimplifier (..)
@@ -35,33 +37,24 @@ import Kore.Unification.Substitution
     ( Substitution
     )
 import Kore.Unification.Unify
-    ( MonadUnify
-    , SimplifierVariable
+    ( SimplifierVariable
     )
 
 -- | Normalize the substitution and predicate of 'expanded'.
 normalize
     :: forall variable term simplifier
     .  (SimplifierVariable variable, MonadSimplify simplifier)
-    => Conditional variable term
+    => SideCondition variable
+    -> Conditional variable term
     -> BranchT simplifier (Conditional variable term)
-normalize conditional@Conditional { substitution } = do
-    results <- Monad.Trans.lift $ simplifySubstitution substitution
+normalize sideCondition conditional@Conditional { substitution } = do
+    results <- Monad.Trans.lift $ simplifySubstitution sideCondition substitution
     scatter (applyTermPredicate <$> results)
   where
     applyTermPredicate =
         Pattern.andCondition conditional { substitution = mempty }
     SubstitutionSimplifier { simplifySubstitution } =
         SubstitutionSimplifier.substitutionSimplifier
-
-normalizeExcept
-    :: forall unifier variable term
-    .  SimplifierVariable variable
-    => MonadUnify unifier
-    => Conditional variable term
-    -> unifier (Conditional variable term)
-normalizeExcept conditional =
-    Branch.alternate (Simplifier.simplifyCondition conditional)
 
 {-|'mergePredicatesAndSubstitutions' merges a list of substitutions into
 a single one, then merges the merge side condition and the given condition list
@@ -74,12 +67,15 @@ mergePredicatesAndSubstitutions
     :: forall variable simplifier
     .  SimplifierVariable variable
     => MonadSimplify simplifier
-    => [Predicate variable]
+    => SideCondition variable
+    -> [Predicate variable]
     -> [Substitution variable]
     -> BranchT simplifier (Condition variable)
-mergePredicatesAndSubstitutions predicates substitutions = do
-    simplifyCondition Conditional
-        { term = ()
-        , predicate = Predicate.makeMultipleAndPredicate predicates
-        , substitution = Foldable.fold substitutions
-        }
+mergePredicatesAndSubstitutions topCondition predicates substitutions =
+    simplifyCondition
+        topCondition
+        Conditional
+            { term = ()
+            , predicate = Predicate.makeMultipleAndPredicate predicates
+            , substitution = Foldable.fold substitutions
+            }

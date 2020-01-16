@@ -26,7 +26,7 @@ import Data.Function
     ( (&)
     )
 import qualified Data.Functor.Foldable as Recursive
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Data.Text
     ( Text
@@ -47,7 +47,10 @@ import Kore.AST.Error
 import Kore.ASTVerifier.Error
 import Kore.ASTVerifier.PatternVerifier.PatternVerifier
 import Kore.ASTVerifier.SortVerifier
-import qualified Kore.Attribute.Pattern as Attribute
+import Kore.Attribute.Pattern.FreeVariables
+    ( FreeVariables
+    , freeVariables
+    )
 import qualified Kore.Attribute.Sort as Attribute.Sort
 import qualified Kore.Attribute.Sort.HasDomainValues as Attribute.HasDomainValues
 import Kore.Attribute.Synthetic
@@ -437,7 +440,7 @@ verifyApplication application = do
 verifyBinder
     :: Traversable binder
     => (forall a. binder a -> Sort)
-    -> (forall a. binder a -> (UnifiedVariable Variable))
+    -> (forall a. binder a -> UnifiedVariable Variable)
     -> binder (PatternVerifier Verified.Pattern)
     -> PatternVerifier (binder Verified.Pattern)
 verifyBinder binderSort binderVariable = \binder -> do
@@ -502,8 +505,8 @@ verifyDomainValue domain = do
     verifyPatternSort patternSort
     verifySortHasDomainValues patternSort
     verified <- Internal.DomainValueF <$> sequence domain
-    let freeVariables' =
-            foldMap Attribute.freeVariables
+    let freeVariables' :: FreeVariables Variable =
+            foldMap freeVariables
                 (Internal.extractAttributes <$> verified)
     Monad.unless (null freeVariables')
         (koreFail "Domain value must not contain free variables.")

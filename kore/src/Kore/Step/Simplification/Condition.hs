@@ -27,6 +27,9 @@ import Kore.Internal.Predicate
     , unwrapPredicate
     )
 import qualified Kore.Internal.Predicate as Predicate
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
 import Kore.Step.Simplification.Simplify
 import Kore.Step.Simplification.SubstitutionSimplifier
     ( SubstitutionSimplifier (..)
@@ -59,15 +62,16 @@ simplify
         , MonadSimplify simplifier
         )
     =>  SubstitutionSimplifier simplifier
+    ->  SideCondition variable
     ->  Conditional variable any
     ->  BranchT simplifier (Conditional variable any)
-simplify SubstitutionSimplifier { simplifySubstitution } initial =
+simplify SubstitutionSimplifier { simplifySubstitution } sideCondition initial =
     normalize initial >>= worker
   where
     worker Conditional { term, predicate, substitution } = do
         let substitution' = Substitution.toMap substitution
             predicate' = Predicate.substitute substitution' predicate
-        simplified <- simplifyPredicate predicate'
+        simplified <- simplifyPredicate sideCondition predicate'
         TopBottom.guardAgainstBottom simplified
         let merged = simplified <> Condition.fromSubstitution substitution
         normalized <- normalize merged
@@ -89,7 +93,8 @@ simplify SubstitutionSimplifier { simplifySubstitution } initial =
         ->  BranchT simplifier (Conditional variable any')
     normalize conditional@Conditional { substitution } = do
         let conditional' = conditional { substitution = mempty }
-        predicates' <- Monad.Trans.lift $ simplifySubstitution substitution
+        predicates' <- Monad.Trans.lift $
+            simplifySubstitution sideCondition substitution
         predicate' <- Branch.scatter predicates'
         return $ Conditional.andCondition conditional' predicate'
 
@@ -106,12 +111,13 @@ simplifyPredicate
         , SimplifierVariable variable
         , MonadSimplify simplifier
         )
-    =>  Predicate variable
+    =>  SideCondition variable
+    ->  Predicate variable
     ->  BranchT simplifier (Condition variable)
-simplifyPredicate predicate = do
+simplifyPredicate sideCondition predicate = do
     patternOr <-
         Monad.Trans.lift
-        $ simplifyTerm
+        $ simplifyConditionalTermToOr sideCondition
         $ unwrapPredicate predicate
     -- Despite using Monad.Trans.lift above, we do not need to
     -- explicitly check for \bottom because patternOr is an OrPattern.

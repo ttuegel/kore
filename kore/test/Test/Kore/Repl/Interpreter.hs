@@ -35,9 +35,8 @@ import Data.IORef
 import Data.List.NonEmpty
     ( NonEmpty (..)
     )
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import qualified Data.Sequence as Seq
-import qualified Data.Set as Set
 import Data.Text
     ( pack
     )
@@ -59,11 +58,15 @@ import Kore.Internal.TermLike
     , mkElemVar
     , mkTop_
     )
-import qualified Kore.Logger.Output as Logger
+import qualified Kore.Log as Log
+import qualified Kore.Log.DebugSolver as Log
+    ( emptyDebugSolverOptions
+    )
+import qualified Kore.Log.Registry as Log
 import Kore.Repl.Data
 import Kore.Repl.Interpreter
 import Kore.Repl.State
-import Kore.Step.Rule
+import Kore.Step.RulePattern
 import Kore.Step.Simplification.AndTerms
     ( cannotUnifyDistinctDomainValues
     )
@@ -500,11 +503,17 @@ logUpdatesState = do
         axioms  = []
         claim   = emptyClaim
         options =
-            Logger.KoreLogOptions
-                { logLevel = Logger.Info
-                , logScopes = Set.fromList ["scope1", "scope2"]
-                , logType = Logger.LogStdErr
+            Log.KoreLogOptions
+                { logLevel = Log.Info
+                , logEntries =
+                    Map.keysSet
+                    . Log.typeToText
+                    $ Log.registry
+                , timestampsSwitch = Log.TimestampsEnable
+                , logType = Log.LogStdErr
                 , debugAppliedRuleOptions = mempty
+                , debugAxiomEvaluationOptions = mempty
+                , debugSolverOptions = Log.emptyDebugSolverOptions
                 }
         command = Log options
     Result { output, continue, state } <-
@@ -595,7 +604,7 @@ runWithState command axioms claims claim stateTransformer = do
     let state = stateTransformer $ mkState axioms claims claim
     let config = mkConfig mvar
     (c, s) <-
-        liftSimplifier (Logger.swappableLogger mvar)
+        liftSimplifier (Log.swappableLogger mvar)
         $ flip runStateT state
         $ flip runReaderT config
         $ replInterpreter0
@@ -645,7 +654,7 @@ hasAlias st alias@AliasDefinition { name } =
 
 hasLogging
     :: ReplState Claim
-    -> Logger.KoreLogOptions
+    -> Log.KoreLogOptions
     -> IO ()
 hasLogging st expectedLogging =
     let
@@ -680,18 +689,21 @@ mkState axioms claims claim =
         , omit           = mempty
         , labels         = Map.singleton (ClaimIndex 0) Map.empty
         , aliases        = Map.empty
-        , koreLogOptions = Logger.KoreLogOptions
-            { logLevel = Logger.Warning
-            , logScopes = mempty
-            , logType = Logger.LogStdErr
+        , koreLogOptions = Log.KoreLogOptions
+            { logLevel = Log.Warning
+            , logEntries = mempty
+            , timestampsSwitch = Log.TimestampsEnable
+            , logType = Log.LogStdErr
             , debugAppliedRuleOptions = mempty
+            , debugAxiomEvaluationOptions = mempty
+            , debugSolverOptions = Log.emptyDebugSolverOptions
             }
         }
   where
     graph' = emptyExecutionGraph claim
 
 mkConfig
-    :: MVar (Logger.LogAction IO Logger.SomeEntry)
+    :: MVar (Log.LogAction IO Log.SomeEntry)
     -> Config Claim Simplifier
 mkConfig logger =
     Config

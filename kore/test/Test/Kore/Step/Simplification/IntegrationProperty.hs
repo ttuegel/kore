@@ -34,6 +34,9 @@ import Kore.Internal.Pattern
     ( Pattern
     )
 import qualified Kore.Internal.Pattern as Pattern
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( top
+    )
 import Kore.Internal.TermLike
 import Kore.Step.Axiom.EvaluationStrategy
     ( simplifierWithFallback
@@ -89,7 +92,8 @@ evaluateWithAxioms
     :: BuiltinAndAxiomSimplifierMap
     -> Pattern Variable
     -> SMT.SMT (OrPattern Variable)
-evaluateWithAxioms axioms = Simplification.runSimplifier env . Pattern.simplify
+evaluateWithAxioms axioms =
+    Simplification.runSimplifier env . Pattern.simplify SideCondition.top
   where
     env = Mock.env { simplifierAxioms }
     simplifierAxioms :: BuiltinAndAxiomSimplifierMap

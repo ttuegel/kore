@@ -22,8 +22,13 @@ import Kore.Internal.Condition
     ( Condition
     )
 import qualified Kore.Internal.Pattern as Conditional
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( andCondition
+    )
 import Kore.Internal.TermLike
-import qualified Kore.Logger as Logger
 import Kore.Step.Simplification.AndTerms
     ( termUnification
     )
@@ -40,19 +45,21 @@ import Kore.Unification.Unify
     )
 import qualified Kore.Unification.Unify as Monad.Unify
 import Kore.Unparser
+import qualified Log
 
--- |'unificationProcedure' atempts to simplify @t1 = t2@, assuming @t1@ and @t2@
--- are terms (functional patterns) to a substitution.
+-- |'unificationProcedure' attempts to simplify @t1 = t2@, assuming @t1@ and
+-- @t2@ are terms (functional patterns) to a substitution.
 -- If successful, it also produces a proof of how the substitution was obtained.
 -- If failing, it gives a 'UnificationError' reason for the failure.
 unificationProcedure
     ::  ( SimplifierVariable variable
         , MonadUnify unifier
         )
-    => TermLike variable
+    => SideCondition variable
+    -> TermLike variable
     -> TermLike variable
     -> unifier (Condition variable)
-unificationProcedure p1 p2
+unificationProcedure sideCondition p1 p2
   | p1Sort /= p2Sort = do
     Monad.Unify.explainBottom
         "Cannot unify different sorts."
@@ -60,10 +67,7 @@ unificationProcedure p1 p2
         p2
     empty
   | otherwise = do
-    Logger.withLogScope (Logger.Scope "UnificationProcedure")
-        . Logger.logDebug
-        . Text.pack
-        . show
+    Log.logDebug . Text.pack . show
         $ Pretty.vsep
             [ "Attemptying to unify terms"
             , Pretty.indent 4 $ unparse p1
@@ -73,9 +77,11 @@ unificationProcedure p1 p2
     pat <- termUnification p1 p2
     TopBottom.guardAgainstBottom pat
     let (term, conditions) = Conditional.splitTerm pat
-    orCeil <- Ceil.makeEvaluateTerm conditions term
+        mergedSideCondition =
+            sideCondition `SideCondition.andCondition` conditions
+    orCeil <- Ceil.makeEvaluateTerm mergedSideCondition term
     ceil' <- Monad.Unify.scatter orCeil
-    BranchT.alternate . simplifyCondition
+    BranchT.alternate . simplifyCondition sideCondition
         $ Conditional.andCondition ceil' conditions
   where
       p1Sort = termLikeSort p1

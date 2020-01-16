@@ -15,9 +15,10 @@ module Kore.Step.Simplification.Ceil
     , Ceil (..)
     ) where
 
+import qualified Data.Bifunctor as Bifunctor
 import qualified Data.Foldable as Foldable
 import qualified Data.Functor.Foldable as Recursive
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Maybe
     ( fromMaybe
     )
@@ -26,9 +27,6 @@ import qualified Kore.Attribute.Symbol as Attribute.Symbol
     ( isTotal
     )
 import qualified Kore.Domain.Builtin as Domain
-import Kore.Internal.Condition
-    ( Condition
-    )
 import qualified Kore.Internal.Condition as Condition
 import Kore.Internal.Conditional
     ( Conditional (..)
@@ -54,6 +52,9 @@ import Kore.Internal.Predicate
     , makeTruePredicate_
     )
 import qualified Kore.Internal.Predicate as Predicate
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
 import Kore.Internal.TermLike
 import qualified Kore.Internal.TermLike as TermLike
 import qualified Kore.Step.Function.Evaluator as Axiom
@@ -76,14 +77,14 @@ A ceil(or) is equal to or(ceil). We also take into account that
 -}
 simplify
     :: (SimplifierVariable variable, MonadSimplify simplifier)
-    => Condition variable
+    => SideCondition variable
     -> Ceil Sort (OrPattern variable)
     -> simplifier (OrPattern variable)
 simplify
-    condition
+    sideCondition
     Ceil { ceilChild = child }
   =
-    simplifyEvaluated condition child
+    simplifyEvaluated sideCondition child
 
 {-| 'simplifyEvaluated' evaluates a ceil given its child, see 'simplify'
 for details.
@@ -104,11 +105,11 @@ carry around.
 simplifyEvaluated
     :: SimplifierVariable variable
     => MonadSimplify simplifier
-    => Condition variable
+    => SideCondition variable
     -> OrPattern variable
     -> simplifier (OrPattern variable)
-simplifyEvaluated predicate child =
-    MultiOr.flatten <$> traverse (makeEvaluate predicate) child
+simplifyEvaluated sideCondition child =
+    MultiOr.flatten <$> traverse (makeEvaluate sideCondition) child
 
 {-| Evaluates a ceil given its child as an Pattern, see 'simplify'
 for details.
@@ -116,28 +117,29 @@ for details.
 makeEvaluate
     :: SimplifierVariable variable
     => MonadSimplify simplifier
-    => Condition variable
+    => SideCondition variable
     -> Pattern variable
     -> simplifier (OrPattern variable)
-makeEvaluate predicate child
+makeEvaluate sideCondition child
   | Pattern.isTop    child = return OrPattern.top
   | Pattern.isBottom child = return OrPattern.bottom
-  | otherwise              = makeEvaluateNonBoolCeil predicate child
+  | otherwise              = makeEvaluateNonBoolCeil sideCondition child
 
 makeEvaluateNonBoolCeil
     :: SimplifierVariable variable
     => MonadSimplify simplifier
-    => Condition variable
+    => SideCondition variable
     -> Pattern variable
     -> simplifier (OrPattern variable)
-makeEvaluateNonBoolCeil predicate patt@Conditional {term}
+makeEvaluateNonBoolCeil sideCondition patt@Conditional {term}
   | isTop term =
     return $ OrPattern.fromPattern
         patt {term = mkTop_} -- erase the term's sort.
   | otherwise = do
-    termCeil <- makeEvaluateTerm predicate term
+    termCeil <- makeEvaluateTerm sideCondition term
     result <-
         And.simplifyEvaluatedMultiPredicate
+            sideCondition
             (MultiAnd.make
                 [ MultiOr.make [Condition.eraseConditionalTerm patt]
                 , termCeil
@@ -155,11 +157,11 @@ makeEvaluateTerm
     :: forall variable simplifier
     .  SimplifierVariable variable
     => MonadSimplify simplifier
-    => Condition variable
+    => SideCondition variable
     -> TermLike variable
     -> simplifier (OrCondition variable)
 makeEvaluateTerm
-    configurationCondition
+    sideCondition
     term@(Recursive.project -> _ :< projected)
   =
     makeEvaluateTermWorker
@@ -174,18 +176,16 @@ makeEvaluateTerm
       , let headAttributes = symbolAttributes patternHead
       , Attribute.Symbol.isTotal headAttributes = do
             let Application { applicationChildren = children } = app
-            simplifiedChildren <- mapM
-                                    (makeEvaluateTerm configurationCondition)
-                                    children
-            let ceils = getArguments simplifiedChildren
-            And.simplifyEvaluatedMultiPredicate (MultiAnd.make ceils)
+            simplifiedChildren <- mapM (makeEvaluateTerm sideCondition) children
+            let ceils = MultiAnd.make $ getArguments simplifiedChildren
+            And.simplifyEvaluatedMultiPredicate sideCondition ceils
 
       | BuiltinF child <- projected =
-        makeEvaluateBuiltin configurationCondition child
+        makeEvaluateBuiltin sideCondition child
 
       | InjF inj <- projected = do
         InjSimplifier { evaluateCeilInj } <- askInjSimplifier
-        (makeEvaluateTerm configurationCondition . ceilChild . evaluateCeilInj)
+        (makeEvaluateTerm sideCondition . ceilChild . evaluateCeilInj)
             Ceil
                 { ceilResultSort = termLikeSort term -- sort is irrelevant
                 , ceilOperandSort = termLikeSort term
@@ -194,7 +194,7 @@ makeEvaluateTerm
 
       | otherwise = do
         evaluation <- Axiom.evaluatePattern
-            configurationCondition
+            sideCondition
             Conditional
                 { term = ()
                 , predicate = makeTruePredicate_
@@ -228,37 +228,43 @@ makeEvaluateBuiltin
     :: forall variable simplifier
     .  SimplifierVariable variable
     => MonadSimplify simplifier
-    => Condition variable
+    => SideCondition variable
     -> Builtin (TermLike variable)
     -> simplifier (OrCondition variable)
 makeEvaluateBuiltin
-    predicate
+    sideCondition
     patt@(Domain.BuiltinMap Domain.InternalAc
         {builtinAcChild}
     )
   =
     fromMaybe
         (return unsimplified)
-        (makeEvaluateNormalizedAc predicate (Domain.unwrapAc builtinAcChild))
+        (makeEvaluateNormalizedAc
+            sideCondition
+            (Domain.unwrapAc builtinAcChild)
+        )
   where
     unsimplified =
         OrCondition.fromCondition . Condition.fromPredicate
         $ Predicate.markSimplified . makeCeilPredicate_ $ mkBuiltin patt
-makeEvaluateBuiltin predicate (Domain.BuiltinList l) = do
-    children <- mapM (makeEvaluateTerm predicate) (Foldable.toList l)
+makeEvaluateBuiltin sideCondition (Domain.BuiltinList l) = do
+    children <- mapM (makeEvaluateTerm sideCondition) (Foldable.toList l)
     let
         ceils :: [OrCondition variable]
         ceils = children
-    And.simplifyEvaluatedMultiPredicate (MultiAnd.make ceils)
+    And.simplifyEvaluatedMultiPredicate sideCondition (MultiAnd.make ceils)
 makeEvaluateBuiltin
-    predicate
+    sideCondition
     patt@(Domain.BuiltinSet Domain.InternalAc
         {builtinAcChild}
     )
   =
     fromMaybe
         (return unsimplified)
-        (makeEvaluateNormalizedAc predicate (Domain.unwrapAc builtinAcChild))
+        (makeEvaluateNormalizedAc
+            sideCondition
+            (Domain.unwrapAc builtinAcChild)
+        )
   where
     unsimplified =
         OrCondition.fromCondition
@@ -278,23 +284,21 @@ makeEvaluateNormalizedAc
         , Traversable (Domain.Value normalized)
         , Domain.AcWrapper normalized
         )
-    =>  Condition variable
+    =>  SideCondition variable
     ->  Domain.NormalizedAc
             normalized
             (TermLike Concrete)
             (TermLike variable)
     -> Maybe (simplifier (OrCondition variable))
 makeEvaluateNormalizedAc
-    configurationCondition
+    sideCondition
     Domain.NormalizedAc
         { elementsWithVariables
         , concreteElements
         , opaque = []
         }
-  = TermLike.assertNonSimplifiableKeys concreteKeys . Just $ do
-    variableKeyConditions <- mapM
-                                (makeEvaluateTerm configurationCondition)
-                                variableKeys
+  = TermLike.assertConstructorLikeKeys concreteKeys . Just $ do
+    variableKeyConditions <- mapM (makeEvaluateTerm sideCondition) variableKeys
     variableValueConditions <- evaluateValues variableValues
     concreteValueConditions <- evaluateValues concreteValues
 
@@ -307,7 +311,9 @@ makeEvaluateNormalizedAc
             ++ variableValueConditions
             ++ variableKeyConditions
             ++ elementsWithVariablesDistinct
-    And.simplifyEvaluatedMultiPredicate (MultiAnd.make allConditions)
+    And.simplifyEvaluatedMultiPredicate
+        sideCondition
+        (MultiAnd.make allConditions)
   where
     concreteElementsList
         ::  [   ( TermLike variable
@@ -316,7 +322,7 @@ makeEvaluateNormalizedAc
             ]
     concreteElementsList =
         map
-            (\(a, b) -> (TermLike.fromConcrete a, b))
+            (Bifunctor.first TermLike.fromConcrete)
             (Map.toList concreteElements)
     (variableKeys, variableValues) =
         unzip (Domain.unwrapElement <$> elementsWithVariables)
@@ -332,7 +338,7 @@ makeEvaluateNormalizedAc
             mapM
                 (flip
                     (Equals.makeEvaluateTermsToPredicate variableTerm)
-                    configurationCondition
+                    sideCondition
                 )
                 -- TODO(virgil): consider eliminating these repeated
                 -- concatenations.
@@ -354,7 +360,7 @@ makeEvaluateNormalizedAc
         evaluateWrapper
             :: Domain.Value normalized (TermLike variable)
             -> simplifier (Domain.Value normalized (OrCondition variable))
-        evaluateWrapper = traverse (makeEvaluateTerm configurationCondition)
+        evaluateWrapper = traverse (makeEvaluateTerm sideCondition)
 
         evaluateWrappers
             :: [Domain.Value normalized (TermLike variable)]
@@ -362,13 +368,11 @@ makeEvaluateNormalizedAc
         evaluateWrappers = traverse evaluateWrapper
 
 makeEvaluateNormalizedAc
-    configurationCondition
+    sideCondition
     Domain.NormalizedAc
         { elementsWithVariables = []
         , concreteElements
         , opaque = [opaqueAc]
         }
-  | Map.null concreteElements = Just $ makeEvaluateTerm
-                                        configurationCondition
-                                        opaqueAc
+  | Map.null concreteElements = Just $ makeEvaluateTerm sideCondition opaqueAc
 makeEvaluateNormalizedAc _  _ = Nothing

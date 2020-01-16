@@ -33,14 +33,17 @@ import Kore.Internal.Predicate
     , makeOrPredicate
     , makeTruePredicate_
     )
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( assumeTruePredicate
+    )
 import Kore.Internal.TermLike
 import qualified Kore.Step.Axiom.Evaluate as Kore
-import qualified Kore.Step.Result as Results
-import Kore.Step.Rule
-    ( EqualityRule (..)
-    , RulePattern (..)
-    , rulePattern
+import Kore.Step.EqualityPattern
+    ( EqualityPattern (..)
+    , EqualityRule (..)
+    , equalityPattern
     )
+import qualified Kore.Step.Result as Results
 import Kore.Step.Simplification.Simplify
 import Kore.Unparser
 
@@ -56,6 +59,9 @@ test_evaluateAxioms =
     , doesn'tApply "F(x) => G(x) [concrete] doesn't apply to F(x)"
         [axiom_ (f x) (g x) & concreteEqualityRule]
         (f x, makeTruePredicate_)
+    , doesn'tApply "F(x) => G(x) [concrete] doesn't apply to f(cf)"
+        [axiom_ (f x) (g x) & concreteEqualityRule]
+        (f cf, makeTruePredicate_)
     , doesn'tApply "F(x) => G(x) doesn't apply to F(top)"
         [axiom_ (f x) (g x)]
         (f mkTop_, makeTruePredicate_)
@@ -93,7 +99,7 @@ test_evaluateAxioms =
         "f(X) => A requires (X > 0) applies to f(Z) and (Z > 0)"
         [axiom (f x) a (positive x)]
         (f z, positive z)
-        [a `andRequires` (positive z)]
+        [a `andRequires` positive z]
     ]
 
 -- * Test data
@@ -101,6 +107,9 @@ test_evaluateAxioms =
 f, g :: TermLike Variable -> TermLike Variable
 f = Mock.functionalConstr10
 g = Mock.functionalConstr11
+
+cf :: TermLike Variable
+cf = Mock.cf
 
 sigma :: TermLike Variable -> TermLike Variable -> TermLike Variable
 sigma = Mock.functionalConstr20
@@ -143,8 +152,8 @@ axiom
     -> TermLike Variable
     -> Predicate Variable
     -> EqualityRule Variable
-axiom left right predicate =
-    EqualityRule (rulePattern left right) { requires = predicate }
+axiom left right requires =
+    EqualityRule (equalityPattern left right) { requires }
 
 axiom_
     :: TermLike Variable
@@ -227,4 +236,7 @@ evaluateAxioms
     -> IO (AttemptedAxiom Variable)
 evaluateAxioms axioms (termLike, predicate) =
     runSimplifier Mock.env . fmap Results.toAttemptedAxiom
-    $ Kore.evaluateAxioms axioms termLike predicate
+    $ Kore.evaluateAxioms
+        axioms
+        (SideCondition.assumeTruePredicate predicate)
+        termLike

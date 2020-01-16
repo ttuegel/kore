@@ -9,7 +9,7 @@ import Data.Limit
     ( Limit
     )
 import qualified Data.Limit as Limit
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Maybe
     ( fromMaybe
     )
@@ -35,7 +35,7 @@ import Kore.Internal.TermLike
     ( TermLike
     , Variable
     )
-import Kore.Logger.Output
+import Kore.Log
     ( emptyLogger
     )
 import Kore.Parser
@@ -183,7 +183,7 @@ execBenchmark root kFile definitionFile mainModuleName test =
         -> IO (TermLike Variable)
     execution (verifiedModule, purePattern) =
         SMT.runSMT SMT.defaultConfig emptyLogger
-        $ exec verifiedModule strategy purePattern
+        $ exec unlimited verifiedModule strategy purePattern
       where
         unlimited :: Limit Natural
         unlimited = Limit.Unlimited

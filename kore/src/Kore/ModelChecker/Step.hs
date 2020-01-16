@@ -49,12 +49,12 @@ import Kore.ModelChecker.Simplification
     )
 import qualified Kore.Step.Result as StepResult
 import qualified Kore.Step.RewriteStep as Step
-import Kore.Step.Rule
+import Kore.Step.RulePattern
     ( RewriteRule (RewriteRule)
     , allPathGlobally
     )
 import qualified Kore.Step.Simplification.Pattern as Pattern
-    ( simplifyAndRemoveTopExists
+    ( simplifyTopConfiguration
     )
 import Kore.Step.Simplification.Simplify
     ( MonadSimplify
@@ -62,6 +62,7 @@ import Kore.Step.Simplification.Simplify
 import qualified Kore.Step.SMT.Evaluator as SMT.Evaluator
     ( filterMultiOr
     )
+import qualified Kore.Step.Step as Step
 import Kore.Step.Strategy
     ( Strategy
     , TransitionT
@@ -167,7 +168,7 @@ transitionRule
         do
             configs <-
                 Monad.Trans.lift . Monad.Trans.lift
-                $ Pattern.simplifyAndRemoveTopExists config
+                $ Pattern.simplifyTopConfiguration config
             filteredConfigs <- SMT.Evaluator.filterMultiOr configs
             if null filteredConfigs
                 then return Proven

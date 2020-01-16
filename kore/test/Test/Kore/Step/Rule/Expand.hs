@@ -10,7 +10,7 @@ import Data.Default
 import Data.Function
     ( (&)
     )
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 
 import Data.Sup
     ( Sup (Element)
@@ -31,11 +31,9 @@ import qualified Kore.IndexedModule.MetadataTools as MetadataTools
     ( MetadataTools (..)
     )
 import Kore.Internal.Predicate
-    ( makeEqualsPredicate_
-    , makeTruePredicate_
-    )
-import Kore.Internal.Predicate
     ( Predicate
+    , makeEqualsPredicate_
+    , makeTruePredicate_
     )
 import Kore.Internal.Symbol
     ( Symbol
@@ -49,12 +47,13 @@ import Kore.Internal.TermLike
     , mkApplySymbol
     , mkElemVar
     )
-import Kore.Step.Rule
+import Kore.Step.Rule.Expand
+import Kore.Step.RulePattern
     ( OnePathRule (OnePathRule)
+    , RHS (..)
     , RulePattern (RulePattern)
     )
-import qualified Kore.Step.Rule as Rule.DoNotUse
-import Kore.Step.Rule.Expand
+import qualified Kore.Step.RulePattern as Rule.DoNotUse
 import Kore.Syntax.ElementVariable
     ( ElementVariable (ElementVariable)
     )
@@ -83,9 +82,12 @@ instance OnePathRuleBase Pair where
     Pair (t1, p1) `rewritesTo` Pair (t2, p2) =
         OnePathRule RulePattern
             { left = t1
-            , right = t2
             , requires = p1
-            , ensures = p2
+            , rhs = RHS
+                { existentials = []
+                , right = t2
+                , ensures = p2
+                }
             , antiLeft = Nothing
             , attributes = def
             }

@@ -19,7 +19,7 @@ import Control.Monad
     )
 import Data.Functor.Const
 import qualified Data.Functor.Foldable as Recursive
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Maybe
     ( fromMaybe
     )
@@ -31,7 +31,10 @@ import qualified Branch as BranchT
     ( gather
     , scatter
     )
-import qualified Kore.Attribute.Pattern.FreeVariables as FreeVariables
+import Kore.Attribute.Pattern.FreeVariables
+    ( freeVariables
+    , getFreeVariables
+    )
 import qualified Kore.Internal.Condition as Condition
 import Kore.Internal.Conditional
     ( Conditional (Conditional)
@@ -46,6 +49,9 @@ import Kore.Internal.OrPattern
 import qualified Kore.Internal.OrPattern as OrPattern
 import Kore.Internal.Pattern as Pattern
 import qualified Kore.Internal.Predicate as Predicate
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
 import Kore.Internal.TermLike
     ( TermLike
     , TermLikeF (..)
@@ -163,10 +169,10 @@ simplify
         , MonadSimplify simplifier
         )
     =>  TermLike variable
-    ->  Condition variable
+    ->  SideCondition variable
     ->  simplifier (Pattern variable)
-simplify patt predicate = do
-    orPatt <- simplifyToOr predicate patt
+simplify patt sideCondition = do
+    orPatt <- simplifyToOr sideCondition patt
     return (OrPattern.toPattern orPatt)
 
 {-|'simplifyToOr' simplifies a TermLike variable, returning an
@@ -177,13 +183,13 @@ simplifyToOr
         , SimplifierVariable variable
         , MonadSimplify simplifier
         )
-    =>  Condition variable
+    =>  SideCondition variable
     ->  TermLike variable
     ->  simplifier (OrPattern variable)
-simplifyToOr predicate term =
+simplifyToOr sideCondition term =
     localSimplifierTermLike (const simplifier)
         . simplifyInternal term
-        $ predicate
+        $ sideCondition
   where
     simplifier = termLikeSimplifier simplifyToOr
 
@@ -194,9 +200,9 @@ simplifyInternal
         , MonadSimplify simplifier
         )
     =>  TermLike variable
-    ->  Condition variable
+    ->  SideCondition variable
     ->  simplifier (OrPattern variable)
-simplifyInternal term predicate = do
+simplifyInternal term sideCondition = do
     result <- simplifyInternalWorker term
     unless (OrPattern.isSimplified result)
         (error $ unlines
@@ -208,12 +214,11 @@ simplifyInternal term predicate = do
         )
     return result
   where
-    tracer termLike = case AxiomIdentifier.matchAxiomIdentifier termLike of
-        Nothing -> id
-        Just identifier -> Profiler.identifierSimplification identifier
+    tracer termLike =
+        maybe id Profiler.identifierSimplification
+        $ AxiomIdentifier.matchAxiomIdentifier termLike
 
-    predicateFreeVars =
-        FreeVariables.getFreeVariables $ Condition.freeVariables predicate
+    sideConditionFreeVars = getFreeVariables $ freeVariables sideCondition
 
     simplifyChildren
         :: Traversable t
@@ -258,7 +263,8 @@ simplifyInternal term predicate = do
                 (do
                     termPredicateList <- BranchT.gather $ do
                         termOrElement <- BranchT.scatter termOr
-                        simplified <- simplifyCondition termOrElement
+                        simplified <-
+                            simplifyCondition sideCondition termOrElement
                         return (applyTermSubstitution simplified)
 
                     returnIfSimplifiedOrContinue
@@ -367,31 +373,31 @@ simplifyInternal term predicate = do
             SignednessF _ -> doNotSimplify
             --
             AndF andF ->
-                And.simplify =<< simplifyChildren andF
+                And.simplify sideCondition =<< simplifyChildren andF
             ApplySymbolF applySymbolF ->
-                Application.simplify predicate
+                Application.simplify sideCondition
                     =<< simplifyChildren applySymbolF
             InjF injF ->
-                Inj.simplify predicate =<< simplifyChildren injF
+                Inj.simplify =<< simplifyChildren injF
             CeilF ceilF ->
-                Ceil.simplify predicate =<< simplifyChildren ceilF
+                Ceil.simplify sideCondition =<< simplifyChildren ceilF
             EqualsF equalsF ->
-                Equals.simplify predicate =<< simplifyChildren equalsF
+                Equals.simplify sideCondition =<< simplifyChildren equalsF
             ExistsF exists ->
                 let fresh =
                         Lens.over
                             Binding.existsBinder
                             refreshBinder
                             exists
-                in  Exists.simplify =<< simplifyChildren fresh
+                in  Exists.simplify sideCondition =<< simplifyChildren fresh
             IffF iffF ->
-                Iff.simplify =<< simplifyChildren iffF
+                Iff.simplify sideCondition =<< simplifyChildren iffF
             ImpliesF impliesF ->
-                Implies.simplify =<< simplifyChildren impliesF
+                Implies.simplify sideCondition =<< simplifyChildren impliesF
             InF inF ->
-                In.simplify predicate =<< simplifyChildren inF
+                In.simplify sideCondition =<< simplifyChildren inF
             NotF notF ->
-                Not.simplify =<< simplifyChildren notF
+                Not.simplify sideCondition =<< simplifyChildren notF
             --
             BottomF bottomF ->
                 Bottom.simplify <$> simplifyChildren bottomF
@@ -433,14 +439,12 @@ simplifyInternal term predicate = do
         :: Binding.Binder (UnifiedVariable variable) (TermLike variable)
         -> Binding.Binder (UnifiedVariable variable) (TermLike variable)
     refreshBinder binder@Binding.Binder { binderVariable, binderChild }
-      | binderVariable `Set.member` predicateFreeVars =
-        let existsFreeVars =
-                FreeVariables.getFreeVariables
-                $ TermLike.freeVariables binderChild
+      | binderVariable `Set.member` sideConditionFreeVars =
+        let existsFreeVars = getFreeVariables $ freeVariables binderChild
             fresh =
                 fromMaybe (error "guard above ensures result <> Nothing")
                     $ refreshVariable
-                        (predicateFreeVars <> existsFreeVars)
+                        (sideConditionFreeVars <> existsFreeVars)
                         binderVariable
             freshChild =
                 TermLike.substitute

@@ -25,11 +25,13 @@ import Control.Exception
 import qualified Control.Monad.Trans as Trans
 import qualified Data.Foldable as Foldable
 import Data.Function
+import Data.Text
+    ( Text
+    )
 import qualified Data.Text.Prettyprint.Doc as Pretty
 
 import qualified Branch as BranchT
 import Kore.Attribute.Synthetic
-import Kore.Debug
 import qualified Kore.Internal.MultiOr as MultiOr
     ( flatten
     , merge
@@ -44,8 +46,21 @@ import Kore.Internal.Pattern
     , Pattern
     )
 import qualified Kore.Internal.Pattern as Pattern
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( andCondition
+    )
 import qualified Kore.Internal.Symbol as Symbol
 import Kore.Internal.TermLike as TermLike
+import qualified Kore.Log.DebugAxiomEvaluation as DebugAxiomEvaluation
+    ( end
+    , klabelIdentifier
+    , notEvaluated
+    , reevaluation
+    , start
+    )
 import qualified Kore.Profiler.Profile as Profile
     ( axiomBranching
     , axiomEvaluation
@@ -80,7 +95,7 @@ evaluateApplication
     .  ( SimplifierVariable variable
        , MonadSimplify simplifier
        )
-    => Condition variable
+    => SideCondition variable
     -- ^ The predicate from the configuration
     -> Condition variable
     -- ^ Aggregated children predicate and substitution.
@@ -88,7 +103,7 @@ evaluateApplication
     -- ^ The pattern to be evaluated
     -> simplifier (OrPattern variable)
 evaluateApplication
-    configurationCondition
+    sideCondition
     childrenCondition
     (evaluateSortInjection -> application)
   = finishT $ do
@@ -98,7 +113,7 @@ evaluateApplication
             childrenCondition
             termLike
             unevaluated
-            configurationCondition
+            sideCondition
         & maybeT (return unevaluated) return
         & Trans.lift
     Foldable.for_ canMemoize (recordOrPattern results)
@@ -123,8 +138,8 @@ evaluateApplication
 
     canMemoize
       | Symbol.isMemo symbol
-      , isTop childrenCondition
-      , isTop configurationCondition
+      , (isTop childrenCondition && isTop sideCondition)
+        || all TermLike.isConstructorLike application
       = traverse asConcrete application
       | otherwise
       = Nothing
@@ -162,7 +177,7 @@ evaluatePattern
     :: forall variable simplifier
     .  SimplifierVariable variable
     => MonadSimplify simplifier
-    => Condition variable
+    => SideCondition variable
     -- ^ The predicate from the configuration
     -> Condition variable
     -- ^ Aggregated children predicate and substitution.
@@ -172,7 +187,7 @@ evaluatePattern
     -- ^ The default value
     -> simplifier (OrPattern variable)
 evaluatePattern
-    configurationCondition
+    sideCondition
     childrenCondition
     patt
     defaultValue
@@ -181,7 +196,7 @@ evaluatePattern
         childrenCondition
         patt
         defaultValue
-        configurationCondition
+        sideCondition
     & maybeT (return defaultValue) return
 
 {-| Evaluates axioms on patterns.
@@ -198,47 +213,56 @@ maybeEvaluatePattern
     -- ^ The pattern to be evaluated
     -> OrPattern variable
     -- ^ The default value
-    -> Condition variable
+    -> SideCondition variable
     -> MaybeT simplifier (OrPattern variable)
 maybeEvaluatePattern
     childrenCondition
     termLike
     defaultValue
-    configurationCondition
+    sideCondition
   = do
     BuiltinAndAxiomSimplifier evaluator <- lookupAxiomSimplifier termLike
     Trans.lift . tracing $ do
-        let conditions = configurationCondition <> childrenCondition
-        result <-
-            Profile.axiomEvaluation identifier
-            $ evaluator termLike conditions
-        flattened <- case result of
-            AttemptedAxiom.NotApplicable ->
-                return AttemptedAxiom.NotApplicable
-            AttemptedAxiom.Applied AttemptedAxiomResults
-                { results = orResults
-                , remainders = orRemainders
-                } -> do
-                    simplified <-
-                        Profile.resimplification
-                            identifier (length orResults)
-                        $ mapM simplifyIfNeeded orResults
-                    let simplifiedResult = MultiOr.flatten simplified
-                    Profile.axiomBranching
+        merged <- bracketAxiomEvaluationLog $ do
+            let sideConditions =
+                    sideCondition
+                    `SideCondition.andCondition` childrenCondition
+            result <-
+                Profile.axiomEvaluation identifier
+                $ evaluator termLike sideConditions
+            flattened <- case result of
+                AttemptedAxiom.NotApplicable -> do
+                    DebugAxiomEvaluation.notEvaluated
                         identifier
-                        (length orResults)
-                        (length simplifiedResult)
-                    return
-                        (AttemptedAxiom.Applied AttemptedAxiomResults
-                            { results = simplifiedResult
-                            , remainders = orRemainders
-                            }
-                        )
-        merged <-
+                        klabelIdentifier
+                    return AttemptedAxiom.NotApplicable
+                AttemptedAxiom.Applied AttemptedAxiomResults
+                    { results = orResults
+                    , remainders = orRemainders
+                    } -> do
+                        DebugAxiomEvaluation.reevaluation
+                            identifier
+                            klabelIdentifier
+                        simplified <-
+                            Profile.resimplification
+                                identifier (length orResults)
+                            $ mapM simplifyIfNeeded orResults
+                        let simplifiedResult = MultiOr.flatten simplified
+                        Profile.axiomBranching
+                            identifier
+                            (length orResults)
+                            (length simplifiedResult)
+                        return
+                            (AttemptedAxiom.Applied AttemptedAxiomResults
+                                { results = simplifiedResult
+                                , remainders = orRemainders
+                                }
+                            )
             Profile.mergeSubstitutions identifier
-            $ mergeWithConditionAndSubstitution
-                childrenCondition
-                flattened
+                $ mergeWithConditionAndSubstitution
+                    sideCondition
+                    childrenCondition
+                    flattened
         case merged of
             AttemptedAxiom.NotApplicable ->
                 return defaultValue
@@ -251,11 +275,19 @@ maybeEvaluatePattern
     identifier :: Maybe AxiomIdentifier
     identifier = AxiomIdentifier.matchAxiomIdentifier termLike
 
-    tracing =
-        traceNonErrorMonad
-            D_Function_evaluatePattern
-            [ debugArg "axiomIdentifier" identifier ]
-        . Profile.equalitySimplification identifier termLike
+    klabelIdentifier :: Maybe Text
+    klabelIdentifier = DebugAxiomEvaluation.klabelIdentifier termLike
+
+    tracing = Profile.equalitySimplification identifier termLike
+
+    bracketAxiomEvaluationLog
+        :: simplifier (AttemptedAxiom variable)
+        -> simplifier (AttemptedAxiom variable)
+    bracketAxiomEvaluationLog action = do
+        DebugAxiomEvaluation.start identifier klabelIdentifier
+        result <- action
+        DebugAxiomEvaluation.end identifier klabelIdentifier
+        return result
 
     unchangedPatt =
         Conditional
@@ -271,7 +303,7 @@ maybeEvaluatePattern
       | toSimplify == unchangedPatt =
         return (OrPattern.fromPattern unchangedPatt)
       | otherwise =
-        reevaluateFunctions configurationCondition toSimplify
+        reevaluateFunctions sideCondition toSimplify
 
 evaluateSortInjection
     :: InternalVariable variable
@@ -331,15 +363,15 @@ was evaluated.
 reevaluateFunctions
     :: SimplifierVariable variable
     => MonadSimplify simplifier
-    => Condition variable
+    => SideCondition variable
     -> Pattern variable
     -- ^ Function evaluation result.
     -> simplifier (OrPattern variable)
-reevaluateFunctions predicate rewriting = do
+reevaluateFunctions sideCondition rewriting = do
     let (rewritingTerm, rewritingCondition) = Pattern.splitTerm rewriting
     orResults <- BranchT.gather $ do
-        simplifiedTerm <- simplifyConditionalTerm predicate rewritingTerm
-        simplifyCondition
+        simplifiedTerm <- simplifyConditionalTerm sideCondition rewritingTerm
+        simplifyCondition sideCondition
             $ Pattern.andCondition simplifiedTerm rewritingCondition
     return (OrPattern.fromPatterns orResults)
 
@@ -348,23 +380,26 @@ reevaluateFunctions predicate rewriting = do
 mergeWithConditionAndSubstitution
     :: SimplifierVariable variable
     => MonadSimplify simplifier
-    => Condition variable
+    => SideCondition variable
+    -- ^ Top level condition.
+    -> Condition variable
     -- ^ Condition and substitution to add.
     -> AttemptedAxiom variable
     -- ^ AttemptedAxiom to which the condition should be added.
     -> simplifier (AttemptedAxiom variable)
-mergeWithConditionAndSubstitution _ AttemptedAxiom.NotApplicable =
+mergeWithConditionAndSubstitution _ _ AttemptedAxiom.NotApplicable =
     return AttemptedAxiom.NotApplicable
 mergeWithConditionAndSubstitution
+    sideCondition
     toMerge
     (AttemptedAxiom.Applied AttemptedAxiomResults { results, remainders })
   = do
     evaluatedResults <- fmap OrPattern.fromPatterns . BranchT.gather $ do
         result <- BranchT.scatter results
-        simplifyCondition $ Pattern.andCondition result toMerge
+        simplifyCondition sideCondition $ Pattern.andCondition result toMerge
     evaluatedRemainders <- fmap OrPattern.fromPatterns . BranchT.gather $ do
         remainder <- BranchT.scatter remainders
-        simplifyCondition $ Pattern.andCondition remainder toMerge
+        simplifyCondition sideCondition (Pattern.andCondition remainder toMerge)
     return $ AttemptedAxiom.Applied AttemptedAxiomResults
         { results = evaluatedResults
         , remainders = evaluatedRemainders

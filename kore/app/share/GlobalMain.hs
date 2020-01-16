@@ -40,10 +40,10 @@ import Data.Function
 import Data.List
     ( intercalate
     )
-import Data.Map
+import Data.Map.Strict
     ( Map
     )
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Semigroup
     ( (<>)
     )
@@ -118,7 +118,7 @@ import Kore.Error
 import Kore.IndexedModule.IndexedModule
     ( VerifiedModule
     )
-import Kore.Logger.Output as Logger
+import Kore.Log as Log
 import Kore.Parser
     ( ParsedPattern
     , parseKoreDefinition
@@ -152,6 +152,9 @@ data KoreProveOptions =
         -- ^ Search order of the execution graph
         , bmc :: !Bool
         -- ^ Whether to use bounded model checker
+        , saveProofs :: !(Maybe FilePath)
+        -- ^ The file in which to save the proven claims in case the prover
+        -- fails.
         }
 
 parseKoreProveOptions :: Parser KoreProveOptions
@@ -174,6 +177,14 @@ parseKoreProveOptions =
     <*> switch
         ( long "bmc"
         <> help "Whether to use the bounded model checker." )
+    <*> optional
+        (strOption
+            (  long "save-proofs"
+            <> help
+                "The file in which to save the proven claims \
+                \in case the prover fails."
+            )
+        )
   where
     parseGraphSearch =
         option readGraphSearch
@@ -368,14 +379,12 @@ clockSomethingIO description something = do
     return x
   where
     logMessage end start =
-        Logger.WithScope
-            (mkMessage start end)
-            (Scope "TimingInfo")
+        mkMessage start end
     mkMessage start end =
-        SomeEntry $ Logger.LogMessage
+        Log.LogMessage
             { message =
                 pack $ description ++" "++ show (diffTimeSpec end start)
-            , severity = Logger.Info
+            , severity = Log.Info
             , callstack = emptyCallStack
             }
 

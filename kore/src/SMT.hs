@@ -91,10 +91,6 @@ import Data.Text
     ( Text
     )
 
-import Kore.Logger
-    ( MonadLog (..)
-    )
-import qualified Kore.Logger as Logger
 import Kore.Profiler.Data
     ( MonadProfiler (..)
     , profileEvent
@@ -103,6 +99,10 @@ import ListT
     ( ListT
     , mapListT
     )
+import Log
+    ( MonadLog (..)
+    )
+import qualified Log
 import SMT.SimpleSMT
     ( Constructor (..)
     , ConstructorArgument (..)
@@ -230,7 +230,7 @@ runNoSMT logger noSMT = runReaderT (getNoSMT noSMT) logger
 instance MonadLog NoSMT where
     logM entry =
         NoSMT $ ReaderT $ \logger ->
-            Colog.unLogAction logger (Logger.toEntry entry)
+            Colog.unLogAction logger (Log.toEntry entry)
     logScope locally = NoSMT . Reader.local (contramap locally) . getNoSMT
 
 instance MonadSMT NoSMT where
@@ -293,7 +293,7 @@ withSolverT' action = SmtT $ do
 
 instance MonadUnliftIO m => MonadLog (SmtT m) where
     logM entry = withSolverT' $ \solver -> do
-        let logAction = contramap Logger.toEntry $ SimpleSMT.logger solver
+        let logAction = contramap Log.toEntry $ SimpleSMT.logger solver
         liftIO $ Colog.unLogAction logAction entry
 
     logScope mapping (SmtT action) =
@@ -305,8 +305,7 @@ instance MonadUnliftIO m => MonadLog (SmtT m) where
 
 instance (MonadIO m, MonadUnliftIO m) => MonadSMT (SmtT m) where
     withSolver (SmtT action) =
-        Logger.withLogScope "SMT.withSolver"
-        $ withSolverT' $ \solver -> do
+        withSolverT' $ \solver -> do
             -- Create an unshared "dummy" mutex for the solver.
             mvar <- liftIO $ newMVar solver
             -- Run the inner action with the unshared mutex.
@@ -315,12 +314,10 @@ instance (MonadIO m, MonadUnliftIO m) => MonadSMT (SmtT m) where
                 SimpleSMT.inNewScope solver (runInIO $ runReaderT action mvar)
 
     declare name typ =
-        Logger.withLogScope "SMT.declare"
-        $ withSolverT' $ \solver -> liftIO $ SimpleSMT.declare solver name typ
+        withSolverT' $ \solver -> liftIO $ SimpleSMT.declare solver name typ
 
     declareFun declaration =
-        Logger.withLogScope "SMT.declareFun"
-        $ withSolverT' $ \solver ->
+        withSolverT' $ \solver ->
             liftIO $ SimpleSMT.declareFun solver declaration
 
     declareSort declaration =

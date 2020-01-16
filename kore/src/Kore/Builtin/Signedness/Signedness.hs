@@ -23,11 +23,11 @@ import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
 import Debug
+import Kore.Attribute.Pattern.ConstructorLike
 import Kore.Attribute.Pattern.Defined
 import Kore.Attribute.Pattern.FreeVariables
 import Kore.Attribute.Pattern.Function
 import Kore.Attribute.Pattern.Functional
-import Kore.Attribute.Pattern.NonSimplifiable
 import Kore.Attribute.Pattern.Simplified
 import Kore.Attribute.Synthetic
 import Kore.Internal.Symbol
@@ -84,13 +84,13 @@ instance Synthetic Defined (Const Signedness) where
     {-# INLINE synthetic #-}
 
 instance Synthetic Simplified (Const Signedness) where
-    synthetic = const (Simplified True)
+    synthetic = const Simplified
     {-# INLINE synthetic #-}
 
-instance Synthetic NonSimplifiable (Const Signedness) where
+instance Synthetic ConstructorLike (Const Signedness) where
     synthetic =
         -- Signedness symbols are constructors
-        const (NonSimplifiable (Just ConstructorLikeHead))
+        const (ConstructorLike (Just ConstructorLikeHead))
     {-# INLINE synthetic #-}
 
 toSymbol :: Signedness -> Symbol
@@ -98,8 +98,4 @@ toSymbol (Signed symbol) = symbol
 toSymbol (Unsigned symbol) = symbol
 
 toApplication :: forall child. Signedness -> Application Symbol child
-toApplication signedness =
-    Application
-        { applicationSymbolOrAlias = toSymbol signedness
-        , applicationChildren = Arguments []
-        }
+toApplication signedness = Application (toSymbol signedness) (Arguments [])

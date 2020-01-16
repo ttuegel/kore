@@ -28,15 +28,16 @@ import Kore.Internal.TermLike
     , mkOr
     , termLikeSort
     )
-import Kore.Logger.Output
+import Kore.Log
     ( emptyLogger
     )
-import Kore.Step.Rule
+import Kore.Step.Rule.Simplify
+import Kore.Step.RulePattern
     ( OnePathRule (OnePathRule)
+    , RHS (..)
     , RulePattern (RulePattern)
     )
-import qualified Kore.Step.Rule as Rule.DoNotUse
-import Kore.Step.Rule.Simplify
+import qualified Kore.Step.RulePattern as Rule.DoNotUse
 import Kore.Step.Simplification.Data
     ( runSimplifier
     )
@@ -57,9 +58,12 @@ instance OnePathRuleBase Pair where
     Pair (t1, p1) `rewritesTo` Pair (t2, p2) =
         OnePathRule RulePattern
             { left = t1
-            , right = t2
             , requires = p1
-            , ensures = p2
+            , rhs = RHS
+                { existentials = []
+                , right = t2
+                , ensures = p2
+                }
             , antiLeft = Nothing
             , attributes = def
             }

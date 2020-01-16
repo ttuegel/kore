@@ -6,7 +6,7 @@ module Test.Kore.IndexedModule.SortGraph
 
 import Test.Tasty
 
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Maybe
     ( fromMaybe
     )
@@ -78,8 +78,8 @@ test_subsortsOf =
 
 test_fromIndexedModule :: TestTree
 test_fromIndexedModule =
-    testCase "fromIndexedModule = fromSubsorts" $ do
-        assertEqual "" sortGraph (fromIndexedModule verifiedModule)
+    testCase "fromIndexedModule = fromSubsorts"
+    $ assertEqual "" sortGraph (fromIndexedModule verifiedModule)
   where
     verifiedModules =
         assertRight $ verifyAndIndexDefinition Builtin.koreVerifiers definition

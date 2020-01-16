@@ -25,10 +25,10 @@ module Kore.Builtin.KEqual
 
 import qualified Data.Functor.Foldable as Recursive
 import qualified Data.HashMap.Strict as HashMap
-import Data.Map
+import Data.Map.Strict
     ( Map
     )
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.String
     ( IsString
     )
@@ -43,9 +43,11 @@ import Kore.Builtin.Builtin
     )
 import qualified Kore.Builtin.Builtin as Builtin
 import qualified Kore.Error
-import qualified Kore.Internal.Condition as Condition
 import qualified Kore.Internal.OrPattern as OrPattern
 import qualified Kore.Internal.Pattern as Pattern
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( topTODO
+    )
 import Kore.Internal.TermLike
 import qualified Kore.Step.Simplification.And as And
 import qualified Kore.Step.Simplification.Ceil as Ceil
@@ -133,6 +135,7 @@ evalKEq true (valid :< app) =
         Arguments [t1, t2] -> evalEq t1 t2
         _ -> Builtin.wrongArity (if true then eqKey else neqKey)
   where
+    sideCondition = SideCondition.topTODO
     false = not true
     sort = Attribute.patternSort valid
     Application { applicationChildren } = app
@@ -140,15 +143,15 @@ evalKEq true (valid :< app) =
         let pattern1 = Pattern.fromTermLike termLike1
             pattern2 = Pattern.fromTermLike termLike2
 
-        defined1 <- Ceil.makeEvaluate Condition.topTODO pattern1
-        defined2 <- Ceil.makeEvaluate Condition.topTODO pattern2
-        defined <- And.simplifyEvaluated defined1 defined2
+        defined1 <- Ceil.makeEvaluate sideCondition pattern1
+        defined2 <- Ceil.makeEvaluate sideCondition pattern2
+        defined <- And.simplifyEvaluated sideCondition defined1 defined2
 
         equalTerms <-
             Equals.makeEvaluateTermsToPredicate
                 termLike1
                 termLike2
-                Condition.topTODO
+                sideCondition
         let trueTerm = Bool.asInternal sort true
             truePatterns = Pattern.withCondition trueTerm <$> equalTerms
 
@@ -157,7 +160,7 @@ evalKEq true (valid :< app) =
             falsePatterns = Pattern.withCondition falseTerm <$> notEqualTerms
 
         let undefinedResults = Or.simplifyEvaluated truePatterns falsePatterns
-        results <- And.simplifyEvaluated defined undefinedResults
+        results <- And.simplifyEvaluated sideCondition defined undefinedResults
         pure $ Applied AttemptedAxiomResults
             { results
             , remainders = OrPattern.bottom

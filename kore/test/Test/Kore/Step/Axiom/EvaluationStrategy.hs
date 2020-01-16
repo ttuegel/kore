@@ -15,7 +15,6 @@ import qualified Kore.Attribute.Axiom as Attribute.Axiom
 import qualified Kore.Attribute.Axiom.Concrete as Attribute
     ( Concrete (Concrete)
     )
-import qualified Kore.Internal.Condition as Condition
 import qualified Kore.Internal.OrPattern as OrPattern
 import Kore.Internal.Pattern as Pattern
     ( Conditional (Conditional)
@@ -31,14 +30,15 @@ import Kore.Internal.Predicate
     , makeTruePredicate
     , makeTruePredicate_
     )
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( assumeTruePredicate
+    )
 import Kore.Internal.TermLike
 import Kore.Step.Axiom.EvaluationStrategy
-import Kore.Step.Rule as RulePattern
-    ( RulePattern (..)
-    )
-import Kore.Step.Rule
-    ( EqualityRule (EqualityRule)
-    , RulePattern (RulePattern)
+import Kore.Step.EqualityPattern
+    ( EqualityPattern (..)
+    , EqualityRule (EqualityRule)
+    , equalityPattern
     )
 import Kore.Step.Simplification.Simplify
 import qualified Kore.Step.Simplification.Simplify as AttemptedAxiom
@@ -78,6 +78,9 @@ test_definitionEvaluation =
                 )
                 (Mock.functionalConstr10 Mock.c)
         assertEqual "" expect actual
+    {-
+    Uncomment this if we ever go back to having remainders for functions.
+
     , testCase "Evaluation with remainder" $ do
         let requirement = makeEqualsPredicate Mock.testSort
                 (Mock.f Mock.a)
@@ -111,6 +114,7 @@ test_definitionEvaluation =
                 )
                 (Mock.functionalConstr10 Mock.a)
         assertEqual "" expect actual
+    -}
     , testCase "Failed evaluation" $ do
         let expect = AttemptedAxiom.NotApplicable
         actual <-
@@ -124,6 +128,10 @@ test_definitionEvaluation =
                 )
                 (Mock.functionalConstr10 Mock.b)
         assertEqual "" expect actual
+    {-
+    Uncomment this if we ever go back to having multiple evaluation branches
+    for functions.
+
     , testCase "Evaluation with multiple branches SMT prunes remainders" $ do
         let initial = Mock.functionalConstr10 Mock.a
             final1 = Mock.g Mock.a
@@ -153,6 +161,7 @@ test_definitionEvaluation =
                     }
         actual <- evaluate evaluator initial
         assertEqual "" expect actual
+    -}
     , testCase "Does not evaluate concrete axiom with symbolic input" $ do
         let expectConcrete =
                 AttemptedAxiom.Applied
@@ -166,13 +175,12 @@ test_definitionEvaluation =
             expectSymbolic = AttemptedAxiom.NotApplicable
 
             evaluator = definitionEvaluation
-                [ EqualityRule RulePattern
-                    { left = Mock.functionalConstr10 (mkElemVar Mock.x)
-                    , antiLeft = Nothing
-                    , right = Mock.g (mkElemVar Mock.x)
-                    , requires = makeTruePredicate_
-                    , ensures = makeTruePredicate_
-                    , attributes = def
+                [ EqualityRule
+                    (equalityPattern
+                        (Mock.functionalConstr10 (mkElemVar Mock.x))
+                        (Mock.g (mkElemVar Mock.x))
+                    )
+                    { attributes = def
                         { Attribute.Axiom.concrete = Attribute.Concrete True }
                     }
                 ]
@@ -374,6 +382,10 @@ test_firstFullEvaluation =
                 (Mock.functionalConstr10 Mock.a)
                 not_requirement
         assertEqual "" expect actual
+    {-
+    Uncomment this if we ever go back to allowing multiple results for equality
+    simplification.
+
     , testCase "Error with multiple results" $ do
         let requirement = makeEqualsPredicate_ (Mock.f Mock.a) (Mock.g Mock.b)
         assertErrorIO
@@ -398,6 +410,7 @@ test_firstFullEvaluation =
                 )
                 (Mock.functionalConstr10 Mock.a)
             )
+    -}
     ]
 
 test_simplifierWithFallback :: [TestTree]
@@ -429,6 +442,9 @@ test_simplifierWithFallback =
                 )
                 (Mock.functionalConstr10 Mock.a)
         assertEqual "" expect actual
+    {-
+    Uncomment this if we ever go back to having remainders for equality axioms.
+
     , testCase "Uses first with remainder" $ do
         let requirement = makeEqualsPredicate Mock.testSort
                 (Mock.f Mock.a)
@@ -471,6 +487,7 @@ test_simplifierWithFallback =
                 )
                 (Mock.functionalConstr10 Mock.a)
         assertEqual "" expect actual
+    -}
     , testCase "Falls back to second" $ do
         let expect =
                 AttemptedAxiom.Applied
@@ -580,13 +597,12 @@ axiom
     -> TermLike Variable
     -> Predicate Variable
     -> EqualityRule Variable
-axiom left right predicate =
-    EqualityRule RulePattern
+axiom left right requires =
+    EqualityRule EqualityPattern
         { left
-        , antiLeft = Nothing
+        , requires
         , right
-        , requires = predicate
-        , ensures = makeTruePredicate_
+        , ensures = Kore.Internal.Predicate.makeTruePredicate_
         , attributes = def
         }
 
@@ -604,4 +620,4 @@ evaluateWithPredicate
     -> IO CommonAttemptedAxiom
 evaluateWithPredicate (BuiltinAndAxiomSimplifier simplifier) term predicate =
     runSimplifier Mock.env
-    $ simplifier term (Condition.fromPredicate predicate)
+    $ simplifier term (SideCondition.assumeTruePredicate predicate)

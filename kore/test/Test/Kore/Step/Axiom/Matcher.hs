@@ -40,7 +40,8 @@ import Kore.Internal.OrCondition
     )
 import qualified Kore.Internal.OrCondition as OrCondition
 import Kore.Internal.Predicate
-    ( makeCeilPredicate_
+    ( Predicate
+    , makeCeilPredicate_
     , makeTruePredicate_
     )
 import Kore.Internal.TermLike
@@ -906,10 +907,104 @@ test_matching_Map =
         , (ElemVar yInt, mkInt 1)
         , (ElemVar mMap, mkMap [(mkInt 1, mkInt 2)] [])
         ]
+
+    , matches "x:Int |-> y:Int matches x:Int |-> 0"
+        (mkMap [(mkElemVar xInt, mkElemVar yInt)] [])
+        (mkMap [(mkElemVar xInt, mkInt 0       )] [])
+        [(ElemVar yInt, mkInt 0)]
+    , matches "x:Int |-> y:Int 1 -> z:Int matches x:Int |-> 0  1 -> 2"
+        (mkMap [(mkElemVar xInt, mkElemVar yInt), (mkInt 1, mkElemVar zInt)] [])
+        (mkMap [(mkElemVar xInt, mkInt 0       ), (mkInt 1, mkInt 2       )] [])
+        [(ElemVar yInt, mkInt 0), (ElemVar zInt, mkInt 2)]
+    , doesn'tMatch "x:Int |-> y:Int doesn't match x:Int |-> 0  1 |-> 2"
+        (mkMap [(mkElemVar xInt, mkElemVar yInt)] [])
+        (mkMap [(mkElemVar xInt, mkInt 0       ), (mkInt 1, mkInt 2)] [])
+    , doesn'tMatch "x:Int |-> y:Int  1 |-> 2 doesn't match x:Int |-> 0"
+        (mkMap [(mkElemVar xInt, mkElemVar yInt), (mkInt 1, mkInt 2)] [])
+        (mkMap [(mkElemVar xInt, mkInt 0       )] [])
+
+    , matches "m:Map matches x:Int |-> 0"
+        (mkMap [] [mkElemVar mMap])
+        (mkMap [(mkElemVar xInt, mkInt 0       )] [])
+        [(ElemVar mMap, mkMap [(mkElemVar xInt, mkInt 0       )] [])]
+    , matches "x:Int |-> y:Int  m:Map matches x:Int |-> 0"
+        (mkMap [(mkElemVar xInt, mkElemVar yInt)] [mkElemVar mMap])
+        (mkMap [(mkElemVar xInt, mkInt 0       )] [])
+        [(ElemVar yInt, mkInt 0), (ElemVar mMap, mkMap [] [])]
+    , matches "x:Int |-> y:Int 1 -> z:Int  m:Map matches x:Int |-> 0  1 -> 2"
+        (mkMap
+            [(mkElemVar xInt, mkElemVar yInt), (mkInt 1, mkElemVar zInt)]
+            [mkElemVar mMap]
+        )
+        (mkMap
+            [(mkElemVar xInt, mkInt 0       ), (mkInt 1, mkInt 2       )]
+            []
+        )
+        [ (ElemVar yInt, mkInt 0)
+        , (ElemVar zInt, mkInt 2)
+        , (ElemVar mMap, mkMap [] [])
+        ]
+    , matches "x:Int |-> y:Int  m:Map matches x:Int |-> 0  1 |-> 2"
+        (mkMap [(mkElemVar xInt, mkElemVar yInt)] [mkElemVar mMap])
+        (mkMap [(mkElemVar xInt, mkInt 0       ), (mkInt 1, mkInt 2)] [])
+        [ (ElemVar yInt, mkInt 0)
+        , (ElemVar mMap, mkMap [(mkInt 1, mkInt 2)] [])
+        ]
+    , matches "1 |-> y:Int  m:Map matches x:Int |-> 0  1 |-> 2"
+        (mkMap [(mkInt 1, mkElemVar yInt)] [mkElemVar mMap])
+        (mkMap [(mkElemVar xInt, mkInt 0), (mkInt 1, mkInt 2)] [])
+        [ (ElemVar yInt, mkInt 2)
+        , (ElemVar mMap, mkMap [(mkElemVar xInt, mkInt 0)] [])
+        ]
+    , doesn'tMatch "x:Int |-> y:Int  1 |-> 2   m:Map doesn't match x:Int |-> 0"
+        (mkMap
+            [(mkElemVar xInt, mkElemVar yInt), (mkInt 1, mkInt 2)]
+            [mkElemVar mMap])
+        (mkMap
+            [(mkElemVar xInt, mkInt 0       )] []
+        )
+
+    , matches "1 |-> y:Int  m:Map matches 1 |-> 2  n:Map"
+        (mkMap [(mkInt 1, mkElemVar yInt)] [mkElemVar mMap])
+        (mkMap [(mkInt 1, mkInt 2       )] [mkElemVar nMap])
+        [ (ElemVar yInt, mkInt 2)
+        , (ElemVar mMap, mkElemVar nMap)
+        ]
+    , matches "x:Int |-> y:Int  m:Map matches x:Int |-> 0  n:Map"
+        (mkMap [(mkElemVar xInt, mkElemVar yInt)] [mkElemVar mMap])
+        (mkMap [(mkElemVar xInt, mkInt 0       )] [mkElemVar nMap])
+        [ (ElemVar yInt, mkInt 0)
+        , (ElemVar mMap, mkElemVar nMap)
+        ]
+    , matchesP "x:Int |-> y:Int  m:Map matches x:Int |-> 0  1 |-> 2  n:Map"
+        (mkMap [(mkElemVar xInt, mkElemVar yInt)] [mkElemVar mMap])
+        (mkMap
+            [ (mkElemVar xInt, mkInt 0)
+            , (mkInt 1, mkInt 2)
+            ]
+            [mkElemVar nMap])
+        (makeCeilPredicate_ (mkMap [(mkInt 1, mkInt 2)] [mkElemVar nMap]))
+        [ (ElemVar yInt, mkInt 0)
+        , (ElemVar mMap, mkMap [(mkInt 1, mkInt 2)] [mkElemVar nMap])
+        ]
+    , matchesP "1 |-> y:Int  m:Map matches x:Int |-> 0  1 |-> 2  n:Map"
+        (mkMap [(mkInt 1, mkElemVar yInt)] [mkElemVar mMap])
+        (mkMap
+            [ (mkElemVar xInt, mkInt 0)
+            , (mkInt 1, mkInt 2)
+            ]
+            [mkElemVar nMap])
+        (makeCeilPredicate_
+            (mkMap [(mkElemVar xInt, mkInt 0)] [mkElemVar nMap])
+        )
+        [ (ElemVar yInt, mkInt 2)
+        , (ElemVar mMap, mkMap [(mkElemVar xInt, mkInt 0)] [mkElemVar nMap])
+        ]
     ]
 
-xInt, yInt, zInt, mMap :: ElementVariable Variable
+xInt, yInt, zInt, mMap, nMap :: ElementVariable Variable
 mMap = elemVarS (testId "mMap") Test.mapSort
+nMap = elemVarS (testId "nMap") Test.mapSort
 xInt = elemVarS (testId "xInt") Test.intSort
 yInt = elemVarS (testId "yInt") Test.intSort
 zInt = elemVarS (testId "zInt") Test.intSort
@@ -985,24 +1080,38 @@ matches
     -> [(UnifiedVariable.UnifiedVariable Variable, TermLike Variable)]
     -> TestTree
 matches comment term1 term2 substs =
-    matchesAux comment term1 term2 (Just substs)
+    matchesAux comment term1 term2 makeTruePredicate_ (Just substs)
+
+matchesP
+    :: GHC.HasCallStack
+    => TestName
+    -> TermLike Variable
+    -> TermLike Variable
+    -> Predicate Variable
+    -> [(UnifiedVariable.UnifiedVariable Variable, TermLike Variable)]
+    -> TestTree
+matchesP comment term1 term2 predicate substs =
+    matchesAux comment term1 term2 predicate (Just substs)
 
 matchesAux
     :: GHC.HasCallStack
     => TestName
     -> TermLike Variable
     -> TermLike Variable
+    -> Predicate Variable
     -> Maybe [(UnifiedVariable.UnifiedVariable Variable, TermLike Variable)]
     -> TestTree
-matchesAux comment term1 term2 expect =
+matchesAux comment term1 term2 expectPredicate expect =
     withMatch check comment term1 term2
   where
     solution =
         case expect of
             Nothing -> OrCondition.bottom
-            Just substs ->
-                OrCondition.fromCondition
-                $ Condition.fromSubstitution
-                $ Substitution.unsafeWrap substs
+            Just substs -> OrCondition.fromCondition
+                Conditional
+                    { term = ()
+                    , predicate = expectPredicate
+                    , substitution = Substitution.unsafeWrap substs
+                    }
     check (Left _) = assertFailure "Expected matching solution."
     check (Right actual) = assertEqual "" solution actual

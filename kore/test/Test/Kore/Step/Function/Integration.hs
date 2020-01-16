@@ -15,10 +15,10 @@ import Test.Tasty
 import qualified Control.Lens as Lens
 import Data.Function
 import Data.Generics.Product
-import Data.Map
+import Data.Map.Strict
     ( Map
     )
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Maybe
 import qualified Data.Text.Prettyprint.Doc as Pretty
 import Prelude hiding
@@ -63,6 +63,12 @@ import Kore.Internal.Predicate
     , makeTruePredicate
     , makeTruePredicate_
     )
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( top
+    )
 import Kore.Internal.Symbol
 import Kore.Internal.TermLike
 import Kore.Step.Axiom.EvaluationStrategy
@@ -76,14 +82,14 @@ import Kore.Step.Axiom.Identifier
     ( AxiomIdentifier
     )
 import qualified Kore.Step.Axiom.Identifier as AxiomIdentifier
-import qualified Kore.Step.Function.Memo as Memo
-import Kore.Step.Rule
+import Kore.Step.EqualityPattern
     ( EqualityRule (..)
     )
-import Kore.Step.Rule as RulePattern
-    ( RulePattern (..)
-    , rulePattern
+import Kore.Step.EqualityPattern as EqualityPattern
+    ( EqualityPattern (..)
+    , equalityPattern
     )
+import qualified Kore.Step.Function.Memo as Memo
 import qualified Kore.Step.Simplification.Condition as Simplifier.Condition
 import Kore.Step.Simplification.InjSimplifier
 import qualified Kore.Step.Simplification.Simplifier as Simplifier
@@ -565,6 +571,9 @@ test_functionIntegration =
                 )
                 (Mock.f (mkElemVar Mock.x))
         assertEqual "" expect actual
+{-
+    Uncomment this if we ever go back to allowing branches for function
+    evaluation.
 
     , testCase "Multiple definition branches." $ do
         let expect =
@@ -592,7 +601,7 @@ test_functionIntegration =
                     ]
                 )
                 (Mock.f (mkElemVar Mock.x))
-        assertEqual "" expect actual
+        assertEqual "" expect actual-}
     ]
   where
     evaluate
@@ -601,7 +610,7 @@ test_functionIntegration =
         -> IO (Pattern Variable)
     evaluate functionIdToEvaluator patt =
         runSimplifier Mock.env { simplifierAxioms = functionIdToEvaluator }
-        $ TermLike.simplify patt Condition.top
+        $ TermLike.simplify patt SideCondition.top
 
 test_Nat :: [TestTree]
 test_Nat =
@@ -662,9 +671,7 @@ equals comment term results =
         assertEqual "" expect actual
 
 simplify :: TermLike Variable -> IO (OrPattern Variable)
-simplify =
-    runSimplifier testEnv
-    . (TermLike.simplifyToOr Condition.top)
+simplify = runSimplifier testEnv . TermLike.simplifyToOr SideCondition.top
 
 evaluateWith
     :: BuiltinAndAxiomSimplifier
@@ -672,7 +679,7 @@ evaluateWith
     -> IO CommonAttemptedAxiom
 evaluateWith simplifier patt =
     runSimplifier testEnv
-    $ runBuiltinAndAxiomSimplifier simplifier patt Condition.top
+    $ runBuiltinAndAxiomSimplifier simplifier patt SideCondition.top
 
 -- Applied tests: check that one or more rules applies or not
 withApplied
@@ -1233,8 +1240,8 @@ axiom
     -> TermLike Variable
     -> Predicate Variable
     -> EqualityRule Variable
-axiom left right predicate =
-    EqualityRule (RulePattern.rulePattern left right) { requires = predicate }
+axiom left right requires =
+    EqualityRule (EqualityPattern.equalityPattern left right) { requires }
 
 axiom_
     :: TermLike Variable
@@ -1267,7 +1274,7 @@ mockEvaluator
     :: Monad simplifier
     => AttemptedAxiom variable
     -> TermLike variable
-    -> Condition variable
+    -> SideCondition variable
     -> simplifier (AttemptedAxiom variable)
 mockEvaluator evaluation _ _ = return evaluation
 

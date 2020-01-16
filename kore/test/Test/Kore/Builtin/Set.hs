@@ -70,7 +70,7 @@ import qualified Control.Monad.Trans as Trans
 import qualified Data.Default as Default
 import qualified Data.Foldable as Foldable
 import qualified Data.List as List
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import qualified Data.Maybe as Maybe
 import qualified Data.Reflection as Reflection
 import qualified Data.Sequence as Seq
@@ -102,11 +102,12 @@ import Kore.Internal.TermLike
 import Kore.Sort
     ( Sort
     )
-import Kore.Step.Rule
+import Kore.Step.RulePattern
     ( RewriteRule (RewriteRule)
     , RulePattern (RulePattern)
+    , injectTermIntoRHS
     )
-import Kore.Step.Rule as RulePattern
+import Kore.Step.RulePattern as RulePattern
     ( RulePattern (..)
     )
 import Kore.Step.Simplification.AndTerms
@@ -1647,18 +1648,14 @@ test_concretizeKeysAxiom =
         RewriteRule RulePattern
             { left = mkPair intSort setSort x symbolicSet
             , antiLeft = Nothing
-            , right = x
             , requires = Predicate.makeTruePredicate_
-            , ensures = Predicate.makeTruePredicate_
+            , rhs = injectTermIntoRHS x
             , attributes = Default.def
             }
     expected = Right $ MultiOr
         [ Conditional
             { term = symbolicKey
-            , predicate =
-                -- The sort is broken because the axiom is broken: the
-                -- rhs should have the same sort as the lhs.
-                makeTruePredicate (termLikeSort (pair symbolicKey concreteSet))
+            , predicate = makeTruePredicate intSort
             , substitution = mempty
             }
         ]

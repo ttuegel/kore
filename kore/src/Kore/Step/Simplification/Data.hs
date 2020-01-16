@@ -49,7 +49,6 @@ import Kore.IndexedModule.MetadataTools
     )
 import qualified Kore.IndexedModule.MetadataToolsBuilder as MetadataTools
 import qualified Kore.IndexedModule.SortGraph as SortGraph
-import Kore.Logger
 import Kore.Profiler.Data
     ( MonadProfiler (profile)
     )
@@ -62,6 +61,7 @@ import qualified Kore.Step.Simplification.Rule as Rule
 import qualified Kore.Step.Simplification.Simplifier as Simplifier
 import Kore.Step.Simplification.Simplify
 import qualified Kore.Step.Simplification.SubstitutionSimplifier as SubstitutionSimplifier
+import Log
 import SMT
     ( MonadSMT (..)
     , SmtT (..)
@@ -128,9 +128,9 @@ instance
             env { simplifierTermLike = locally simplifierTermLike }
     {-# INLINE localSimplifierTermLike #-}
 
-    simplifyCondition conditional = do
+    simplifyCondition topCondition conditional = do
         ConditionSimplifier simplify <- asks simplifierCondition
-        simplify conditional
+        simplify topCondition conditional
     {-# INLINE simplifyCondition #-}
 
     askSimplifierAxioms = asks simplifierAxioms
@@ -182,10 +182,10 @@ evalSimplifier
     -> SimplifierT smt a
     -> smt a
 evalSimplifier verifiedModule simplifier = do
-    env <- runSimplifier earlyEnv initialize
+    !env <- runSimplifier earlyEnv initialize
     runReaderT (runSimplifierT simplifier) env
   where
-    earlyEnv =
+    !earlyEnv =
         Env
             { metadataTools = earlyMetadataTools
             , simplifierTermLike

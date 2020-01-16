@@ -9,7 +9,7 @@ module Kore.Step.Simplification.Rule
     , simplifyFunctionAxioms
     ) where
 
-import Data.Map
+import Data.Map.Strict
     ( Map
     )
 
@@ -24,11 +24,18 @@ import qualified Kore.Internal.Pattern as Pattern
 import Kore.Internal.Predicate
     ( pattern PredicateTrue
     )
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( topTODO
+    )
 import Kore.Internal.TermLike
     ( TermLike
     )
 import qualified Kore.Internal.TermLike as TermLike
-import Kore.Step.Rule
+import Kore.Step.EqualityPattern
+    ( EqualityPattern (..)
+    , EqualityRule (..)
+    )
+import Kore.Step.RulePattern
 import qualified Kore.Step.Simplification.Pattern as Pattern
 import qualified Kore.Step.Simplification.Simplifier as Simplifier
 import Kore.Step.Simplification.Simplify
@@ -55,7 +62,48 @@ simplifyEqualityRule
     => EqualityRule variable
     -> simplifier (EqualityRule variable)
 simplifyEqualityRule (EqualityRule rule) =
-    EqualityRule <$> simplifyRulePattern rule
+    EqualityRule <$> simplifyEqualityPattern rule
+
+{- | Simplify an 'EqualityPattern' using only matching logic rules.
+
+The original rule is returned unless the simplification result matches certain
+narrowly-defined criteria.
+
+ -}
+simplifyEqualityPattern
+    :: (SimplifierVariable variable, MonadSimplify simplifier)
+    => EqualityPattern variable
+    -> simplifier (EqualityPattern variable)
+simplifyEqualityPattern rule = do
+    let EqualityPattern { left } = rule
+    simplifiedLeft <- simplifyPattern left
+    case OrPattern.toPatterns simplifiedLeft of
+        [ Conditional { term, predicate, substitution } ]
+          | PredicateTrue <- predicate -> do
+            let subst = Substitution.toMap substitution
+                left' = TermLike.substitute subst term
+                requires' = TermLike.substitute subst <$> requires
+                  where
+                    EqualityPattern { requires = requires } = rule
+                rhs' = TermLike.substitute subst rhs
+                  where
+                    EqualityPattern { right = rhs } = rule
+                ensures' = TermLike.substitute subst <$> ensures
+                  where
+                    EqualityPattern { ensures = ensures } = rule
+                EqualityPattern { attributes } = rule
+            return EqualityPattern
+                { left = left'
+                , requires = requires'
+                , right = rhs'
+                , ensures = ensures'
+                , attributes = attributes
+                }
+        _ ->
+            -- Unable to simplify the given rule pattern, so we return the
+            -- original pattern in the hope that we can do something with it
+            -- later.
+            return rule
 
 {- | Simplify a 'Rule' using only matching logic rules.
 
@@ -85,27 +133,27 @@ simplifyRulePattern rule = do
     case OrPattern.toPatterns simplifiedLeft of
         [ Conditional { term, predicate, substitution } ]
           | PredicateTrue <- predicate -> do
+            -- TODO (virgil): Dropping the substitution for equations
+            -- and for rewrite rules where the substituted variables occur
+            -- in the RHS is wrong because those variables are not
+            -- existentially quantified.
             let subst = Substitution.toMap substitution
                 left' = TermLike.substitute subst term
                 antiLeft' = TermLike.substitute subst <$> antiLeft
                   where
                     RulePattern { antiLeft } = rule
-                right' = TermLike.substitute subst right
-                  where
-                    RulePattern { right } = rule
                 requires' = TermLike.substitute subst <$> requires
                   where
                     RulePattern { requires } = rule
-                ensures' = TermLike.substitute subst <$> ensures
+                rhs' = rhsSubstitute subst rhs
                   where
-                    RulePattern { ensures } = rule
+                    RulePattern { rhs } = rule
                 RulePattern { attributes } = rule
             return RulePattern
                 { left = left'
                 , antiLeft = antiLeft'
-                , right = right'
                 , requires = requires'
-                , ensures = ensures'
+                , rhs = rhs'
                 , attributes = attributes
                 }
         _ ->
@@ -122,4 +170,4 @@ simplifyPattern
 simplifyPattern termLike =
     Simplifier.localSimplifierTermLike (const Simplifier.create)
     $ Simplifier.localSimplifierAxioms (const mempty)
-    $ Pattern.simplify (Pattern.fromTermLike termLike)
+    $ Pattern.simplify SideCondition.topTODO (Pattern.fromTermLike termLike)

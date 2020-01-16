@@ -20,8 +20,15 @@ import Data.Functor
     ( void
     , ($>)
     )
+import Data.GraphViz
+    ( GraphvizOutput
+    )
+import qualified Data.GraphViz as Graph
 import Data.List
     ( nub
+    )
+import Data.Maybe
+    ( fromMaybe
     )
 import qualified Data.Set as Set
 import qualified Data.Text as Text
@@ -42,9 +49,18 @@ import Text.Megaparsec
     )
 import qualified Text.Megaparsec.Char as Char
 import qualified Text.Megaparsec.Char.Lexer as L
+import Type.Reflection
+    ( SomeTypeRep
+    )
 
-import qualified Kore.Logger as Logger
-import qualified Kore.Logger.Output as Logger
+import Kore.Log
+    ( EntryTypes
+    )
+import qualified Kore.Log as Log
+import qualified Kore.Log.DebugSolver as Log
+    ( emptyDebugSolverOptions
+    )
+import qualified Kore.Log.Registry as Log
 import Kore.Repl.Data
 
 type Parser = Parsec String String
@@ -155,7 +171,11 @@ prove =
        )
 
 showGraph :: Parser ReplCommand
-showGraph = ShowGraph <$$> literal "graph" *> optional (quotedOrWordWithout "")
+showGraph =
+    ShowGraph
+    <$$> literal "graph"
+    *> optional (quotedOrWordWithout "")
+    <**> optional parseGraphOpt
 
 proveSteps :: Parser ReplCommand
 proveSteps =
@@ -251,39 +271,63 @@ saveSession =
 log :: Parser ReplCommand
 log = do
     literal "log"
-    logLevel <- severity
-    logScopes <- unLogScope <$> logScope
+    logLevel <- parseSeverityWithDefault
+    logEntries <- parseLogEntries
     logType <- parseLogType
+    timestampsSwitch <- parseTimestampSwitchWithDefault
     -- TODO (thomas.tuegel): Allow the user to specify --debug-applied-rule.
     let debugAppliedRuleOptions = mempty
-    pure $ Log Logger.KoreLogOptions
-        { logType, logLevel, logScopes, debugAppliedRuleOptions }
+        debugAxiomEvaluationOptions = mempty
+        debugSolverOptions = Log.emptyDebugSolverOptions
+    pure $ Log Log.KoreLogOptions
+        { logType
+        , logLevel
+        , timestampsSwitch
+        , logEntries
+        , debugAppliedRuleOptions
+        , debugAxiomEvaluationOptions
+        , debugSolverOptions
+        }
+  where
+    parseSeverityWithDefault =
+        fromMaybe Log.Warning <$> optional severity
+    parseTimestampSwitchWithDefault =
+        fromMaybe Log.TimestampsEnable <$> optional parseTimestampSwitch
 
-severity :: Parser Logger.Severity
+severity :: Parser Log.Severity
 severity = sDebug <|> sInfo <|> sWarning <|> sError <|> sCritical
   where
-    sDebug    = Logger.Debug    <$ literal "debug"
-    sInfo     = Logger.Info     <$ literal "info"
-    sWarning  = Logger.Warning  <$ literal "warning"
-    sError    = Logger.Error    <$ literal "error"
-    sCritical = Logger.Critical <$ literal "critical"
+    sDebug    = Log.Debug    <$ literal "debug"
+    sInfo     = Log.Info     <$ literal "info"
+    sWarning  = Log.Warning  <$ literal "warning"
+    sError    = Log.Error    <$ literal "error"
+    sCritical = Log.Critical <$ literal "critical"
 
-logScope :: Parser LogScope
-logScope =
-    LogScope . Set.fromList
-        <$$> literal "[" *> many scope <* literal "]"
+parseLogEntries :: Parser EntryTypes
+parseLogEntries = do
+    literal "["
+    entries <- many entry
+    literal "]"
+    return . Set.fromList $ entries
   where
-      scope =
-          Logger.Scope . Text.pack
-            <$$> wordWithout ['[', ']', ',']
-            <* optional (literal ",")
+      entry :: Parser SomeTypeRep
+      entry = do
+          item <- wordWithout ['[', ']', ',']
+          _ <- optional (literal ",")
+          Log.parseEntryType . Text.pack $ item
 
-parseLogType :: Parser Logger.KoreLogType
+parseLogType :: Parser Log.KoreLogType
 parseLogType = logStdOut <|> logFile
   where
-    logStdOut = Logger.LogStdErr <$  literal "stderr"
+    logStdOut = Log.LogStdErr <$  literal "stderr"
     logFile   =
-        Logger.LogFileText  <$$> literal "file" *> quotedOrWordWithout ""
+        Log.LogFileText  <$$> literal "file" *> quotedOrWordWithout ""
+
+parseTimestampSwitch :: Parser Log.TimestampsSwitch
+parseTimestampSwitch = disable <|> enable
+  where
+    disable = Log.TimestampsDisable <$ literal "disable-log-timestamps"
+    enable  = Log.TimestampsEnable  <$ literal "enable-log-timestamps"
 
 redirect :: ReplCommand -> Parser ReplCommand
 redirect cmd =
@@ -382,3 +426,11 @@ parseClaimDecimal = ClaimIndex <$> decimal
 
 parseAxiomDecimal :: Parser AxiomIndex
 parseAxiomDecimal = AxiomIndex <$> decimal
+
+parseGraphOpt :: Parser GraphvizOutput
+parseGraphOpt =
+    (Graph.Jpeg <$ literal "jpeg")
+    <|> (Graph.Jpeg <$ literal "jpg")
+    <|> (Graph.Png <$ literal "png")
+    <|> (Graph.Svg <$ literal "svg")
+    <|> (Graph.Pdf <$ literal "pdf")

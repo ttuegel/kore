@@ -474,7 +474,8 @@ unifyEquals
             let
                 propagatedUnified = propagateConditions unified
                 result =
-                    (TermLike.markSimplified . asInternal tools builtinListSort)
+                    TermLike.markSimplified
+                    . asInternal tools builtinListSort
                     <$> propagatedUnified
             return result
       where

@@ -22,12 +22,15 @@ import Kore.Internal.MultiOr
 import qualified Kore.Internal.MultiOr as MultiOr
 import qualified Kore.Internal.OrCondition as OrCondition
 import qualified Kore.Internal.Predicate as Predicate
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( top
+    )
 import Kore.Internal.TermLike
 import qualified Kore.Step.Axiom.EvaluationStrategy as EvaluationStrategy
 import qualified Kore.Step.Axiom.Identifier as Axiom.Identifier
-import Kore.Step.Rule
+import Kore.Step.EqualityPattern
     ( EqualityRule (..)
-    , rulePattern
+    , equalityPattern
     )
 import qualified Kore.Step.Simplification.Condition as Condition
 import Kore.Step.Simplification.Data
@@ -48,6 +51,15 @@ import qualified Test.Kore.Step.MockSymbols as Mock
 import qualified Test.Kore.Step.Simplification as Test
 import Test.Tasty.HUnit.Ext
 
+assertNormalized :: Condition Variable -> IO ()
+assertNormalized expect = do
+    actual <- normalizeExcept expect
+    assertEqual
+        "Expected original result"
+        (Right $ MultiOr.make [expect])
+        actual
+    Foldable.traverse_ assertNormalizedPredicatesMulti actual
+
 test_simplifyCondition :: [TestTree]
 test_simplifyCondition =
     [ testCase "predicate = \\bottom" $ do
@@ -57,22 +69,12 @@ test_simplifyCondition =
         assertNormalizedPredicatesMulti actual
     , testCase "∃ y z. x = σ(y, z)" $ do
         let expect = Condition.fromPredicate existsPredicate
-        actual <- normalizeExcept expect
-        assertEqual
-            "Expected original result"
-            (Right $ MultiOr.make [expect])
-            actual
-        Foldable.traverse_ assertNormalizedPredicatesMulti actual
+        assertNormalized expect
     , testCase "¬∃ y z. x = σ(y, z)" $ do
         let expect =
                 Condition.fromPredicate
                 $ Predicate.makeNotPredicate existsPredicate
-        actual <- normalizeExcept expect
-        assertEqual
-            "Expected original result"
-            (Right $ MultiOr.make [expect])
-            actual
-        Foldable.traverse_ assertNormalizedPredicatesMulti actual
+        assertNormalized expect
     , testCase "x = f(x)" $ do
         let x = ElemVar Mock.x
             expect =
@@ -381,13 +383,15 @@ merge s1 s2 =
   where
     mergeSubstitutionsExcept =
         Branch.alternate
-        . Simplifier.simplifyCondition
+        . Simplifier.simplifyCondition SideCondition.top
         . Condition.fromSubstitution
         . mconcat
     mockEnv = Mock.env
 
 normalize :: Conditional Variable term -> IO [Conditional Variable term]
-normalize = Test.runSimplifierBranch mockEnv . Condition.simplifyCondition
+normalize =
+    Test.runSimplifierBranch mockEnv
+    . Condition.simplifyCondition SideCondition.top
   where
     mockEnv = Mock.env
 
@@ -403,7 +407,7 @@ normalizeExcept predicated =
     $ Test.runSimplifier mockEnv
     $ Monad.Unify.runUnifierT
     $ Branch.alternate
-    $ Simplifier.simplifyCondition predicated
+    $ Simplifier.simplifyCondition SideCondition.top predicated
   where
     mockEnv = Mock.env { simplifierAxioms }
     simplifierAxioms =
@@ -411,7 +415,7 @@ normalizeExcept predicated =
         Map.fromList
             [   ( Axiom.Identifier.Application Mock.functional10Id
                 , EvaluationStrategy.definitionEvaluation
-                    [ EqualityRule $ rulePattern
+                    [ EqualityRule $ equalityPattern
                         (Mock.functional10 (mkElemVar Mock.x))
                         (mkElemVar Mock.x)
                     ]

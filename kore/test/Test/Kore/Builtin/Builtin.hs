@@ -36,10 +36,10 @@ import qualified Control.Monad.Trans as Trans
 import Data.Function
     ( (&)
     )
-import Data.Map
+import Data.Map.Strict
     ( Map
     )
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Maybe
     ( fromMaybe
     )
@@ -81,9 +81,6 @@ import qualified Kore.IndexedModule.MetadataToolsBuilder as MetadataTools
     ( build
     )
 import qualified Kore.IndexedModule.SortGraph as SortGraph
-import Kore.Internal.Condition as Condition
-    ( top
-    )
 import qualified Kore.Internal.MultiOr as MultiOr
     ( extractPatterns
     )
@@ -93,13 +90,13 @@ import Kore.Internal.OrPattern
 import Kore.Internal.Pattern
     ( Pattern
     )
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( top
+    )
 import qualified Kore.Internal.Symbol as Internal
     ( Symbol
     )
 import Kore.Internal.TermLike
-import Kore.Logger
-    ( MonadLog
-    )
 import Kore.Parser
     ( parseKorePattern
     )
@@ -111,8 +108,9 @@ import qualified Kore.Step.Result as Result
     ( mergeResults
     )
 import qualified Kore.Step.RewriteStep as Step
-import Kore.Step.Rule
+import Kore.Step.RulePattern
     ( RewriteRule
+    , RulePattern
     )
 import qualified Kore.Step.Simplification.Condition as Simplifier.Condition
 import Kore.Step.Simplification.Data
@@ -121,6 +119,7 @@ import qualified Kore.Step.Simplification.Simplifier as Simplifier
 import Kore.Step.Simplification.Simplify
 import qualified Kore.Step.Simplification.SubstitutionSimplifier as SubstitutionSimplifier
 import qualified Kore.Step.Simplification.TermLike as TermLike
+import qualified Kore.Step.Step as Step
 import Kore.Syntax.Definition
     ( ModuleName
     , ParsedDefinition
@@ -132,6 +131,9 @@ import qualified Kore.Unification.Procedure as Unification
 import qualified Kore.Unification.UnifierT as Monad.Unify
 import Kore.Unparser
     ( unparseToString
+    )
+import Log
+    ( MonadLog
     )
 import SMT
     ( MonadSMT
@@ -258,13 +260,13 @@ simplify =
     . runNoSMT
     . runSimplifier testEnv
     . Branch.gather
-    . simplifyConditionalTerm Condition.top
+    . simplifyConditionalTerm SideCondition.top
 
 evaluate
     :: (MonadSMT smt, MonadUnliftIO smt, MonadProfiler smt, MonadLog smt)
     => TermLike Variable
     -> smt (Pattern Variable)
-evaluate = runSimplifier testEnv . (`TermLike.simplify` Condition.top)
+evaluate = runSimplifier testEnv . (`TermLike.simplify` SideCondition.top)
 
 evaluateT
     :: Trans.MonadTrans t
@@ -277,7 +279,7 @@ evaluateToList :: TermLike Variable -> SMT [Pattern Variable]
 evaluateToList =
     fmap MultiOr.extractPatterns
     . runSimplifier testEnv
-    . TermLike.simplifyToOr Condition.top
+    . TermLike.simplifyToOr SideCondition.top
 
 runStep
     :: Pattern Variable
@@ -294,7 +296,11 @@ runStepResult
     -- ^ configuration
     -> RewriteRule Variable
     -- ^ axiom
-    -> SMT (Either UnificationOrSubstitutionError (Step.Results Variable))
+    -> SMT
+        (Either
+            UnificationOrSubstitutionError
+            (Step.Results RulePattern Variable)
+        )
 runStepResult configuration axiom = do
     results <-
         runSimplifier testEnv

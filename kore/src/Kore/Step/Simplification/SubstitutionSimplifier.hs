@@ -46,7 +46,7 @@ import Data.Map.Strict
     )
 import qualified Data.Map.Strict as Map
 import Data.Maybe
-    ( isJust
+    ( isNothing
     )
 import Data.Monoid
     ( Any (..)
@@ -78,6 +78,13 @@ import Kore.Internal.Predicate
     ( Predicate
     )
 import qualified Kore.Internal.Predicate as Predicate
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( andCondition
+    , topTODO
+    )
 import Kore.Internal.TermLike
     ( And (..)
     , TermLike
@@ -88,7 +95,7 @@ import qualified Kore.Internal.TermLike as TermLike
 import Kore.Step.Simplification.Simplify
     ( MonadSimplify
     , simplifyConditionalTerm
-    , simplifyTerm
+    , simplifyConditionalTermToOr
     )
 import Kore.Substitute
     ( SubstitutionVariable
@@ -113,7 +120,8 @@ newtype SubstitutionSimplifier simplifier =
         { simplifySubstitution
             :: forall variable
             .  SubstitutionVariable variable
-            => Substitution variable
+            => SideCondition variable
+            -> Substitution variable
             -> simplifier (OrCondition variable)
         }
 
@@ -134,9 +142,10 @@ substitutionSimplifier =
     wrapper
         :: forall variable
         .  SubstitutionVariable variable
-        => Substitution variable
+        => SideCondition variable
+        -> Substitution variable
         -> simplifier (OrCondition variable)
-    wrapper substitution =
+    wrapper sideCondition substitution =
         fmap OrCondition.fromConditions . Branch.gather $ do
             (predicate, result) <- worker substitution & maybeT empty return
             let condition = Condition.fromNormalizationSimplified result
@@ -144,7 +153,7 @@ substitutionSimplifier =
             TopBottom.guardAgainstBottom condition'
             return condition'
       where
-        worker = simplifySubstitutionWorker simplifierMakeAnd
+        worker = simplifySubstitutionWorker sideCondition simplifierMakeAnd
 
 -- * Implementation
 
@@ -156,7 +165,7 @@ newtype MakeAnd monad =
             .  SubstitutionVariable variable
             => TermLike variable
             -> TermLike variable
-            -> Condition variable
+            -> SideCondition variable
             -> monad (Pattern variable)
             -- ^ Construct a simplified 'And' pattern of two 'TermLike's under
             -- the given 'Predicate.Predicate'.
@@ -166,10 +175,10 @@ simplifierMakeAnd :: MonadSimplify simplifier => MakeAnd (BranchT simplifier)
 simplifierMakeAnd =
     MakeAnd { makeAnd }
   where
-    makeAnd termLike1 termLike2 condition = do
+    makeAnd termLike1 termLike2 sideCondition = do
         simplified <-
             mkAnd termLike1 termLike2
-            & simplifyConditionalTerm condition
+            & simplifyConditionalTerm sideCondition
         TopBottom.guardAgainstBottom simplified
         return simplified
 
@@ -193,11 +202,14 @@ simplifyAnds MakeAnd { makeAnd } (NonEmpty.sort -> patterns) =
             AndF And { andFirst, andSecond } ->
                 foldM simplifyAnds' intermediate [andFirst, andSecond]
             _ -> do
+                let sideCondition =
+                        SideCondition.topTODO
+                        `SideCondition.andCondition` intermediateCondition
                 simplified <-
                     makeAnd
                         intermediateTerm
                         termLike
-                        intermediateCondition
+                        sideCondition
                 return (Pattern.andCondition simplified intermediateCondition)
       where
         (intermediateTerm, intermediateCondition) =
@@ -224,7 +236,7 @@ deduplicateSubstitution makeAnd' =
         where
             isProblematic = getAny . Map.foldMapWithKey
                 (\k v -> Any $ isSetVar k && isNotSingleton v)
-            isNotSingleton = not . isJust . getSingleton
+            isNotSingleton = isNothing . getSingleton
 
     simplifyAnds' = simplifyAnds makeAnd'
 
@@ -268,10 +280,11 @@ simplifySubstitutionWorker
     :: forall variable simplifier
     .  SubstitutionVariable variable
     => MonadSimplify simplifier
-    => MakeAnd simplifier
+    => SideCondition variable
+    -> MakeAnd simplifier
     -> Substitution variable
     -> MaybeT simplifier (Predicate variable, Normalization variable)
-simplifySubstitutionWorker makeAnd' = \substitution -> do
+simplifySubstitutionWorker sideCondition makeAnd' = \substitution -> do
     (result, Private { accum = condition }) <-
         runStateT loop Private
             { count = maxBound
@@ -356,7 +369,7 @@ simplifySubstitutionWorker makeAnd' = \substitution -> do
         :: TermLike variable
         -> Impl variable simplifier (TermLike variable)
     simplifyTermLike termLike = do
-        orPattern <- simplifyTerm termLike
+        orPattern <- simplifyConditionalTermToOr sideCondition termLike
         case OrPattern.toPatterns orPattern of
             [        ] -> do
                 addCondition Condition.bottom

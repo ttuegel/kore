@@ -28,6 +28,7 @@ import qualified Data.Set as Set
 import qualified Branch as BranchT
 import Kore.Attribute.Pattern.FreeVariables
     ( FreeVariables (FreeVariables)
+    , freeVariables
     )
 import qualified Kore.Internal.Condition as Condition
     ( fromPredicate
@@ -43,22 +44,24 @@ import Kore.Internal.Predicate
     , makeMultipleAndPredicate
     , makeTruePredicate_
     )
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( topTODO
+    )
 import Kore.Internal.TermLike
     ( mkAnd
     )
 import Kore.Internal.Variable
     ( InternalVariable
     )
-import Kore.Step.Rule
-    ( RewriteRule (RewriteRule)
+import Kore.Step.RulePattern
+    ( RHS (RHS)
+    , RewriteRule (RewriteRule)
     , RulePattern (RulePattern)
-    , refreshRulePattern
     )
-import qualified Kore.Step.Rule as RulePattern
+import qualified Kore.Step.RulePattern as RulePattern
     ( applySubstitution
-    , freeVariables
     )
-import qualified Kore.Step.Rule as Rule.DoNotUse
+import qualified Kore.Step.RulePattern as Rule.DoNotUse
 import Kore.Step.Simplification.Simplify
     ( MonadSimplify
     , SimplifierVariable
@@ -66,6 +69,9 @@ import Kore.Step.Simplification.Simplify
     )
 import qualified Kore.Step.SMT.Evaluator as SMT
     ( evaluate
+    )
+import Kore.Step.Step
+    ( refreshRule
     )
 import Kore.Substitute
     ( SubstitutionVariable
@@ -116,7 +122,7 @@ mergeRulePairPredicate
     => (RewriteRule variable, RewriteRule variable)
     -> Predicate variable
 mergeRulePairPredicate
-    ( RewriteRule RulePattern {right = right1, ensures = ensures1}
+    ( RewriteRule RulePattern { rhs = RHS {right = right1, ensures = ensures1}}
     , RewriteRule RulePattern
         {left = left2, requires = requires2, antiLeft = Nothing}
     )
@@ -155,12 +161,12 @@ renameRuleVariable
         `Set.union` ruleVariables
         `Set.union` newRuleVariables
 
-    (FreeVariables ruleVariables) = RulePattern.freeVariables rulePattern
+    (FreeVariables ruleVariables) = freeVariables rulePattern
 
-    (FreeVariables newRuleVariables) = RulePattern.freeVariables newRulePattern
+    (FreeVariables newRuleVariables) = freeVariables newRulePattern
 
     (_, newRulePattern) =
-        refreshRulePattern (FreeVariables usedVariables) rulePattern
+        refreshRule (FreeVariables usedVariables) rulePattern
 
 mergeRules
     :: (MonadSimplify simplifier, SimplifierVariable variable)
@@ -170,7 +176,7 @@ mergeRules (a :| []) = return [a]
 mergeRules (renameRulesVariables . Foldable.toList -> rules) =
     BranchT.gather $ do
         Conditional {term = (), predicate, substitution} <-
-            simplifyCondition . Condition.fromPredicate
+            simplifyCondition SideCondition.topTODO . Condition.fromPredicate
             $ makeAndPredicate firstRequires mergedPredicate
         evaluation <- SMT.evaluate predicate
         evaluatedPredicate <- case evaluation of
@@ -185,8 +191,7 @@ mergeRules (renameRulesVariables . Foldable.toList -> rules) =
                         { left = firstLeft
                         , requires = evaluatedPredicate
                         , antiLeft = firstAntiLeft
-                        , right = lastRight
-                        , ensures = lastEnsures
+                        , rhs = lastRHS
                         , attributes = def
                         }
 
@@ -198,7 +203,7 @@ mergeRules (renameRulesVariables . Foldable.toList -> rules) =
         {left = firstLeft, requires = firstRequires, antiLeft = firstAntiLeft}
       =
         firstRule
-    RewriteRule RulePattern {right = lastRight, ensures = lastEnsures} =
+    RewriteRule RulePattern {rhs = lastRHS} =
         last rules
 
 {-| Merge rules in consecutive batches.

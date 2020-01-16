@@ -14,6 +14,7 @@ module Kore.Step.Transition
     , addRule
     , addRules
     , mapRules
+    , orElse
     -- * Re-exports
     , Seq
     ) where
@@ -40,9 +41,6 @@ import Data.Typeable
     ( Typeable
     )
 
-import Kore.Logger
-    ( MonadLog (..)
-    )
 import Kore.Profiler.Data
     ( MonadProfiler
     )
@@ -54,6 +52,9 @@ import ListT
     , mapListT
     )
 import qualified ListT
+import Log
+    ( MonadLog (..)
+    )
 import SMT
     ( MonadSMT (..)
     )
@@ -171,3 +172,12 @@ mapRules f trans = do
     results <- tryTransitionT trans
     let results' = map (fmap (fmap f)) results
     scatter results'
+
+orElse
+    :: Monad m
+    => TransitionT rule m a
+    -> TransitionT rule m a
+    -> TransitionT rule m a
+orElse first second = do
+    results <- tryTransitionT first
+    if null results then second else scatter results

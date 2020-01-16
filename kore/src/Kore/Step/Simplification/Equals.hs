@@ -49,6 +49,9 @@ import Kore.Internal.Predicate
     , makeEqualsPredicate_
     )
 import qualified Kore.Internal.Predicate as Predicate
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
 import Kore.Internal.TermLike
 import qualified Kore.Step.Simplification.And as And
     ( simplifyEvaluated
@@ -163,11 +166,11 @@ Equals(a and b, b and a) will not be evaluated to Top.
 -}
 simplify
     :: (SimplifierVariable variable, MonadSimplify simplifier)
-    => Condition variable
+    => SideCondition variable
     -> Equals Sort (OrPattern variable)
     -> simplifier (OrPattern variable)
-simplify predicate Equals { equalsFirst = first, equalsSecond = second } =
-    simplifyEvaluated predicate first second
+simplify sideCondition Equals { equalsFirst = first, equalsSecond = second } =
+    simplifyEvaluated sideCondition first second
 
 {- TODO (virgil): Preserve pattern sorts under simplification.
 
@@ -184,32 +187,32 @@ carry around.
 -}
 simplifyEvaluated
     :: (SimplifierVariable variable, MonadSimplify simplifier)
-    => Condition variable
+    => SideCondition variable
     -> OrPattern variable
     -> OrPattern variable
     -> simplifier (OrPattern variable)
-simplifyEvaluated predicate first second
+simplifyEvaluated sideCondition first second
   | first == second = return OrPattern.top
   -- TODO: Maybe simplify equalities with top and bottom to ceil and floor
   | otherwise = do
     let isFunctionConditional Conditional {term} = isFunctionPattern term
     case (firstPatterns, secondPatterns) of
         ([firstP], [secondP]) ->
-            makeEvaluate firstP secondP predicate
+            makeEvaluate firstP secondP sideCondition
         ([firstP], _)
             | isFunctionConditional firstP ->
-                makeEvaluateFunctionalOr predicate firstP secondPatterns
+                makeEvaluateFunctionalOr sideCondition firstP secondPatterns
         (_, [secondP])
             | isFunctionConditional secondP ->
-                makeEvaluateFunctionalOr predicate secondP firstPatterns
+                makeEvaluateFunctionalOr sideCondition secondP firstPatterns
         _
             | OrPattern.isPredicate first && OrPattern.isPredicate second ->
-                Iff.simplifyEvaluated first second
+                Iff.simplifyEvaluated sideCondition first second
             | otherwise ->
                 makeEvaluate
                     (OrPattern.toPattern first)
                     (OrPattern.toPattern second)
-                    predicate
+                    sideCondition
   where
     firstPatterns = MultiOr.extractPatterns first
     secondPatterns = MultiOr.extractPatterns second
@@ -217,20 +220,20 @@ simplifyEvaluated predicate first second
 makeEvaluateFunctionalOr
     :: forall variable simplifier
     .  (SimplifierVariable variable, MonadSimplify simplifier)
-    => Condition variable
+    => SideCondition variable
     -> Pattern variable
     -> [Pattern variable]
     -> simplifier (OrPattern variable)
-makeEvaluateFunctionalOr predicate first seconds = do
-    firstCeil <- Ceil.makeEvaluate predicate first
-    secondCeilsWithProofs <- mapM (Ceil.makeEvaluate predicate) seconds
-    firstNotCeil <- Not.simplifyEvaluated firstCeil
+makeEvaluateFunctionalOr sideCondition first seconds = do
+    firstCeil <- Ceil.makeEvaluate sideCondition first
+    secondCeilsWithProofs <- mapM (Ceil.makeEvaluate sideCondition) seconds
+    firstNotCeil <- Not.simplifyEvaluated sideCondition firstCeil
     let secondCeils = secondCeilsWithProofs
-    secondNotCeils <- traverse Not.simplifyEvaluated secondCeils
+    secondNotCeils <- traverse (Not.simplifyEvaluated sideCondition) secondCeils
     let oneNotBottom = foldl' Or.simplifyEvaluated OrPattern.bottom secondCeils
     allAreBottom <-
         foldM
-            And.simplifyEvaluated
+            (And.simplifyEvaluated sideCondition)
             (OrPattern.fromPatterns [Pattern.top])
             (firstNotCeil : secondNotCeils)
     firstEqualsSeconds <-
@@ -239,7 +242,7 @@ makeEvaluateFunctionalOr predicate first seconds = do
             (zip seconds secondCeils)
     oneIsNotBottomEquals <-
         foldM
-            And.simplifyEvaluated
+            (And.simplifyEvaluated sideCondition)
             firstCeil
             (oneNotBottom : firstEqualsSeconds)
     return (MultiOr.merge allAreBottom oneIsNotBottomEquals)
@@ -249,7 +252,7 @@ makeEvaluateFunctionalOr predicate first seconds = do
         (Conditional {term = secondTerm}, secondCeil)
       = do
         equality <- makeEvaluateTermsAssumesNoBottom firstTerm secondTerm
-        Implies.simplifyEvaluated secondCeil equality
+        Implies.simplifyEvaluated sideCondition secondCeil equality
 
 {-| evaluates an 'Equals' given its two 'Pattern' children.
 
@@ -259,7 +262,7 @@ makeEvaluate
     :: (SimplifierVariable variable, MonadSimplify simplifier)
     => Pattern variable
     -> Pattern variable
-    -> Condition variable
+    -> SideCondition variable
     -> simplifier (OrPattern variable)
 makeEvaluate
     first@Conditional { term = Top_ _ }
@@ -282,26 +285,27 @@ makeEvaluate
         , predicate = PredicateTrue
         , substitution = (Substitution.unwrap -> [])
         }
-    predicate
+    sideCondition
   = do
-    result <- makeEvaluateTermsToPredicate firstTerm secondTerm predicate
+    result <- makeEvaluateTermsToPredicate firstTerm secondTerm sideCondition
     return (Pattern.fromCondition <$> result)
 
 makeEvaluate
     first@Conditional { term = firstTerm }
     second@Conditional { term = secondTerm }
-    predicate
+    sideCondition
   = do
     let first' = first { term = if termsAreEqual then mkTop_ else firstTerm }
-    firstCeil <- Ceil.makeEvaluate predicate first'
+    firstCeil <- Ceil.makeEvaluate sideCondition first'
     let second' = second { term = if termsAreEqual then mkTop_ else secondTerm }
-    secondCeil <- Ceil.makeEvaluate predicate second'
-    firstCeilNegation <- Not.simplifyEvaluated firstCeil
-    secondCeilNegation <- Not.simplifyEvaluated secondCeil
+    secondCeil <- Ceil.makeEvaluate sideCondition second'
+    firstCeilNegation <- Not.simplifyEvaluated sideCondition firstCeil
+    secondCeilNegation <- Not.simplifyEvaluated sideCondition secondCeil
     termEquality <- makeEvaluateTermsAssumesNoBottom firstTerm secondTerm
-    negationAnd <- And.simplifyEvaluated firstCeilNegation secondCeilNegation
-    ceilAnd <- And.simplifyEvaluated firstCeil secondCeil
-    equalityAnd <- And.simplifyEvaluated termEquality ceilAnd
+    negationAnd <-
+        And.simplifyEvaluated sideCondition firstCeilNegation secondCeilNegation
+    ceilAnd <- And.simplifyEvaluated sideCondition firstCeil secondCeil
+    equalityAnd <- And.simplifyEvaluated sideCondition termEquality ceilAnd
     return $ Or.simplifyEvaluated equalityAnd negationAnd
   where
     termsAreEqual = firstTerm == secondTerm
@@ -355,9 +359,9 @@ makeEvaluateTermsToPredicate
     :: (SimplifierVariable variable, MonadSimplify simplifier)
     => TermLike variable
     -> TermLike variable
-    -> Condition variable
+    -> SideCondition variable
     -> simplifier (OrCondition variable)
-makeEvaluateTermsToPredicate first second configurationCondition
+makeEvaluateTermsToPredicate first second sideCondition
   | first == second = return OrCondition.top
   | otherwise = do
     result <- runMaybeT $ termEquals first second
@@ -368,11 +372,12 @@ makeEvaluateTermsToPredicate first second configurationCondition
                 $ Predicate.markSimplified
                 $ makeEqualsPredicate_ first second
         Just predicatedOr -> do
-            firstCeilOr <- Ceil.makeEvaluateTerm configurationCondition first
-            secondCeilOr <- Ceil.makeEvaluateTerm configurationCondition second
+            firstCeilOr <- Ceil.makeEvaluateTerm sideCondition first
+            secondCeilOr <- Ceil.makeEvaluateTerm sideCondition second
             firstCeilNegation <- Not.simplifyEvaluatedPredicate firstCeilOr
             secondCeilNegation <- Not.simplifyEvaluatedPredicate secondCeilOr
             ceilNegationAnd <- And.simplifyEvaluatedMultiPredicate
+                sideCondition
                 (MultiAnd.make [firstCeilNegation, secondCeilNegation])
 
             return $ MultiOr.merge predicatedOr ceilNegationAnd

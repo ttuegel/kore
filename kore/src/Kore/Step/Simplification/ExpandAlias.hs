@@ -20,7 +20,7 @@ import Control.Exception
 import Data.Align
     ( zip
     )
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Maybe
     ( fromMaybe
     )
@@ -61,7 +61,7 @@ expandAlias
     -> TermLike variable
     -> TermLike variable
     -> MaybeT unifier (Pattern variable)
-expandAlias recurse t1 t2 = do
+expandAlias recurse t1 t2 =
     case (expandSingleAlias t1, expandSingleAlias t2) of
         (Nothing, Nothing) -> nothing
         (t1', t2') -> recurse (fromMaybe t1 t1') (fromMaybe t2 t2')

@@ -54,7 +54,9 @@ import Kore.Internal.TermLike
     ( InternalVariable
     , TermLike
     )
-import Kore.Logger
+import Kore.Log.InfoEvaluateCondition
+    ( infoEvaluateCondition
+    )
 import qualified Kore.Profiler.Profile as Profile
     ( smtDecision
     )
@@ -68,6 +70,7 @@ import Kore.TopBottom
     ( TopBottom
     )
 import Kore.Unparser
+import Log
 import SMT
     ( Result (..)
     , SExpr (..)
@@ -131,7 +134,8 @@ decidePredicate
     => Predicate variable
     -> simplifier (Maybe Bool)
 decidePredicate korePredicate =
-    withLogScope "decidePredicate" $ SMT.withSolver $ runMaybeT $ do
+    SMT.withSolver $ runMaybeT $ do
+        infoEvaluateCondition korePredicate
         tools <- Simplifier.askMetadataTools
         smtPredicate <- goTranslatePredicate tools korePredicate
         result <-
@@ -181,9 +185,7 @@ translateUninterpreted t pat =
         logVariableAssignment n
         return var
     logVariableAssignment n =
-        withLogScope "Evaluator"
-        . withLogScope "translateUninterpreted"
-        . logDebug
+        logDebug
         . Text.pack . show
         . Pretty.nest 4 . Pretty.sep
         $ [Pretty.pretty n, "|->", unparse pat]

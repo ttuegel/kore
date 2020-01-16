@@ -4,7 +4,7 @@ module Test.Kore.Step.Simplification.Ceil
 
 import Test.Tasty
 
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Maybe
     ( fromMaybe
     )
@@ -23,6 +23,12 @@ import Kore.Internal.Predicate
     , makeCeilPredicate_
     , makeEqualsPredicate_
     , makeTruePredicate_
+    )
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( top
     )
 import Kore.Internal.TermLike as TermLike
 import qualified Kore.Step.Axiom.Identifier as AxiomIdentifier
@@ -388,7 +394,7 @@ test_ceilSimplification =
         assertEqual "ceil(1)" expected actual
     , testGroup "Builtin.Map"
         [ testCase "concrete keys" $ do
-            -- maps assume that their keys are non-simplifiable, so
+            -- maps assume that their keys are constructor-like, so
             -- ceil({a->b, c->d}) = ceil(b) and ceil(d)
             let original =
                     Mock.builtinMap [(constr10OfA, fOfB), (constr11OfA, gOfB)]
@@ -447,7 +453,8 @@ test_ceilSimplification =
             expected = OrPattern.fromPatterns [ Pattern.top ]
         actual <- makeEvaluate
             Conditional
-                { term = Mock.builtinSet [asConcrete' fOfA, asConcrete' fOfB]
+                { term = Mock.builtinSet
+                    [asConcrete' Mock.a, asConcrete' Mock.b]
                 , predicate = makeTruePredicate_
                 , substitution = mempty
                 }
@@ -552,6 +559,7 @@ test_ceilSimplification =
         , predicate = makeTruePredicate_
         , substitution = mempty
         }
+    asConcrete' :: TermLike Variable -> TermLike Concrete
     asConcrete' p =
         fromMaybe (error "Expected concrete pattern") (TermLike.asConcrete p)
     asInternalSet =
@@ -572,7 +580,7 @@ mockEvaluator
     :: MonadSimplify simplifier
     => AttemptedAxiom variable
     -> TermLike variable
-    -> Condition variable
+    -> SideCondition variable
     -> simplifier (AttemptedAxiom variable)
 mockEvaluator evaluation _ _ = return evaluation
 
@@ -600,7 +608,7 @@ evaluate
     -> IO (OrPattern Variable)
 evaluate ceil =
     runSimplifier mockEnv
-    $ Ceil.simplify Condition.top ceil
+    $ Ceil.simplify SideCondition.top ceil
   where
     mockEnv = Mock.env
 
@@ -616,6 +624,6 @@ makeEvaluateWithAxioms
     -> IO (OrPattern Variable)
 makeEvaluateWithAxioms axiomIdToSimplifier child =
     runSimplifier mockEnv
-    $ Ceil.makeEvaluate Condition.top child
+    $ Ceil.makeEvaluate SideCondition.top child
   where
     mockEnv = Mock.env { simplifierAxioms = axiomIdToSimplifier }

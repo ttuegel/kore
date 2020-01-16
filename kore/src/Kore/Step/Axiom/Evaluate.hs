@@ -7,32 +7,53 @@ module Kore.Step.Axiom.Evaluate
     ( evaluateAxioms
     ) where
 
+import qualified Control.Comonad.Trans.Cofree as Cofree
 import Control.Error
     ( maybeT
     )
 import Control.Lens.Combinators as Lens
 import qualified Control.Monad as Monad
 import Data.Function
+import qualified Data.Functor.Foldable as Recursive
 import Data.Generics.Product
 
 import qualified Kore.Attribute.Axiom as Attribute.Axiom
+import qualified Kore.Attribute.Axiom as Attribute
+    ( Axiom (Axiom)
+    )
 import qualified Kore.Attribute.Axiom.Concrete as Attribute.Axiom.Concrete
-import qualified Kore.Internal.Condition as Condition
 import qualified Kore.Internal.OrPattern as OrPattern
 import Kore.Internal.Pattern
     ( Pattern
     )
 import qualified Kore.Internal.Pattern as Pattern
-import Kore.Internal.Predicate
-    ( Predicate
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( topTODO
     )
 import Kore.Internal.TermLike
     ( TermLike
     , mkEvaluated
     )
 import qualified Kore.Internal.TermLike as TermLike
+import qualified Kore.Log.DebugAxiomEvaluation as DebugAxiomEvaluation
+    ( attemptAxiom
+    , klabelIdentifier
+    )
+import Kore.Step.Axiom.Identifier
+    ( matchAxiomIdentifier
+    )
 import Kore.Step.Axiom.Matcher
     ( matchIncremental
+    )
+import Kore.Step.EqualityPattern
+    ( EqualityPattern (EqualityPattern)
+    , EqualityRule (..)
+    )
+import qualified Kore.Step.EqualityPattern as EqualityPattern
+    ( EqualityPattern (..)
     )
 import Kore.Step.EquationalStep
     ( UnificationProcedure (..)
@@ -42,20 +63,19 @@ import Kore.Step.Remainder
     ( ceilChildOfApplicationOrTop
     )
 import qualified Kore.Step.Result as Result
-import Kore.Step.Rule
-    ( EqualityRule (..)
-    )
-import qualified Kore.Step.Rule as RulePattern
-    ( RulePattern (..)
-    , mapVariables
-    )
 import qualified Kore.Step.Simplification.OrPattern as OrPattern
 import Kore.Step.Simplification.Simplify
     ( MonadSimplify
     , SimplifierVariable
     )
+import qualified Kore.Step.Step as EqualityPattern
+    ( mapRuleVariables
+    )
 import qualified Kore.Unification.UnifierT as Unifier
 import Kore.Variables.Fresh
+import Log
+    ( MonadLog
+    )
 
 evaluateAxioms
     :: forall variable simplifier
@@ -63,12 +83,14 @@ evaluateAxioms
        , MonadSimplify simplifier
        )
     => [EqualityRule Variable]
+    -> SideCondition variable
     -> TermLike variable
-    -> Predicate variable
-    -> simplifier (Step.Results variable)
-evaluateAxioms definitionRules termLike predicate
-  | any ruleIsConcrete definitionRules
-  , not (TermLike.isConcrete termLike)
+    -> simplifier (Step.Results EqualityPattern variable)
+evaluateAxioms equalityRules sideCondition termLike
+  | any ruleIsConcrete equalityRules
+  -- All of the current pattern's children (most likely an ApplicationF)
+  -- must be ConstructorLike in order to be evaluated with "concrete" rules.
+  , not (all TermLike.isConstructorLike termLikeF)
   = return notApplicable
   | otherwise
   = maybeNotApplicable $ do
@@ -78,11 +100,14 @@ evaluateAxioms definitionRules termLike predicate
         expanded :: Pattern variable
         expanded = Pattern.fromTermLike termLike
 
-    resultss <- applyRules expanded (map unwrapEqualityRule definitionRules)
+    -- TODO (virgil): Consider logging the rules in Step.unifyRules or some
+    -- similar place, especially if we start logging unification details.
+    mapM_ logAppliedRule equalityRules
+    resultss <- applyRules expanded (map unwrapEqualityRule equalityRules)
     Monad.guard (any Result.hasResults resultss)
     mapM_ rejectNarrowing resultss
 
-    ceilChild <- ceilChildOfApplicationOrTop Condition.topTODO termLike
+    ceilChild <- ceilChildOfApplicationOrTop SideCondition.topTODO termLike
     let
         results =
             Result.mergeResults resultss
@@ -95,10 +120,12 @@ evaluateAxioms definitionRules termLike predicate
         introduceDefinedness = flip Pattern.andCondition
         markRemainderEvaluated = fmap TermLike.mkEvaluated
 
-    let simplify = OrPattern.simplifyConditionsWithSmt predicate
+    let simplify = OrPattern.simplifyConditionsWithSmt sideCondition
     simplified <-
         return results
-        >>= Lens.traverseOf (field @"results" . Lens.traversed . field @"result") simplify
+        >>= Lens.traverseOf
+            (field @"results" . Lens.traversed . field @"result")
+            simplify
         >>= Lens.traverseOf (field @"remainders") simplify
     -- This guard is wrong: It leaves us unable to distinguish between a
     -- not-applicable result and a Bottom result. This check should be handled
@@ -107,10 +134,25 @@ evaluateAxioms definitionRules termLike predicate
     return simplified
 
   where
+    termLikeF = Cofree.tailF (Recursive.project termLike)
+
+    targetSideCondition = Step.toConfigurationVariablesCondition sideCondition
+
+    logAppliedRule :: MonadLog log => EqualityRule Variable -> log ()
+    logAppliedRule
+        (EqualityRule EqualityPattern
+            {left, attributes = Attribute.Axiom {sourceLocation}}
+        )
+      =
+        DebugAxiomEvaluation.attemptAxiom
+            sourceLocation
+            (matchAxiomIdentifier left)
+            (DebugAxiomEvaluation.klabelIdentifier left)
+
     ruleIsConcrete =
         Attribute.Axiom.Concrete.isConcrete
         . Attribute.Axiom.concrete
-        . RulePattern.attributes
+        . EqualityPattern.attributes
         . getEqualityRule
 
     notApplicable =
@@ -122,16 +164,20 @@ evaluateAxioms definitionRules termLike predicate
     maybeNotApplicable = maybeT (return notApplicable) return
 
     unwrapEqualityRule (EqualityRule rule) =
-        RulePattern.mapVariables fromVariable rule
+        EqualityPattern.mapRuleVariables fromVariable rule
 
     rejectNarrowing (Result.results -> results) =
         (Monad.guard . not) (any Step.isNarrowingResult results)
 
     applyRules (Step.toConfigurationVariables -> initial) rules =
         Unifier.maybeUnifierT
-        $ Step.applyRulesSequence unificationProcedure initial rules
+        $ Step.applyRulesSequence
+            unificationProcedure
+            targetSideCondition
+            initial
+            rules
 
-    ignoreUnificationErrors unification pattern1 pattern2 =
+    ignoreUnificationErrors unification _topCondition pattern1 pattern2 =
         Unifier.runUnifierT (unification pattern1 pattern2)
         >>= either (couldNotMatch pattern1 pattern2) Unifier.scatter
 

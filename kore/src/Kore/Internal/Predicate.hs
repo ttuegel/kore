@@ -9,6 +9,7 @@ module Kore.Internal.Predicate
     , pattern PredicateFalse
     , pattern PredicateTrue
     , compactPredicatePredicate
+    , freshVariable
     , isFalse
     , makePredicate
     , isPredicate
@@ -38,7 +39,6 @@ module Kore.Internal.Predicate
     , makeTruePredicate_
     , isSimplified
     , markSimplified
-    , freeVariables
     , isFreeOf
     , freeElementVariables
     , hasFreeVariable
@@ -98,14 +98,16 @@ import Kore.Error
     , koreFail
     )
 import Kore.Internal.TermLike hiding
-    ( freeVariables
-    , hasFreeVariable
+    ( hasFreeVariable
     , isSimplified
     , mapVariables
     , markSimplified
     , substitute
     )
 import qualified Kore.Internal.TermLike as TermLike
+import Kore.Syntax.Variable
+    ( Variable
+    )
 import Kore.TopBottom
     ( TopBottom (..)
     )
@@ -668,16 +670,21 @@ makePredicate t = fst <$> makePredicateWorker t
                 | otherwise -> Changed
       where
         didNotChange =
-            (  TermLike.forceSort
-                (termLikeSort term)
-                (unwrapPredicate predicate)
-            == TermLike.fullyOverrideSort (termLikeSort term) term
-            -- TODO (virgil): The term sort override above is needed
-            -- because above we're computing the term with
-            -- (fmap unwrapPredicate term) which leaves the original
-            -- sort at the top, while the term's children have sort
-            -- _PREDICATE. We should fix that and not use fullyOverrideSort.
-            )
+            (==)
+                (TermLike.forceSort
+                    (termLikeSort term)
+                    (unwrapPredicate predicate)
+                )
+                (TermLike.fullyOverrideSort
+                    (termLikeSort term)
+                    term
+                    -- TODO (virgil): The term sort override above is needed
+                    -- because above we're computing the term with (fmap
+                    -- unwrapPredicate term) which leaves the original sort at
+                    -- the top, while the term's children have sort
+                    -- _PREDICATE. We should fix that and not use
+                    -- fullyOverrideSort.
+                )
 
 {- | Is the 'TermLike' a predicate?
 
@@ -692,10 +699,8 @@ isPredicate = Either.isRight . makePredicate
 mapVariables :: Ord to => (from -> to) -> Predicate from -> Predicate to
 mapVariables f = fmap (TermLike.mapVariables f)
 
-{- | Extract the set of free variables from a @Predicate@.
--}
-freeVariables :: Predicate variable -> FreeVariables variable
-freeVariables = TermLike.freeVariables . unwrapPredicate
+instance HasFreeVariables (Predicate variable) variable where
+    freeVariables = freeVariables . unwrapPredicate
 
 isSimplified :: Predicate variable -> Bool
 isSimplified (GenericPredicate termLike) = TermLike.isSimplified termLike
@@ -712,6 +717,7 @@ markSimplified :: Predicate variable -> Predicate variable
 markSimplified (GenericPredicate termLike) =
     GenericPredicate (TermLike.markSimplified termLike)
 
+-- |Is the predicate free of the given variables?
 isFreeOf
     :: Ord variable
     => Predicate variable
@@ -768,3 +774,14 @@ substitute
     -> Predicate variable
 substitute subst (GenericPredicate termLike) =
     GenericPredicate (TermLike.substitute subst termLike)
+
+{- | Externalize the variables
+
+-}
+freshVariable
+    :: SortedVariable variable
+    => Predicate variable
+    -> Predicate Variable
+freshVariable predicate =
+    externalizeFreshVariables . TermLike.mapVariables toVariable
+    <$> predicate

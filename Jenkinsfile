@@ -31,7 +31,7 @@ pipeline {
         '''
       }
     }
-    stage('Build') {
+    stage('Stages') {
       failFast true
       parallel {
         stage('Documentation') {
@@ -41,69 +41,39 @@ pipeline {
             '''
           }
         }
-        stage('Executables') {
+        stage('Unit Tests') {
           steps {
             sh '''
-              ./scripts/kore-exec.sh
+              ./scripts/unit-test.sh
+            '''
+          }
+          post {
+            always {
+              junit 'kore/test-results.xml'
+            }
+          }
+        }
+        stage('Integration Tests') {
+          options {
+            timeout(time: 32, unit: 'MINUTES')
+          }
+          steps {
+            sh '''
+              ./scripts/integration-k.sh
             '''
           }
         }
       }
     }
-    stage('Unit Tests') {
-      steps {
-        sh '''
-          ./scripts/unit-test.sh
-        '''
-      }
-      post {
-        always {
-          junit 'kore/test-results.xml'
-        }
-      }
-    }
-    stage('Integration: K') {
-      options {
-        timeout(time: 32, unit: 'MINUTES')
-      }
-      steps {
-        sh '''
-          ./scripts/integration-k.sh
-        '''
-      }
-    }
-    stage('Integration: KEVM') {
-      options {
-        timeout(time: 48, unit: 'MINUTES')
-      }
-      steps {
-        sh '''
-          ./scripts/integration-kevm.sh
-        '''
-        archiveArtifacts 'kevm-add0-stats.json'
-        archiveArtifacts 'kevm-pop1-stats.json'
-        archiveArtifacts 'kevm-sum-to-10-stats.json'
-        archiveArtifacts 'kevm-sum-to-n-spec-stats.json'
-      }
-    }
-    stage('Integration: KWASM') {
-      options {
-        timeout(time: 8, unit: 'MINUTES')
-      }
-      steps {
-        sh '''
-          ./scripts/integration-kwasm.sh
-        '''
-        archiveArtifacts 'kwasm-simple-arithmetic-spec-stats.json'
-        archiveArtifacts 'kwasm-loops-spec-stats.json'
-        archiveArtifacts 'kwasm-memory-symbolic-type-spec-stats.json'
-        archiveArtifacts 'kwasm-locals-spec-stats.json'
-      }
-    }
     stage('Update K Submodules') {
       when { branch 'master' }
       steps {
-        build job: 'rv-devops/master', parameters: [string(name: 'PR_REVIEWER', value: 'ttuegel'), booleanParam(name: 'UPDATE_DEPS_K_HASKELL', value: true)], propagate: false, wait: false
+        build job: 'rv-devops/master', propagate: false, wait: false                                                            \
+            , parameters: [ booleanParam(name: 'UPDATE_DEPS_SUBMODULE', value: true)                                            \
+                          , string(name: 'PR_REVIEWER', value: 'ttuegel')                                                       \
+                          , string(name: 'UPDATE_DEPS_REPOSITORY', value: 'kframework/k')                                       \
+                          , string(name: 'UPDATE_DEPS_SUBMODULE_DIR', value: 'haskell-backend/src/main/native/haskell-backend') \
+                          ]
       }
     }
   }

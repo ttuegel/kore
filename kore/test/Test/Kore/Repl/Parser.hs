@@ -2,6 +2,7 @@ module Test.Kore.Repl.Parser
     ( test_replParser
     ) where
 
+import qualified Data.GraphViz as Graph
 import qualified Data.Set as Set
 import Numeric.Natural
 import Test.Tasty
@@ -9,8 +10,14 @@ import Test.Tasty
     , testGroup
     )
 
-import qualified Kore.Logger as Logger
-import qualified Kore.Logger.Output as Logger
+import qualified Kore.Log as Log
+import qualified Kore.Log.DebugSolver as Log
+    ( emptyDebugSolverOptions
+    )
+import Kore.Log.Registry
+    ( debugAppliedRuleType
+    , debugAxiomEvaluationType
+    )
 import Kore.Repl.Data
 import Kore.Repl.Parser
 
@@ -110,11 +117,17 @@ proveTests =
 
 graphTests :: [ParserTest ReplCommand]
 graphTests =
-    [ "graph"           `parsesTo_` ShowGraph Nothing
-    , "graph "          `parsesTo_` ShowGraph Nothing
-    , "graph file"      `parsesTo_` ShowGraph (Just "file")
-    , "graph \"f ile\"" `parsesTo_` ShowGraph (Just "f ile")
-    , "graph f ile"     `fails`     ()
+    [ "graph"                `parsesTo_` ShowGraph Nothing Nothing
+    , "graph "               `parsesTo_` ShowGraph Nothing Nothing
+    , "graph file"           `parsesTo_` ShowGraph (Just "file") Nothing
+    , "graph file svg"       `parsesTo_` ShowGraph (Just "file") (Just Graph.Svg)
+    , "graph file jpeg"      `parsesTo_` ShowGraph (Just "file") (Just Graph.Jpeg)
+    , "graph file jpg"       `parsesTo_` ShowGraph (Just "file") (Just Graph.Jpeg)
+    , "graph file pdf"       `parsesTo_` ShowGraph (Just "file") (Just Graph.Pdf)
+    , "graph file png"       `parsesTo_` ShowGraph (Just "file") (Just Graph.Png)
+    , "graph \"f ile\""      `parsesTo_` ShowGraph (Just "f ile") Nothing
+    , "graph \"f ile\" jpg"  `parsesTo_` ShowGraph (Just "f ile") (Just Graph.Jpeg)
+    , "graph f ile"          `fails`     ()
     ]
 
 stepTests :: [ParserTest ReplCommand]
@@ -421,31 +434,65 @@ initScriptTests =
 logTests :: [ParserTest ReplCommand]
 logTests =
     [ "log debug [] stderr"
-        `parsesTo_` Log Logger.KoreLogOptions
-            { logLevel = Logger.Debug
-            , logScopes = mempty
-            , logType = Logger.LogStdErr
+        `parsesTo_` Log Log.KoreLogOptions
+            { logLevel = Log.Debug
+            , logEntries = mempty
+            , timestampsSwitch = Log.TimestampsEnable
+            , logType = Log.LogStdErr
             , debugAppliedRuleOptions = mempty
+            , debugAxiomEvaluationOptions = mempty
+            , debugSolverOptions = Log.emptyDebugSolverOptions
             }
-    , "log critical [scope1] stderr"
-        `parsesTo_` Log Logger.KoreLogOptions
-            { logLevel = Logger.Critical
-            , logScopes = Set.singleton "scope1"
-            , logType = Logger.LogStdErr
+    , "log [] stderr"
+        `parsesTo_` Log Log.KoreLogOptions
+            { logLevel = Log.Warning
+            , logEntries = mempty
+            , timestampsSwitch = Log.TimestampsEnable
+            , logType = Log.LogStdErr
             , debugAppliedRuleOptions = mempty
+            , debugAxiomEvaluationOptions = mempty
+            , debugSolverOptions = Log.emptyDebugSolverOptions
             }
-    , "log info [ scope1,  scope2 ] file \"f s\""
-        `parsesTo_` Log Logger.KoreLogOptions
-            { logLevel = Logger.Info
-            , logScopes = Set.fromList ["scope1", "scope2"]
-            , logType = Logger.LogFileText "f s"
+    , "log [DebugAppliedRule] stderr"
+        `parsesTo_` Log Log.KoreLogOptions
+            { logLevel = Log.Warning
+            , logEntries = Set.singleton debugAppliedRuleType
+            , timestampsSwitch = Log.TimestampsEnable
+            , logType = Log.LogStdErr
             , debugAppliedRuleOptions = mempty
+            , debugAxiomEvaluationOptions = mempty
+            , debugSolverOptions = Log.emptyDebugSolverOptions
             }
-    , "log info [ scope1  scope2 ] file \"f s\""
-        `parsesTo_` Log Logger.KoreLogOptions
-            { logLevel = Logger.Info
-            , logScopes = Set.fromList ["scope1", "scope2"]
-            , logType = Logger.LogFileText "f s"
+    , "log critical [DebugAppliedRule] stderr"
+        `parsesTo_` Log Log.KoreLogOptions
+            { logLevel = Log.Critical
+            , logEntries = Set.singleton debugAppliedRuleType
+            , timestampsSwitch = Log.TimestampsEnable
+            , logType = Log.LogStdErr
             , debugAppliedRuleOptions = mempty
+            , debugAxiomEvaluationOptions = mempty
+            , debugSolverOptions = Log.emptyDebugSolverOptions
+            }
+    , "log info [ DebugAppliedRule,  DebugAxiomEvaluation ] file \"f s\""
+        `parsesTo_` Log Log.KoreLogOptions
+            { logLevel = Log.Info
+            , logEntries = Set.fromList
+                [debugAppliedRuleType, debugAxiomEvaluationType]
+            , timestampsSwitch = Log.TimestampsEnable
+            , logType = Log.LogFileText "f s"
+            , debugAppliedRuleOptions = mempty
+            , debugAxiomEvaluationOptions = mempty
+            , debugSolverOptions = Log.emptyDebugSolverOptions
+            }
+    , "log info [ DebugAppliedRule   DebugAxiomEvaluation ] file \"f s\""
+        `parsesTo_` Log Log.KoreLogOptions
+            { logLevel = Log.Info
+            , logEntries = Set.fromList
+                [debugAppliedRuleType, debugAxiomEvaluationType]
+            , timestampsSwitch = Log.TimestampsEnable
+            , logType = Log.LogFileText "f s"
+            , debugAppliedRuleOptions = mempty
+            , debugAxiomEvaluationOptions = mempty
+            , debugSolverOptions = Log.emptyDebugSolverOptions
             }
     ]

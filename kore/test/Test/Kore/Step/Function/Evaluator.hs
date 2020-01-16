@@ -18,6 +18,9 @@ import Kore.Internal.OrPattern
     ( OrPattern
     )
 import qualified Kore.Internal.OrPattern as OrPattern
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( top
+    )
 import Kore.Internal.TermLike
     ( Application
     , Arguments (..)
@@ -28,8 +31,8 @@ import Kore.Internal.TermLike
 import qualified Kore.Internal.TermLike as TermLike
 import qualified Kore.Step.Axiom.EvaluationStrategy as Kore
 import qualified Kore.Step.Axiom.Identifier as Axiom.Identifier
+import qualified Kore.Step.EqualityPattern as EqualityPattern
 import qualified Kore.Step.Function.Evaluator as Kore
-import qualified Kore.Step.Rule as RulePattern
 import qualified Kore.Step.Simplification.Simplify as Kore
 import Kore.Syntax.Application
     ( Application (..)
@@ -93,8 +96,8 @@ mkApplySymbol = synthesize . TermLike.ApplySymbolF
 fEvaluator :: Kore.BuiltinAndAxiomSimplifier
 fEvaluator =
     Kore.simplificationEvaluation
-    $ RulePattern.EqualityRule
-    $ RulePattern.rulePattern left right
+    $ EqualityPattern.EqualityRule
+    $ EqualityPattern.equalityPattern left right
   where
     left = mkApplySymbol (f x)
     right = x
@@ -105,7 +108,8 @@ evaluateApplication
     -> Application Symbol (TermLike Variable)
     -> IO (OrPattern Variable)
 evaluateApplication predicate =
-    Test.runSimplifier env . Kore.evaluateApplication Condition.top predicate
+    Test.runSimplifier env
+    . Kore.evaluateApplication SideCondition.top predicate
 
 simplifierAxioms :: Kore.BuiltinAndAxiomSimplifierMap
 simplifierAxioms = Map.fromList [ (fId, fEvaluator) ]

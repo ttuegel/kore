@@ -30,7 +30,9 @@ import Kore.Internal.OrCondition
     ( OrCondition
     )
 import qualified Kore.Internal.OrCondition as OrCondition
-import qualified Kore.Internal.Pattern as Pattern
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
 import Kore.Step.Simplification.AndTerms
     ( termUnification
     )
@@ -68,9 +70,10 @@ substitutionSimplifier =
     wrapper
         :: forall variable
         .  SubstitutionVariable variable
-        => Substitution variable
+        => SideCondition variable
+        -> Substitution variable
         -> unifier (OrCondition variable)
-    wrapper substitution = do
+    wrapper sideCondition substitution = do
         (predicate, result) <- worker substitution & maybeT empty return
         condition <- fromNormalization result
         let condition' = Condition.fromPredicate predicate <> condition
@@ -78,7 +81,7 @@ substitutionSimplifier =
         TopBottom.guardAgainstBottom conditions
         return conditions
       where
-        worker = simplifySubstitutionWorker unificationMakeAnd
+        worker = simplifySubstitutionWorker sideCondition unificationMakeAnd
 
     fromNormalization
         :: SimplifierVariable variable
@@ -99,8 +102,7 @@ unificationMakeAnd :: MonadUnify unifier => MakeAnd unifier
 unificationMakeAnd =
     MakeAnd { makeAnd }
   where
-    makeAnd termLike1 termLike2 condition = do
+    makeAnd termLike1 termLike2 sideCondition = do
         unified <- termUnification termLike1 termLike2
-        Pattern.andCondition unified condition
-            & Simplifier.simplifyCondition
+        Simplifier.simplifyCondition sideCondition unified
             & BranchT.alternate

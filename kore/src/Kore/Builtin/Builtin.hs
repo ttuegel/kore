@@ -85,9 +85,6 @@ import Kore.IndexedModule.MetadataTools
 import qualified Kore.IndexedModule.MetadataTools as MetadataTools
 import qualified Kore.IndexedModule.Resolvers as IndexedModule
 import Kore.Internal.ApplicationSorts
-import Kore.Internal.Condition as Condition
-    ( topTODO
-    )
 import qualified Kore.Internal.OrPattern as OrPattern
 import Kore.Internal.Pattern
     ( Conditional (..)
@@ -102,6 +99,9 @@ import Kore.Internal.Predicate
     ( makeEqualsPredicate_
     )
 import qualified Kore.Internal.Predicate as Predicate
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( topTODO
+    )
 import Kore.Internal.TermLike as TermLike
 import Kore.Sort
     ( predicateSort
@@ -319,7 +319,8 @@ functionEvaluator impl =
             (TermLike variable)
         -> simplifier (AttemptedAxiom variable)
     evaluator (valid :< app) =
-        impl resultSort (getArguments applicationChildren)
+        (impl resultSort . getArguments)
+            (TermLike.removeEvaluated <$> applicationChildren)
       where
         Application { applicationChildren } = app
         Attribute.Pattern { Attribute.patternSort = resultSort } = valid
@@ -499,7 +500,7 @@ toKey :: TermLike variable -> Maybe (TermLike Concrete)
 toKey purePattern = do
     p <- TermLike.asConcrete purePattern
     -- TODO (thomas.tuegel): Use the return value as the term.
-    if TermLike.isNonSimplifiable p
+    if TermLike.isConstructorLike p
         then return p
         else Nothing
 
@@ -521,7 +522,7 @@ unifyEqualsUnsolved
     -> unifier (Pattern variable)
 unifyEqualsUnsolved SimplificationType.And a b = do
     let unified = TermLike.markSimplified $ mkAnd a b
-    orCondition <- Ceil.makeEvaluateTerm Condition.topTODO unified
+    orCondition <- Ceil.makeEvaluateTerm SideCondition.topTODO unified
     predicate <- Monad.Unify.scatter orCondition
     return (unified `Pattern.withCondition` predicate)
 unifyEqualsUnsolved SimplificationType.Equals a b =

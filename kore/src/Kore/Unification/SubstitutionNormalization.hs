@@ -216,7 +216,7 @@ backSubstitute
     -- ^ Topologically-sorted substitution
     -> UnwrappedSubstitution variable
 backSubstitute sorted =
-    (flip State.evalState mempty) (traverse worker sorted)
+    flip State.evalState mempty (traverse worker sorted)
   where
     worker (variable, termLike) = do
         termLike' <- applySubstitution termLike
@@ -268,7 +268,7 @@ getDependencies interesting var termLike =
         Var_ v | v == var -> Set.empty
         _ -> Set.intersection interesting freeVars
   where
-    freeVars = FreeVariables.getFreeVariables $ TermLike.freeVariables termLike
+    freeVars = FreeVariables.getFreeVariables $ freeVariables termLike
 
 {- | Calculate the dependencies of a substitution that have only
      non-simplifiable symbols above.
@@ -300,7 +300,7 @@ nonSimplifiableAbove interesting p =
         VariableF (Const v)
             | v `Set.member` interesting -> Set.singleton v
         ApplySymbolF Application { applicationSymbolOrAlias }
-            | Symbol.isNonSimplifiable applicationSymbolOrAlias ->
+            | Symbol.isConstructorLike applicationSymbolOrAlias ->
                 dependencies
         InjF _ -> dependencies
         _ -> Set.empty

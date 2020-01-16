@@ -15,7 +15,7 @@ import qualified Control.Error as Error
 import Data.Default
     ( Default (..)
     )
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Data.Text
     ( Text
@@ -46,12 +46,10 @@ import qualified Kore.Step.Axiom.Identifier as AxiomIdentifier
 import Kore.Step.Axiom.Registry
     ( axiomPatternsToEvaluators
     )
-import Kore.Step.Rule
-    ( EqualityRule (EqualityRule)
-    , RulePattern (RulePattern)
-    )
-import qualified Kore.Step.Rule as RulePattern
-    ( RulePattern (..)
+import Kore.Step.EqualityPattern
+    ( EqualityPattern (..)
+    , EqualityRule (EqualityRule)
+    , equalityPattern
     )
 import Kore.Step.Simplification.And
     ( termAnd
@@ -202,6 +200,12 @@ test_andTermsSimplification =
                 simplifyUnify
                     (Mock.sortInjectionSubToTop Mock.plain00Subsort)
                     (Mock.sortInjection0ToTop Mock.plain00Sort0)
+            assertEqual "" expect actual
+        , testCase "different head, simplifiable subsort" $ do
+            let sub = Mock.sortInjection Mock.topSort Mock.plain00Subsort
+                other = Mock.sortInjection Mock.topSort Mock.plain00OtherSort
+                expect = ([Pattern.fromTermLike $ mkAnd sub other], Nothing)
+            actual <- simplifyUnify sub other
             assertEqual "" expect actual
         , testCase "different head, subsort first" $ do
             let expect =
@@ -954,7 +958,7 @@ test_andTermsSimplification =
                         , Nothing
                         )
                     x = mkVariable "x"
-                    alias = mkAlias' "alias1" x $ plain0OfA
+                    alias = mkAlias' "alias1" x plain0OfA
                     left = applyAlias' alias $ mkTop Mock.testSort
                 actual <- simplifyUnify left plain1OfA
                 assertEqual "" expect actual
@@ -1030,28 +1034,33 @@ test_equalsTermsSimplification =
             simplifiers = axiomPatternsToEvaluators $ Map.fromList
                 [   (   AxiomIdentifier.Ceil
                             (AxiomIdentifier.Application Mock.cfId)
-                    ,   [ EqualityRule RulePattern
-                            { left = mkCeil sortVar Mock.cf
-                            , antiLeft = Nothing
-                            , right =
-                                mkOr
+                    ,   [ EqualityRule
+                            (equalityPattern
+                                (mkCeil sortVar Mock.cf)
+                                (mkOr
                                     (mkAnd
                                         (mkEquals_
                                             (Mock.f (mkElemVar Mock.y))
                                             Mock.a
                                         )
-                                        (mkEquals_ (mkElemVar Mock.y) Mock.a)
+                                        (mkEquals_
+                                            (mkElemVar Mock.y)
+                                            Mock.a
+                                        )
                                     )
                                     (mkAnd
                                         (mkEquals_
                                             (Mock.f (mkElemVar Mock.y))
                                             Mock.b
                                         )
-                                        (mkEquals_ (mkElemVar Mock.y) Mock.b)
+                                        (mkEquals_
+                                            (mkElemVar Mock.y)
+                                            Mock.b
+                                        )
                                     )
-                            , requires = makeTruePredicate_
-                            , ensures = makeTruePredicate_
-                            , attributes = def
+                                )
+                            )
+                            {attributes = def
                                 {Attribute.simplification = Simplification True}
                             }
                         ]
@@ -1119,56 +1128,66 @@ test_equalsTermsSimplification =
             simplifiers = axiomPatternsToEvaluators $ Map.fromList
                 [   (   AxiomIdentifier.Ceil
                             (AxiomIdentifier.Application Mock.cfId)
-                    ,   [ EqualityRule RulePattern
-                            { left = mkCeil sortVar Mock.cf
-                            , antiLeft = Nothing
-                            , right =
-                                mkOr
+                    ,   [ EqualityRule
+                            (equalityPattern
+                                (mkCeil sortVar Mock.cf)
+                                (mkOr
                                     (mkAnd
                                         (mkEquals_
                                             (Mock.f (mkElemVar Mock.y))
                                             Mock.a
                                         )
-                                        (mkEquals_ (mkElemVar Mock.y) Mock.a)
+                                        (mkEquals_
+                                            (mkElemVar Mock.y)
+                                            Mock.a
+                                        )
                                     )
                                     (mkAnd
                                         (mkEquals_
                                             (Mock.f (mkElemVar Mock.y))
                                             Mock.b
                                         )
-                                        (mkEquals_ (mkElemVar Mock.y) Mock.b)
+                                        (mkEquals_
+                                            (mkElemVar Mock.y)
+                                            Mock.b
+                                        )
                                     )
-                            , requires = makeTruePredicate_
-                            , ensures = makeTruePredicate_
-                            , attributes = def
+                                )
+                            )
+                            {attributes = def
                                 {Attribute.simplification = Simplification True}
                             }
                         ]
                     )
                 ,   (   AxiomIdentifier.Ceil
                             (AxiomIdentifier.Application Mock.cgId)
-                    ,   [ EqualityRule RulePattern
-                            { left = mkCeil sortVar Mock.cg
-                            , antiLeft = Nothing
-                            , right =
-                                mkOr
+                    ,   [ EqualityRule
+                            (equalityPattern
+                                (mkCeil sortVar Mock.cg)
+                                (mkOr
                                     (mkAnd
                                         (mkEquals_
                                             (Mock.g (mkElemVar Mock.z))
                                             Mock.a
                                         )
-                                        (mkEquals_ (mkElemVar Mock.z) Mock.a)
+                                        (mkEquals_
+                                            (mkElemVar Mock.z)
+                                            Mock.a
+                                        )
                                     )
                                     (mkAnd
                                         (mkEquals_
                                             (Mock.g (mkElemVar Mock.z))
                                             Mock.b
                                         )
-                                        (mkEquals_ (mkElemVar Mock.z) Mock.b)
+                                        (mkEquals_
+                                            (mkElemVar Mock.z)
+                                            Mock.b
+                                        )
                                     )
-                            , requires = makeTruePredicate_
-                            , ensures = makeTruePredicate_
-                            , attributes = def
+                                )
+                            )
+                            { attributes = def
                                 {Attribute.simplification = Simplification True}
                             }
                         ]

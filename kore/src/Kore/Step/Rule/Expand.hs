@@ -14,7 +14,7 @@ import Data.List
 import Data.List.NonEmpty
     ( NonEmpty ((:|))
     )
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Maybe
     ( mapMaybe
     )
@@ -22,6 +22,7 @@ import qualified Data.Set as Set
 
 import Kore.Attribute.Pattern.FreeVariables
     ( FreeVariables (getFreeVariables)
+    , freeVariables
     )
 import qualified Kore.Attribute.Sort.Constructors as Attribute.Constructors
     ( Constructor (Constructor)
@@ -46,21 +47,20 @@ import Kore.Internal.TermLike
     , mkElemVar
     )
 import qualified Kore.Internal.TermLike as TermLike
-    ( freeVariables
-    , substitute
+    ( substitute
     )
 import Kore.Sort
     ( Sort (..)
     , SortActual (SortActual)
     )
 import qualified Kore.Sort as Sort.DoNotUse
-import Kore.Step.Rule
+import Kore.Step.RulePattern
     ( AllPathRule (..)
     , OnePathRule (..)
     , ReachabilityRule (..)
     , RulePattern (RulePattern)
     )
-import qualified Kore.Step.Rule as RulePattern
+import qualified Kore.Step.RulePattern as RulePattern
 import Kore.Syntax.ElementVariable
     ( ElementVariable (ElementVariable)
     )
@@ -92,21 +92,25 @@ class ExpandSingleConstructors rule where
 instance ExpandSingleConstructors (RulePattern Variable) where
     expandSingleConstructors
         metadataTools
-        rule@(RulePattern _ _ _ _ _ _)
+        rule@(RulePattern _ _ _ _ _)
       = case rule of
-        RulePattern {left, antiLeft, right, ensures, requires} ->
+        RulePattern
+            {left, antiLeft, requires
+            , rhs = RulePattern.RHS {existentials, right, ensures}
+            } ->
             let leftVariables :: [ElementVariable Variable]
                 leftVariables =
                     mapMaybe extractElementVariable
                     $ Set.toList
                     $ getFreeVariables
-                    $ TermLike.freeVariables left
+                    $ freeVariables left
                 allUnifiedVariables :: Set.Set (UnifiedVariable Variable)
                 allUnifiedVariables =
-                    getFreeVariables (RulePattern.freeVariables rule)
+                    getFreeVariables (freeVariables rule)
                 allElementVariables :: Set.Set (ElementVariable Variable)
                 allElementVariables = Set.fromList
-                    [ v | ElemVar v <- Set.toList allUnifiedVariables]
+                    $ [ v | ElemVar v <- Set.toList allUnifiedVariables]
+                        ++ existentials
                 expansion
                     :: Map.Map (UnifiedVariable Variable) (TermLike Variable)
                 expansion =
@@ -121,13 +125,15 @@ instance ExpandSingleConstructors (RulePattern Variable) where
                 { RulePattern.left = TermLike.substitute expansion left
                 , RulePattern.antiLeft =
                     TermLike.substitute expansion <$> antiLeft
-                , RulePattern.right = TermLike.substitute expansion right
-                , RulePattern.ensures =
-                    Predicate.substitute expansion ensures
                 , RulePattern.requires =
                     makeAndPredicate
                         (Predicate.substitute expansion requires)
                         substitutionPredicate
+                , RulePattern.rhs = RulePattern.RHS
+                    { existentials
+                    , right = TermLike.substitute expansion right
+                    , ensures = Predicate.substitute expansion ensures
+                    }
                 }
 
 instance ExpandSingleConstructors (OnePathRule Variable) where

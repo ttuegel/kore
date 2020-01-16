@@ -16,7 +16,7 @@ import qualified Data.Foldable as Foldable
 import Data.List.NonEmpty
     ( NonEmpty ((:|))
     )
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Text
     ( Text
     )
@@ -25,12 +25,17 @@ import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
 import Kore.Debug
+import qualified Kore.Internal.Condition as Condition
 import qualified Kore.Internal.MultiOr as MultiOr
 import Kore.Internal.Pattern as Pattern
 import Kore.Internal.Predicate
     ( Predicate
     )
 import qualified Kore.Internal.Predicate as Predicate
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( top
+    , topTODO
+    )
 import Kore.Internal.TermLike
 import Kore.Step.Simplification.Data
     ( Env (..)
@@ -268,7 +273,7 @@ unificationProcedureSuccessWithSimplifiers
             runSMT
             $ runSimplifier mockEnv
             $ Monad.Unify.runUnifierT
-            $ unificationProcedure term1 term2
+            $ unificationProcedure SideCondition.topTODO term1 term2
         let
             normalize
                 ::  Condition Variable
@@ -528,8 +533,7 @@ test_unification =
                 $ [(ElemVar $ ElementVariable $ V 1, var' 2)]
             )
         )
-    , let constr = Mock.functionalConstr10
-      in testCase "framed Map with concrete Map" $
+    , testCase "framed Map with concrete Map" $
             andSimplifySuccess
                 (UnificationTerm
                     (Mock.concatMap
@@ -550,12 +554,7 @@ test_unification =
                         ]
                     }
                 ]
-    , let
-        constr = Mock.functionalConstr10
-        constr20 = Mock.constrFunct20TestMap
-        x = mkElemVar Mock.x
-        y = mkElemVar Mock.y
-      in testCase "key outside of map" $
+    , testCase "key outside of map" $
             andSimplifySuccess
                 (UnificationTerm
                     (constr20
@@ -585,12 +584,7 @@ test_unification =
                         ]
                     }
                 ]
-    , let
-        constr = Mock.functionalConstr10
-        constr20 = Mock.constrFunct20TestMap
-        x = mkElemVar Mock.x
-        y = mkElemVar Mock.y
-      in testCase "key outside of map, symbolic opaque terms" $
+    , testCase "key outside of map, symbolic opaque terms" $
             andSimplifySuccess
                 (UnificationTerm
                     (constr20
@@ -622,11 +616,16 @@ test_unification =
                     , substitution =
                         [ ("x", constr a)
                         , ("y", a)
-                        , ("m", (mkElemVar Mock.xMap))
+                        , ("m", mkElemVar Mock.xMap)
                         ]
                     }
                 ]
     ]
+  where
+    constr = Mock.functionalConstr10
+    constr20 = Mock.constrFunct20TestMap
+    x = mkElemVar Mock.x
+    y = mkElemVar Mock.y
 
 test_evaluated :: [TestTree]
 test_evaluated =
@@ -843,7 +842,8 @@ simplifyPattern (UnificationTerm term) = do
     return $ UnificationTerm term'
   where
     simplifier = do
-        simplifiedPatterns <- Pattern.simplify expandedPattern
+        simplifiedPatterns <-
+            Pattern.simplify SideCondition.top expandedPattern
         case MultiOr.extractPatterns simplifiedPatterns of
             [] -> return Pattern.bottom
             (config : _) -> return config

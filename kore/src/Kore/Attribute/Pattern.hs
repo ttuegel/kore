@@ -31,12 +31,17 @@ import Data.Hashable
 import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
+import Kore.Attribute.Pattern.ConstructorLike
 import Kore.Attribute.Pattern.Created
 import Kore.Attribute.Pattern.Defined
-import Kore.Attribute.Pattern.FreeVariables
+import Kore.Attribute.Pattern.FreeVariables hiding
+    ( freeVariables
+    )
+import qualified Kore.Attribute.Pattern.FreeVariables as FreeVariables
+    ( freeVariables
+    )
 import Kore.Attribute.Pattern.Function
 import Kore.Attribute.Pattern.Functional
-import Kore.Attribute.Pattern.NonSimplifiable
 import Kore.Attribute.Pattern.Simplified
 import Kore.Attribute.Synthetic
 import Kore.Debug
@@ -60,7 +65,7 @@ data Pattern variable =
         , defined :: !Defined
         , created :: !Created
         , simplified :: !Simplified
-        , nonSimplifiable :: !NonSimplifiable
+        , constructorLike :: !ConstructorLike
         }
     deriving (Eq, GHC.Generic, Show)
 
@@ -83,7 +88,7 @@ instance
     , Synthetic Function base
     , Synthetic Defined base
     , Synthetic Simplified base
-    , Synthetic NonSimplifiable base
+    , Synthetic ConstructorLike base
     ) =>
     Synthetic (Pattern variable) base
   where
@@ -96,8 +101,13 @@ instance
             , defined = synthetic (defined <$> base)
             , created = synthetic (created <$> base)
             , simplified = synthetic (simplified <$> base)
-            , nonSimplifiable = synthetic (nonSimplifiable <$> base)
+            , constructorLike = synthetic (constructorLike <$> base)
             }
+
+instance HasConstructorLike (Pattern variable) where
+    extractConstructorLike
+        Pattern {constructorLike}
+      = constructorLike
 
 {- | Use the provided mapping to replace all variables in a 'Pattern'.
 
@@ -134,3 +144,8 @@ deleteFreeVariable
     -> Pattern variable
 deleteFreeVariable variable =
     Lens.over (field @"freeVariables") (bindVariable variable)
+
+
+instance HasFreeVariables (Pattern variable) variable where
+    freeVariables = freeVariables
+

@@ -25,7 +25,7 @@ import Data.Map.Strict
 import qualified Data.Map.Strict as Map
 
 import qualified Branch
-import Kore.Internal.Condition
+import Kore.Internal.Conditional
     ( Conditional (..)
     )
 import qualified Kore.Internal.Conditional as Conditional
@@ -34,6 +34,9 @@ import Kore.Internal.Predicate
     ( Predicate
     )
 import qualified Kore.Internal.Predicate as Predicate
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( topTODO
+    )
 import Kore.Internal.TermLike
 import Kore.Step.Simplification.AndTerms
     ( termUnification
@@ -174,5 +177,6 @@ normalizeExcept
 normalizeExcept conditional = do
     normalized <- normalizeOnce conditional
     let (term, predicate') = Conditional.splitTerm normalized
-    simplified <- Branch.alternate $ Simplifier.simplifyCondition predicate'
+    simplified <- Branch.alternate
+        $ Simplifier.simplifyCondition SideCondition.topTODO predicate'
     return simplified { term }

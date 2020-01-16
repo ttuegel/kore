@@ -29,12 +29,10 @@ module Kore.Repl.Data
     , runUnifierWithExplanation
     , StepResult(..)
     , LogType (..)
-    , LogScope (..)
     , ReplScript (..)
     , ReplMode (..)
     , OutputFile (..)
     , makeAuxReplOutput, makeKoreReplOutput
-    , makeLogScope
     ) where
 
 import Control.Applicative
@@ -50,6 +48,10 @@ import qualified Control.Monad.Trans.Class as Monad.Trans
 import qualified Data.Graph.Inductive.Graph as Graph
 import Data.Graph.Inductive.PatriciaTree
     ( Gr
+    )
+import qualified Data.GraphViz as Graph
+import Data.List
+    ( intercalate
     )
 import Data.List.NonEmpty
     ( NonEmpty (..)
@@ -70,7 +72,7 @@ import Data.Set
     ( Set
     )
 import qualified Data.Set as Set
-import Data.Text as Text
+import qualified Data.Text as Text
 import qualified Data.Text.Prettyprint.Doc as Pretty
 import qualified GHC.Generics as GHC
 import Numeric.Natural
@@ -78,10 +80,14 @@ import Numeric.Natural
 import Kore.Internal.Condition
     ( Condition
     )
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
 import Kore.Internal.TermLike
     ( TermLike
     )
-import qualified Kore.Logger.Output as Logger
+import Kore.Log
+import qualified Kore.Log.Registry as Log
 import Kore.Profiler.Data
     ( MonadProfiler
     )
@@ -179,17 +185,6 @@ data LogType
     | LogToFile !FilePath
     deriving (Eq, Show)
 
-newtype LogScope =
-    LogScope
-    { unLogScope :: Set.Set Logger.Scope }
-    deriving (Eq, Show, Semigroup, Monoid)
-
-makeLogScope :: [String] -> LogScope
-makeLogScope scopes =
-    LogScope
-    . Set.fromList
-    $ fmap (Logger.Scope . Text.pack) scopes
-
 data RuleReference
     = ByIndex (Either AxiomIndex ClaimIndex)
     | ByName RuleName
@@ -208,7 +203,7 @@ data ReplCommand
     -- ^ Show the nth axiom.
     | Prove !(Either ClaimIndex RuleName)
     -- ^ Drop the current proof state and re-initialize for the nth claim.
-    | ShowGraph !(Maybe FilePath)
+    | ShowGraph !(Maybe FilePath) !(Maybe Graph.GraphvizOutput)
     -- ^ Show the current execution graph.
     | ProveSteps !Natural
     -- ^ Do n proof steps from current node.
@@ -256,7 +251,7 @@ data ReplCommand
     -- ^ Load script from file
     | ProofStatus
     -- ^ Show proof status of each claim
-    | Log Logger.KoreLogOptions
+    | Log KoreLogOptions
     -- ^ Setup the Kore logger.
     | Exit
     -- ^ Exit the repl.
@@ -294,79 +289,90 @@ commandSet = Set.fromList
 helpText :: String
 helpText =
     "Available commands in the Kore REPL: \n\
-    \help                                  shows this help message\n\
-    \claim [n|<name>]                      shows the nth claim, the claim with\
-                                           \ <name> or if used without args\
-                                           \ shows the currently focused claim\n\
-    \axiom <n|name>                        shows the nth axiom or the axiom\
-                                           \ with <name>\n\
-    \prove <n|name>                        initializes proof mode for the nth\
-                                           \ claim or for the claim with <name>\n\
-    \graph [file]                          shows the current proof graph (*)(**)\n\
-    \                                      (saves image in .jpeg format if file\
-                                           \ argument is given; file extension\
-                                           \ is added automatically)\n\
-    \step [n]                              attempts to run 'n' proof steps at\
-                                           \the current node (n=1 by default)\n\
-    \stepf [n]                             attempts to run 'n' proof steps at\
-                                           \ the current node, stepping through\
-                                           \ branchings (n=1 by default)\n\
-    \select <n>                            select node id 'n' from the graph\n\
-    \config [n]                            shows the config for node 'n'\
-                                           \ (defaults to current node)\n\
-    \omit [cell]                           adds or removes cell to omit list\
-                                           \ (defaults to showing the omit\
-                                           \ list)\n\
-    \leafs                                 shows unevaluated or stuck leafs\n\
-    \rule [n]                              shows the rule for node 'n'\
-                                           \ (defaults to current node)\n\
-    \prec-branch [n]                       shows first preceding branch\
-                                           \ (defaults to current node)\n\
-    \children [n]                          shows direct children of node\
-                                           \ (defaults to current node)\n\
-    \label                                 shows all node labels\n\
-    \label <l>                             jump to a label\n\
-    \label <+l> [n]                        add a new label for a node\
-                                           \ (defaults to current node)\n\
-    \label <-l>                            remove a label\n\
-    \try (<a|c><num>)|<name>               attempts <a>xiom or <c>laim at\
-                                           \ index <num> or rule with <name>\n\
-    \tryf (<a|c><num>)|<name>              attempts <a>xiom or <c>laim at\
-                                           \ index <num> or rule with <name>,\
-                                           \ and if successful, it will apply it.\n\
-    \clear [n]                             removes all node children from the\
-                                           \ proof graph\n\
-    \                                      (defaults to current node)\n\
-    \save-session file                     saves the current session to file\n\
-    \alias <name> = <command>              adds as an alias for <command>\n\
-    \<alias>                               runs an existing alias\n\
-    \load file                             loads the file as a repl script\n\
-    \proof-status                          shows status for each claim\n\
-    \log <severity> [<scope>] <type>       configures the logging output\n\
-    \                                      <severity> can be debug, info,\
-                                           \ warning, error, or critical\n\
-    \                                      [<scope>] is the list of scopes\
-                                           \ separated by white spaces or\
-                                           \ commas, e.g. '[scope1, scope2]';\n\
-    \                                      these scopes are used for filtering\
-                                           \ the logged information, for example,\
-                                           \ '[]' will log all scopes\n\
-    \                                      <type> can be 'stderr' or\n\
-                                           \'file filename'\n\
-    \exit                                  exits the repl\
+    \help                                     shows this help message\n\
+    \claim [n|<name>]                         shows the nth claim, the claim with\
+                                              \ <name> or if used without args\
+                                              \ shows the currently focused claim\n\
+    \axiom <n|name>                           shows the nth axiom or the axiom\
+                                              \ with <name>\n\
+    \prove <n|name>                           initializes proof mode for the nth\
+                                              \ claim or for the claim with <name>\n\
+    \graph [file] [format]                    shows the current proof graph (*)(**);\
+                                              \ note that in the case of large graphs\
+                                              \ the image might be very zoomed out;\n\
+    \                                         (saves image in [format] if file\
+                                              \ argument is given; default is .svg\
+                                              \ in order to support large graphs;\n\
+    \                                         file extension is added automatically);\
+                                              \ accepted formats: svg, jpeg, png, pdf;\n\
+    \step [n]                                 attempts to run 'n' proof steps at\
+                                              \the current node (n=1 by default)\n\
+    \stepf [n]                                attempts to run 'n' proof steps at\
+                                              \ the current node, stepping through\
+                                              \ branchings (n=1 by default)\n\
+    \select <n>                               select node id 'n' from the graph\n\
+    \config [n]                               shows the config for node 'n'\
+                                              \ (defaults to current node)\n\
+    \omit [cell]                              adds or removes cell to omit list\
+                                              \ (defaults to showing the omit\
+                                              \ list)\n\
+    \leafs                                    shows unevaluated or stuck leafs\n\
+    \rule [n]                                 shows the rule for node 'n'\
+                                              \ (defaults to current node)\n\
+    \prec-branch [n]                          shows first preceding branch\
+                                              \ (defaults to current node)\n\
+    \children [n]                             shows direct children of node\
+                                              \ (defaults to current node)\n\
+    \label                                    shows all node labels\n\
+    \label <l>                                jump to a label\n\
+    \label <+l> [n]                           add a new label for a node\
+                                              \ (defaults to current node)\n\
+    \label <-l>                               remove a label\n\
+    \try (<a|c><num>)|<name>                  attempts <a>xiom or <c>laim at\
+                                              \ index <num> or rule with <name>\n\
+    \tryf (<a|c><num>)|<name>                 attempts <a>xiom or <c>laim at\
+                                              \ index <num> or rule with <name>,\
+                                              \ and if successful, it will apply it.\n\
+    \clear [n]                                removes all node children from the\
+                                              \ proof graph\n\
+    \                                         (defaults to current node)\n\
+    \save-session file                        saves the current session to file\n\
+    \alias <name> = <command>                 adds as an alias for <command>\n\
+    \<alias>                                  runs an existing alias\n\
+    \load file                                loads the file as a repl script\n\
+    \proof-status                             shows status for each claim\n\
+    \log <severity> \"[\"<entry>\"]\" <type>      configures the logging output\n\
+    \    <switch-timestamp>                   <severity> can be debug, info,\
+                                              \ warning, error, or critical;\
+                                              \ is optional and defaults to warning\n\
+    \                                         [<entry>] is the list of entries\
+                                              \ separated by white spaces or\
+                                              \ commas, e.g. '[entry1, entry2]';\n\
+    \                                         these entries are used for filtering\
+                                              \ the logged information, for example,\
+                                              \ '[]' will log all entries with <severity>;\n\
+    \                                         '[entry1, entry2]' will only log entries of\
+                                              \ types entry1 or entry2 as well as entries of\
+                                              \ severity <severity>.\n\
+    \                                         See available entry types below.\n\
+    \                                         <type> can be 'stderr' or\n\
+    \                                         <switch-timestamp> can be enable-log-timestamps\
+                                              \ or disable-log-timestamps\n\
+    \                                         'file filename'\n\
+    \exit                                     exits the repl\
     \\n\n\
     \Available modifiers:\n\
-    \<command> > file                      prints the output of 'command'\
-                                           \ to file\n\
-    \<command> >> file                     appends the output of 'command'\
-                                           \ to file\n\
-    \<command> | external script           pipes command to external script\
-                                           \ and prints the result in the\
-                                           \ repl\n\
-    \<command> | external script > file    pipes and then redirects the output\
-                                           \ of the piped command to a file\n\
-    \<command> | external script >> file   pipes and then appends the output\
-                                           \ of the piped command to a file\n\
+    \<command> > file                         prints the output of 'command'\
+                                              \ to file\n\
+    \<command> >> file                        appends the output of 'command'\
+                                              \ to file\n\
+    \<command> | external script              pipes command to external script\
+                                              \ and prints the result in the\
+                                              \ repl\n\
+    \<command> | external script > file       pipes and then redirects the output\
+                                              \ of the piped command to a file\n\
+    \<command> | external script >> file      pipes and then appends the output\
+                                              \ of the piped command to a file\n\
     \\n\
     \(*) If an edge is labeled as Simpl/RD it means that either the target node\n\
     \ was reached using the SMT solver or it was reached through the Remove \n\
@@ -381,7 +387,9 @@ helpText =
     \ indexing syntax for the try and tryf commands shouldn't be added\n\
     \ (e.g. a5 as a rule name).\n\
     \Names added via b) need to be prefixed with the module name followed by\n\
-    \ dot, e.g. IMP.myName"
+    \ dot, e.g. IMP.myName\n\
+    \Available entry types:\n    "
+    <> intercalate "\n    " (fmap Text.unpack Log.getEntryTypesAsText)
 
 -- | Determines whether the command needs to be stored or not. Commands that
 -- affect the outcome of the proof are stored.
@@ -392,7 +400,7 @@ shouldStore =
         Help             -> False
         ShowClaim _      -> False
         ShowAxiom _      -> False
-        ShowGraph _      -> False
+        ShowGraph _ _     -> False
         ShowConfig _     -> False
         ShowLeafs        -> False
         ShowRule _       -> False
@@ -435,7 +443,7 @@ data ReplState claim = ReplState
     -- ^ Map from labels to nodes
     , aliases :: Map String AliasDefinition
     -- ^ Map of command aliases
-    , koreLogOptions :: !Logger.KoreLogOptions
+    , koreLogOptions :: !KoreLogOptions
     -- ^ The log level, log scopes and log type decide what gets logged and where.
     }
     deriving (GHC.Generic)
@@ -451,13 +459,14 @@ data Config claim m = Config
         -> m (ExecutionGraph (Rule claim))
     -- ^ Stepper function, it is a partially applied 'verifyClaimStep'
     , unifier
-        :: TermLike Variable
+        :: SideCondition Variable
+        -> TermLike Variable
         -> TermLike Variable
         -> UnifierWithExplanation m (Condition Variable)
     -- ^ Unifier function, it is a partially applied 'unificationProcedure'
     --   where we discard the result since we are looking for unification
     --   failures
-    , logger  :: MVar (Logger.LogAction IO Logger.SomeEntry)
+    , logger  :: MVar (LogAction IO SomeEntry)
     -- ^ Logger function, see 'logging'.
     , outputFile :: OutputFile
     -- ^ Output resulting pattern to this file.
@@ -477,12 +486,12 @@ deriving instance MonadSMT m => MonadSMT (UnifierWithExplanation m)
 
 deriving instance MonadProfiler m => MonadProfiler (UnifierWithExplanation m)
 
-instance Logger.MonadLog m => Logger.MonadLog (UnifierWithExplanation m) where
-    logM entry = UnifierWithExplanation $ Logger.logM entry
+instance MonadLog m => MonadLog (UnifierWithExplanation m) where
+    logM entry = UnifierWithExplanation $ logM entry
     {-# INLINE logM #-}
 
     logScope locally (UnifierWithExplanation unifierT) =
-        UnifierWithExplanation (Logger.logScope locally unifierT)
+        UnifierWithExplanation (logScope locally unifierT)
     {-# INLINE logScope #-}
 
 deriving instance MonadSimplify m => MonadSimplify (UnifierWithExplanation m)

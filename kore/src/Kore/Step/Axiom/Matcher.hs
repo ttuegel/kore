@@ -33,13 +33,14 @@ import qualified Control.Monad.Trans as Monad.Trans
 import Control.Monad.Trans.Maybe
     ( MaybeT (..)
     )
-import Data.Align
-    ( zipWith
-    )
+import qualified Data.Align as Align
 import qualified Data.Foldable as Foldable
 import Data.Function
 import Data.Generics.Product
-import Data.Map
+import Data.List
+    ( foldl'
+    )
+import Data.Map.Strict
     ( Map
     )
 import qualified Data.Map.Strict as Map
@@ -54,6 +55,9 @@ import Data.Set
     ( Set
     )
 import qualified Data.Set as Set
+import Data.These
+    ( These (..)
+    )
 import qualified GHC.Generics as GHC
 import Prelude hiding
     ( zipWith
@@ -82,7 +86,7 @@ import Kore.Internal.TermLike hiding
     ( substitute
     )
 import qualified Kore.Internal.TermLike as TermLike
-import Kore.Step.Simplification.InjSimplifier
+import Kore.Step.Simplification.InjSimplifier as InjSimplifier
 import Kore.Step.Simplification.Simplify
     ( SimplifierVariable
     )
@@ -147,6 +151,7 @@ matchIncremental
 matchIncremental termLike1 termLike2 =
     Monad.State.evalStateT matcher initial
   where
+    matcher :: MatcherT variable unifier (Condition variable)
     matcher = pop >>= maybe done (\pair -> matchOne pair >> matcher)
 
     initial =
@@ -159,8 +164,8 @@ matchIncremental termLike1 termLike2 =
             , targets = free1
             , avoiding = free1 <> free2
             }
-    free1 = (getFreeVariables . TermLike.freeVariables) termLike1
-    free2 = (getFreeVariables . TermLike.freeVariables) termLike2
+    free1 = (getFreeVariables . freeVariables) termLike1
+    free2 = (getFreeVariables . freeVariables) termLike2
 
     -- | Check that matching is finished and construct the result.
     done :: MatcherT variable unifier (Condition variable)
@@ -204,6 +209,13 @@ matchEqualHeads (Pair (Endianness_ symbol1) (Endianness_ symbol2)) =
     Monad.guard (symbol1 == symbol2)
 matchEqualHeads (Pair (Signedness_ symbol1) (Signedness_ symbol2)) =
     Monad.guard (symbol1 == symbol2)
+matchEqualHeads
+    ( Pair
+        (InternalBytes_ sort1 byteString1)
+        (InternalBytes_ sort2 byteString2)
+    )
+  =
+    Monad.guard (sort1 == sort2 && byteString1 == byteString2)
 -- Non-terminal patterns
 matchEqualHeads (Pair (Ceil_ _ _ term1) (Ceil_ _ _ term2)) =
     push (Pair term1 term2)
@@ -276,7 +288,7 @@ matchApplication
     -> MaybeT (MatcherT variable unifier) ()
 matchApplication (Pair (App_ symbol1 children1) (App_ symbol2 children2)) = do
     Monad.guard (symbol1 == symbol2)
-    Foldable.traverse_ push (zipWith Pair children1 children2)
+    Foldable.traverse_ push (Align.zipWith Pair children1 children2)
 matchApplication _ = empty
 
 matchBuiltinList
@@ -313,7 +325,7 @@ matchBuiltinSet
     :: (MatchingVariable variable, MonadUnify unifier)
     => Pair (TermLike variable)
     -> MaybeT (MatcherT variable unifier) ()
-matchBuiltinSet (Pair (BuiltinSet_ set1) (BuiltinSet_ set2)) = do
+matchBuiltinSet (Pair (BuiltinSet_ set1) (BuiltinSet_ set2)) =
     matchNormalizedAc pushSetValue wrapTermLike normalized1 normalized2
   where
     normalized1 = Builtin.unwrapAc $ Builtin.builtinAcChild set1
@@ -347,7 +359,7 @@ matchInj
     -> MaybeT (MatcherT variable unifier) ()
 matchInj (Pair (Inj_ inj1) (Inj_ inj2)) = do
     InjSimplifier { unifyInj } <- Simplifier.askInjSimplifier
-    unifyInj inj1 inj2 & maybe empty (push . injChild)
+    unifyInj inj1 inj2 & either (const empty) (push . injChild)
 matchInj _ = empty
 
 -- * Implementation
@@ -421,7 +433,8 @@ matching solution (so that it is always normalized). @substitute@ ensures that:
 
  -}
 substitute
-    :: (MatchingVariable variable, MonadUnify unifier)
+    :: forall unifier variable
+    .  (MatchingVariable variable, MonadUnify unifier)
     => ElementVariable variable
     -> TermLike variable
     -> MaybeT (MatcherT variable unifier) ()
@@ -443,11 +456,13 @@ substitute eVariable termLike = do
 
     -- Push the dependent deferred pairs to the front of the queue.
     Foldable.traverse_ push dep
-    -- Apply the substitution to the queued pairs.
-    field @"queued" . Lens.mapped %= substitute2
 
-    -- Apply the substitution to the accumulated matching solution.
-    field @"substitution" . Lens.mapped %= substitute1
+    Monad.State.get
+        -- Apply the substitution to the queued pairs.
+        >>= (field @"queued" . traverse) substitute2
+        -- Apply the substitution to the accumulated matching solution.
+        >>= (field @"substitution" . traverse) substitute1
+        >>= Monad.State.put
     field @"predicate" . Lens.mapped %= Predicate.substitute subst
 
     return ()
@@ -455,8 +470,24 @@ substitute eVariable termLike = do
     variable = ElemVar eVariable
     isIndependent = not . any (hasFreeVariable variable)
     subst = Map.singleton variable termLike
-    substitute2 = fmap substitute1
-    substitute1 = Builtin.renormalize . TermLike.substitute subst
+
+    substitute2
+        :: Pair (TermLike variable)
+        -> MaybeT (MatcherT variable unifier) (Pair (TermLike variable))
+    substitute2 = traverse substitute1
+
+    substitute1
+        :: TermLike variable
+        -> MaybeT (MatcherT variable unifier) (TermLike variable)
+    substitute1 termLike' = do
+        injSimplifier <- Simplifier.askInjSimplifier
+        termLike'
+            & TermLike.substitute subst
+            -- Injected Map and Set keys must be properly normalized before
+            -- calling Builtin.renormalize.
+            & InjSimplifier.normalize injSimplifier
+            & Builtin.renormalize
+            & return
 
 {- | Record a set substitution in the matching solution.
 
@@ -551,7 +582,7 @@ escapeCheck
     => TermLike variable
     -> MaybeT (MatcherT variable unifier) ()
 escapeCheck termLike = do
-    let free = getFreeVariables (TermLike.freeVariables termLike)
+    let free = getFreeVariables (freeVariables termLike)
     MatcherState { bound } <- Monad.State.get
     Monad.guard (Set.disjoint bound free)
 
@@ -623,8 +654,14 @@ rightAlignLists internal1 internal2
     (head2, tail2) = Seq.splitAt (length list2 - length list1) list2
 
 matchNormalizedAc
-    :: MonadUnify unifier
-    => (Pair (Builtin.Value normalized (TermLike variable)) -> MatcherT variable unifier ())
+    :: forall normalized unifier variable
+    .   ( Builtin.AcWrapper normalized
+        , MatchingVariable variable
+        , MonadUnify unifier
+        )
+    =>  ( Pair (Builtin.Value normalized (TermLike variable))
+        -> MatcherT variable unifier ()
+        )
     ->  (Builtin.NormalizedAc normalized (TermLike Concrete) (TermLike variable)
         -> TermLike variable
         )
@@ -632,25 +669,122 @@ matchNormalizedAc
     -> Builtin.NormalizedAc normalized (TermLike Concrete) (TermLike variable)
     -> MaybeT (MatcherT variable unifier) ()
 matchNormalizedAc pushValue wrapTermLike normalized1 normalized2
-  | [] <- abstract2, [] <- opaque2
-  , [] <- abstract1
+  | [] <- excessAbstract1
   = do
-    Monad.guard (null excess1)
+    Monad.guard (null excessConcrete1)
     case opaque1 of
-        []       -> Monad.guard (null excess2)
-        [frame1] -> push (Pair frame1 normalized2')
-        _        -> empty
+        [] -> do
+            Monad.guard (null opaque2)
+            Monad.guard (null excessConcrete2)
+            Monad.guard (null excessAbstract2)
+        [frame1]
+          | null excessAbstract2
+          , null excessConcrete2
+          , [frame2] <- opaque2 ->
+            push (Pair frame1 frame2)
+          | otherwise ->
+            push (Pair frame1 normalized2')
+        _ -> empty
     Monad.Trans.lift $ Foldable.traverse_ pushValue concrete12
+    Monad.Trans.lift $ Foldable.traverse_ pushValue abstractMerge
   where
     normalized2' =
-        wrapTermLike normalized2 { Builtin.concreteElements = excess2 }
+        wrapTermLike normalized2
+            { Builtin.concreteElements = excessConcrete2
+            , Builtin.elementsWithVariables = excessAbstract2
+            }
     abstract1 = Builtin.elementsWithVariables normalized1
     concrete1 = Builtin.concreteElements normalized1
     opaque1 = Builtin.opaque normalized1
     abstract2 = Builtin.elementsWithVariables normalized2
     concrete2 = Builtin.concreteElements normalized2
     opaque2 = Builtin.opaque normalized2
-    excess1 = Map.difference concrete1 concrete2
-    excess2 = Map.difference concrete2 concrete1
+
+    excessConcrete1 = Map.difference concrete1 concrete2
+    excessConcrete2 = Map.difference concrete2 concrete1
     concrete12 = Map.intersectionWith Pair concrete1 concrete2
+
+    IntersectionDifference
+        { intersection = abstractMerge
+        , excessFirst = excessAbstract1
+        , excessSecond = excessAbstract2
+        } = abstractIntersectionMerge abstract1 abstract2
+
+    abstractIntersectionMerge
+        :: [Builtin.Element normalized (TermLike variable)]
+        -> [Builtin.Element normalized (TermLike variable)]
+        -> IntersectionDifference
+            (Builtin.Element normalized (TermLike variable))
+            (Pair (Builtin.Value normalized (TermLike variable)))
+    abstractIntersectionMerge first second =
+        keyBasedIntersectionDifference
+            elementMerger
+            (toMap first)
+            (toMap second)
+      where
+        toMap
+            :: [Builtin.Element normalized (TermLike variable)]
+            -> Map
+                (TermLike variable)
+                (Builtin.Element normalized (TermLike variable))
+        toMap elements =
+            let elementMap =
+                    Map.fromList
+                        (map
+                            (\ value -> (elementKey value, value))
+                            elements
+                        )
+            in if length elementMap == length elements
+                then elementMap
+                else error "Invalid map: duplicated keys."
+        elementKey
+            :: Builtin.Element normalized (TermLike variable)
+            -> TermLike variable
+        elementKey = fst . Builtin.unwrapElement
+        elementMerger
+            :: Builtin.Element normalized (TermLike variable)
+            -> Builtin.Element normalized (TermLike variable)
+            -> Pair (Builtin.Value normalized (TermLike variable))
+        elementMerger = Pair `on` (snd . Builtin.unwrapElement)
 matchNormalizedAc _ _ _ _ = empty
+
+data IntersectionDifference a b
+    = IntersectionDifference
+        { intersection :: ![b]
+        , excessFirst :: ![a]
+        , excessSecond :: ![a]
+        }
+
+emptyIntersectionDifference :: IntersectionDifference a b
+emptyIntersectionDifference = IntersectionDifference
+    {intersection = [], excessFirst = [], excessSecond = []}
+
+keyBasedIntersectionDifference
+    :: forall a b k
+    .  Ord k
+    => (a -> a -> b)
+    -> Map k a
+    -> Map k a
+    -> IntersectionDifference a b
+keyBasedIntersectionDifference merger firsts seconds =
+    foldl'
+        helper
+        emptyIntersectionDifference
+        (Map.elems $ Align.align firsts seconds)
+  where
+    helper
+        :: IntersectionDifference a b
+        -> These a a
+        -> IntersectionDifference a b
+    helper
+        result@IntersectionDifference {excessFirst}
+        (This first)
+      = result {excessFirst = first : excessFirst}
+    helper
+        result@IntersectionDifference {excessSecond}
+        (That second)
+      = result {excessSecond = second : excessSecond}
+    helper
+        result@IntersectionDifference{intersection}
+        (These first second)
+      = result {intersection = merger first second : intersection}

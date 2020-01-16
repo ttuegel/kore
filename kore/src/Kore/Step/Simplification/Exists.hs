@@ -60,6 +60,9 @@ import qualified Kore.Internal.Pattern as Pattern
     ( splitTerm
     )
 import qualified Kore.Internal.Predicate as Predicate
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
 import Kore.Internal.TermLike
     ( ElementVariable
     , pattern Equals_
@@ -140,10 +143,11 @@ The simplification of exists x . (pat and pred and subst) is equivalent to:
 -}
 simplify
     :: (SimplifierVariable variable, MonadSimplify simplifier)
-    => Exists Sort variable (OrPattern variable)
+    => SideCondition variable
+    -> Exists Sort variable (OrPattern variable)
     -> simplifier (OrPattern variable)
-simplify Exists { existsVariable, existsChild } =
-    simplifyEvaluated existsVariable existsChild
+simplify sideCondition Exists { existsVariable, existsChild } =
+    simplifyEvaluated sideCondition existsVariable existsChild
 
 {- TODO (virgil): Preserve pattern sorts under simplification.
 
@@ -160,14 +164,15 @@ even more useful to carry around.
 -}
 simplifyEvaluated
     :: (SimplifierVariable variable, MonadSimplify simplifier)
-    => ElementVariable variable
+    => SideCondition variable
+    -> ElementVariable variable
     -> OrPattern variable
     -> simplifier (OrPattern variable)
-simplifyEvaluated variable simplified
+simplifyEvaluated sideCondition variable simplified
   | OrPattern.isTrue simplified  = return simplified
   | OrPattern.isFalse simplified = return simplified
   | otherwise = do
-    evaluated <- traverse (makeEvaluate [variable]) simplified
+    evaluated <- traverse (makeEvaluate sideCondition [variable]) simplified
     return (OrPattern.flatten evaluated)
 
 {-| Evaluates a multiple 'Exists' given a pattern and a list of
@@ -180,10 +185,11 @@ See 'simplify' for detailed documentation.
 makeEvaluate
     :: forall simplifier variable
     .  (SimplifierVariable variable, MonadSimplify simplifier)
-    => [ElementVariable variable]
+    => SideCondition variable
+    -> [ElementVariable variable]
     -> Pattern variable
     -> simplifier (OrPattern variable)
-makeEvaluate variables original = do
+makeEvaluate sideCondition variables original = do
     let sortedVariables = sortBy substVariablesFirst variables
     fmap OrPattern.fromPatterns
         . Branch.gather
@@ -194,11 +200,12 @@ makeEvaluate variables original = do
         -> Pattern variable
         -> BranchT simplifier (Pattern variable)
     makeEvaluateWorker variable original' = do
-        normalized <- simplifyCondition original'
+        normalized <- simplifyCondition sideCondition original'
         let Conditional { substitution = normalizedSubstitution } = normalized
         case splitSubstitution variable normalizedSubstitution of
             (Left boundTerm, freeSubstitution) ->
                 makeEvaluateBoundLeft
+                    sideCondition
                     variable
                     boundTerm
                     normalized { Conditional.substitution = freeSubstitution }
@@ -212,9 +219,11 @@ makeEvaluate variables original = do
                         , Conditional.substitution = freeSubstitution
                         }
                     else makeEvaluateBoundRight
+                        sideCondition
                         variable
                         freeSubstitution
-                        normalized { Conditional.substitution = boundSubstitution }
+                        normalized
+                            { Conditional.substitution = boundSubstitution }
 
     substVariablesFirst
         :: ElementVariable variable
@@ -222,9 +231,9 @@ makeEvaluate variables original = do
         -> Ordering
     substVariablesFirst var1 var2
         | var1 `elem` substVariables
-        , not (var2 `elem` substVariables)
+        , notElem var2 substVariables
         = LT
-        | not (var1 `elem` substVariables)
+        | notElem var1 substVariables
         , var2 `elem` substVariables
         = GT
         | otherwise = EQ
@@ -296,11 +305,12 @@ See also: 'quantifyPattern'
  -}
 makeEvaluateBoundLeft
     :: (SimplifierVariable variable, MonadSimplify simplifier)
-    => ElementVariable variable  -- ^ quantified variable
+    => SideCondition variable
+    -> ElementVariable variable  -- ^ quantified variable
     -> TermLike variable  -- ^ substituted term
     -> Pattern variable
     -> BranchT simplifier (Pattern variable)
-makeEvaluateBoundLeft variable boundTerm normalized
+makeEvaluateBoundLeft sideCondition variable boundTerm normalized
   = withoutFreeVariable (ElemVar variable) boundTerm $ do
         let
             boundSubstitution = Map.singleton (ElemVar variable) boundTerm
@@ -313,7 +323,8 @@ makeEvaluateBoundLeft variable boundTerm normalized
                         Predicate.substitute boundSubstitution
                         $ Conditional.predicate normalized
                     }
-        orPattern <- Monad.Trans.lift $ Pattern.simplify substituted
+        orPattern <-
+            Monad.Trans.lift $ Pattern.simplify sideCondition substituted
         Branch.scatter (MultiOr.extractPatterns orPattern)
 
 {- | Existentially quantify a variable in the given 'Pattern'.
@@ -329,12 +340,14 @@ See also: 'quantifyPattern'
 makeEvaluateBoundRight
     :: forall variable simplifier
     . (SimplifierVariable variable, MonadSimplify simplifier)
-    => ElementVariable variable  -- ^ variable to be quantified
+    => SideCondition variable
+    -> ElementVariable variable  -- ^ variable to be quantified
     -> Substitution variable  -- ^ free substitution
     -> Pattern variable  -- ^ pattern to quantify
     -> BranchT simplifier (Pattern variable)
-makeEvaluateBoundRight variable freeSubstitution normalized = do
+makeEvaluateBoundRight sideCondition variable freeSubstitution normalized = do
     orCondition <- Monad.Trans.lift $ And.simplifyEvaluatedMultiPredicate
+        sideCondition
         (MultiAnd.make
             [   OrCondition.fromCondition quantifyCondition
             ,   OrCondition.fromCondition

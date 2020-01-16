@@ -46,9 +46,10 @@ import Data.Coerce
 import Data.List.NonEmpty
     ( NonEmpty ((:|))
     )
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Maybe
-    ( mapMaybe
+    ( fromMaybe
+    , mapMaybe
     )
 import Data.Text
     ( Text
@@ -92,8 +93,11 @@ import Kore.Internal.Predicate
     ( makeMultipleOrPredicate
     , unwrapPredicate
     )
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( top
+    , topTODO
+    )
 import Kore.Internal.TermLike
-import qualified Kore.Logger as Log
 import qualified Kore.ModelChecker.Bounded as Bounded
 import Kore.Profiler.Data
     ( MonadProfiler
@@ -104,17 +108,12 @@ import qualified Kore.Profiler.Profile as Profiler
 import qualified Kore.Repl as Repl
 import qualified Kore.Repl.Data as Repl.Data
 import Kore.Step
-import Kore.Step.Rule
+import Kore.Step.EqualityPattern
     ( EqualityRule
-    , ReachabilityRule (..)
-    , RewriteRule (RewriteRule)
-    , RulePattern (RulePattern)
-    , extractImplicationClaims
-    , extractRewriteAxioms
-    , getRewriteRule
     )
-import Kore.Step.Rule as RulePattern
-    ( RulePattern (..)
+import Kore.Step.Rule
+    ( extractImplicationClaims
+    , extractRewriteAxioms
     )
 import qualified Kore.Step.Rule.Combine as Rules
     ( mergeRules
@@ -125,6 +124,15 @@ import Kore.Step.Rule.Expand
     )
 import Kore.Step.Rule.Simplify
     ( SimplifyRuleLHS (..)
+    )
+import Kore.Step.RulePattern
+    ( ReachabilityRule (..)
+    , RewriteRule (RewriteRule)
+    , RulePattern (RulePattern)
+    , getRewriteRule
+    )
+import Kore.Step.RulePattern as RulePattern
+    ( RulePattern (..)
     )
 import Kore.Step.Search
     ( searchGraph
@@ -144,12 +152,21 @@ import Kore.Step.Simplification.Simplify
 import qualified Kore.Step.Strategy as Strategy
 import qualified Kore.Strategies.Goal as Goal
 import Kore.Strategies.Verification
-    ( Claim
+    ( AllClaims (AllClaims)
+    , AlreadyProven (AlreadyProven)
+    , Axioms (Axioms)
+    , Claim
+    , StuckVerification (StuckVerification)
+    , ToProve (ToProve)
     , verify
+    )
+import qualified Kore.Strategies.Verification as StuckVerification
+    ( StuckVerification (..)
     )
 import Kore.Unparser
     ( unparseToText
     )
+import qualified Log
 import SMT
     ( MonadSMT
     , SMT
@@ -167,7 +184,7 @@ type Equality = EqualityRule Variable
 type ExecutionGraph = Strategy.ExecutionGraph Config (RewriteRule Variable)
 
 -- | A collection of rules and simplifiers used during execution.
-data Initialized = Initialized { rewriteRules :: ![Rewrite] }
+newtype Initialized = Initialized { rewriteRules :: [Rewrite] }
 
 -- | The products of execution: an execution graph, and assorted simplifiers.
 data Execution =
@@ -184,16 +201,17 @@ exec
         , MonadSMT smt
         , MonadUnliftIO smt
         )
-    => VerifiedModule StepperAttributes Attribute.Axiom
+    => Limit Natural
+    -> VerifiedModule StepperAttributes Attribute.Axiom
     -- ^ The main module
     -> ([Rewrite] -> [Strategy (Prim Rewrite)])
     -- ^ The strategy to use for execution; see examples in "Kore.Step.Step"
     -> TermLike Variable
     -- ^ The input pattern
     -> smt (TermLike Variable)
-exec verifiedModule strategy initialTerm =
+exec breadthLimit verifiedModule strategy initialTerm =
     evalSimplifier verifiedModule' $ do
-        execution <- execute verifiedModule' strategy initialTerm
+        execution <- execute breadthLimit verifiedModule' strategy initialTerm
         let
             Execution { executionGraph } = execution
             finalConfig = pickLongest executionGraph
@@ -233,7 +251,7 @@ execGetExitCode indexedModule strategy' finalTerm =
         Just mkExitCodeSymbol -> do
             exitCodePattern <-
                 -- TODO (thomas.tuegel): Run in original execution context.
-                exec indexedModule strategy'
+                exec (Limit 1) indexedModule strategy'
                 $ mkApplySymbol (mkExitCodeSymbol []) [finalTerm]
             case exitCodePattern of
                 Builtin_ (Domain.BuiltinInt (Domain.InternalInt _ exit))
@@ -248,7 +266,8 @@ search
         , MonadSMT smt
         , MonadUnliftIO smt
         )
-    => VerifiedModule StepperAttributes Attribute.Axiom
+    => Limit Natural
+    -> VerifiedModule StepperAttributes Attribute.Axiom
     -- ^ The main module
     -> ([Rewrite] -> [Strategy (Prim Rewrite)])
     -- ^ The strategy to use for execution; see examples in "Kore.Step.Step"
@@ -259,14 +278,18 @@ search
     -> Search.Config
     -- ^ The bound on the number of search matches and the search type
     -> smt (TermLike Variable)
-search verifiedModule strategy termLike searchPattern searchConfig =
+search breadthLimit verifiedModule strategy termLike searchPattern searchConfig
+  =
     evalSimplifier verifiedModule $ do
-        execution <- execute verifiedModule strategy termLike
+        execution <- execute breadthLimit verifiedModule strategy termLike
         let
             Execution { executionGraph } = execution
             match target config = Search.matchWith target config
         solutionsLists <-
-            searchGraph searchConfig (match searchPattern) executionGraph
+            searchGraph
+                searchConfig
+                (match SideCondition.topTODO searchPattern)
+                executionGraph
         let
             solutions = concatMap MultiOr.extractPatterns solutionsLists
             orPredicate =
@@ -287,29 +310,61 @@ prove
         )
     => Strategy.GraphSearchOrder
     -> Limit Natural
+    -> Limit Natural
     -> VerifiedModule StepperAttributes Attribute.Axiom
     -- ^ The main module
     -> VerifiedModule StepperAttributes Attribute.Axiom
     -- ^ The spec module
-    -> smt (Either (TermLike Variable) ())
-prove searchOrder limit definitionModule specModule =
-    evalProver definitionModule specModule
+    -> Maybe (VerifiedModule StepperAttributes Attribute.Axiom)
+    -- ^ The module containing the claims that were proven in a previous run.
+    -> smt
+        (Either
+            (StuckVerification (TermLike Variable) (ReachabilityRule Variable))
+            ()
+        )
+prove
+    searchOrder
+    breadthLimit
+    depthLimit
+    definitionModule
+    specModule
+    maybeAlreadyProvenModule
+  =
+    evalProver definitionModule specModule maybeAlreadyProvenModule
     $ \initialized -> do
-        let InitializedProver { axioms, claims } = initialized
+        let InitializedProver { axioms, claims, alreadyProven } = initialized
         result <-
             runExceptT
             $ verify
+                breadthLimit
                 searchOrder
-                claims
-                axioms
-                (map (\x -> (x,limit)) (extractUntrustedClaims' claims))
-        return $ Bifunctor.first Pattern.toTermLike result
+                (AllClaims claims)
+                (Axioms axioms)
+                (AlreadyProven (map unparseToText alreadyProven))
+                (ToProve
+                    (map (\x -> (x,depthLimit))
+                        (extractUntrustedClaims' claims)
+                    )
+                )
+        return $ Bifunctor.first stuckVerificationPatternToTerm result
   where
     extractUntrustedClaims'
         :: [ReachabilityRule Variable]
         -> [ReachabilityRule Variable]
     extractUntrustedClaims' =
         filter (not . Goal.isTrusted)
+
+    stuckVerificationPatternToTerm
+        :: StuckVerification (Pattern Variable) claim
+        -> StuckVerification (TermLike Variable) claim
+    stuckVerificationPatternToTerm
+        stuck@StuckVerification {stuckDescription}
+      =
+        stuck
+            { StuckVerification.stuckDescription =
+                Pattern.toTermLike stuckDescription
+            }
+
 
 -- | Initialize and run the repl with the main and spec modules. This will loop
 -- the repl until the user exits.
@@ -318,6 +373,8 @@ proveWithRepl
     -- ^ The main module
     -> VerifiedModule StepperAttributes Attribute.Axiom
     -- ^ The spec module
+    -> Maybe (VerifiedModule StepperAttributes Attribute.Axiom)
+    -- ^ The module containing the claims that were proven in a previous run.
     -> MVar (Log.LogAction IO Log.SomeEntry)
     -> Repl.Data.ReplScript
     -- ^ Optional script
@@ -329,12 +386,13 @@ proveWithRepl
 proveWithRepl
     definitionModule
     specModule
+    maybeAlreadyProvenModule
     mvar
     replScript
     replMode
     outputFile
   =
-    evalProver definitionModule specModule
+    evalProver definitionModule specModule maybeAlreadyProvenModule
     $ \initialized -> do
         let InitializedProver { axioms, claims } = initialized
         Repl.runRepl axioms claims mvar replScript replMode outputFile
@@ -347,13 +405,14 @@ boundedModelCheck
         , MonadUnliftIO smt
         )
     => Limit Natural
+    -> Limit Natural
     -> VerifiedModule StepperAttributes Attribute.Axiom
     -- ^ The main module
     -> VerifiedModule StepperAttributes Attribute.Axiom
     -- ^ The spec module
     -> Strategy.GraphSearchOrder
     -> smt (Bounded.CheckResult (TermLike Variable))
-boundedModelCheck limit definitionModule specModule searchOrder =
+boundedModelCheck breadthLimit depthLimit definitionModule specModule searchOrder =
     evalSimplifier definitionModule $ initialize definitionModule
     $ \initialized -> do
         let Initialized { rewriteRules } = initialized
@@ -364,9 +423,10 @@ boundedModelCheck limit definitionModule specModule searchOrder =
             claims = fmap makeClaim specClaims
 
         Bounded.checkClaim
+            breadthLimit
             (Bounded.bmcStrategy axioms)
             searchOrder
-            (head claims, limit)
+            (head claims, depthLimit)
 
 -- | Rule merging
 mergeAllRules
@@ -517,9 +577,8 @@ makeClaim (attributes, ruleType@(Goal.toRulePattern -> rule)) =
         { attributes = attributes
         , left = left rule
         , antiLeft = antiLeft rule
-        , right = right rule
         , requires = requires rule
-        , ensures = ensures rule
+        , rhs = rhs rule
         }
 
 simplifyRuleOnSecond
@@ -533,21 +592,23 @@ simplifyRuleOnSecond (atts, rule) = do
 -- | Construct an execution graph for the given input pattern.
 execute
     :: MonadSimplify simplifier
-    => VerifiedModule StepperAttributes Attribute.Axiom
+    => Limit Natural
+    -> VerifiedModule StepperAttributes Attribute.Axiom
     -- ^ The main module
     -> ([Rewrite] -> [Strategy (Prim Rewrite)])
     -- ^ The strategy to use for execution; see examples in "Kore.Step.Step"
     -> TermLike Variable
     -- ^ The input pattern
     -> simplifier Execution
-execute verifiedModule strategy inputPattern =
-    Log.withLogScope "setUpConcreteExecution"
-    $ initialize verifiedModule $ \initialized -> do
+execute breadthLimit verifiedModule strategy inputPattern =
+    initialize verifiedModule $ \initialized -> do
         let Initialized { rewriteRules } = initialized
         simplifier <- Simplifier.askSimplifierTermLike
         axiomIdToSimplifier <- Simplifier.askSimplifierAxioms
         simplifiedPatterns <-
-            Pattern.simplify (Pattern.fromTermLike inputPattern)
+            Pattern.simplify
+                SideCondition.top
+                (Pattern.fromTermLike inputPattern)
         let
             initialPattern =
                 case MultiOr.extractPatterns simplifiedPatterns of
@@ -555,7 +616,8 @@ execute verifiedModule strategy inputPattern =
                     (config : _) -> config
               where
                 patternSort = termLikeSort inputPattern
-            runStrategy' = runStrategy transitionRule (strategy rewriteRules)
+            runStrategy' =
+                runStrategy breadthLimit transitionRule (strategy rewriteRules)
         executionGraph <- runStrategy' initialPattern
         return Execution
             { simplifier
@@ -589,6 +651,7 @@ data InitializedProver =
     InitializedProver
         { axioms :: ![Goal.Rule (ReachabilityRule Variable)]
         , claims :: ![ReachabilityRule Variable]
+        , alreadyProven :: ![ReachabilityRule Variable]
         }
 
 data MaybeChanged a = Changed !a | Unchanged !a
@@ -603,9 +666,10 @@ initializeProver
     .  MonadSimplify simplifier
     => VerifiedModule StepperAttributes Attribute.Axiom
     -> VerifiedModule StepperAttributes Attribute.Axiom
+    -> Maybe (VerifiedModule StepperAttributes Attribute.Axiom)
     -> (InitializedProver -> simplifier a)
     -> simplifier a
-initializeProver definitionModule specModule within =
+initializeProver definitionModule specModule maybeAlreadyProvenModule within =
     initialize definitionModule
     $ \initialized -> do
         tools <- Simplifier.askMetadataTools
@@ -631,8 +695,15 @@ initializeProver definitionModule specModule within =
                 simplified <- simplifyRuleLhs rule
                 return (MultiAnd.extractPatterns simplified)
 
-        Log.withLogScope (Log.Scope "ExpandedClaim")
-            $ mapM_ (logChangedClaim . snd) changedSpecClaims
+            maybeClaimsAlreadyProven
+                :: Maybe [(Attribute.Axiom, ReachabilityRule Variable)]
+            maybeClaimsAlreadyProven =
+                Goal.extractClaims <$> maybeAlreadyProvenModule
+            claimsAlreadyProven
+                :: [(Attribute.Axiom, ReachabilityRule Variable)]
+            claimsAlreadyProven = fromMaybe [] maybeClaimsAlreadyProven
+
+        mapM_ (logChangedClaim . snd) changedSpecClaims
 
         let specClaims :: [(Attribute.Axiom, ReachabilityRule Variable)]
             specClaims =
@@ -646,7 +717,9 @@ initializeProver definitionModule specModule within =
             $ traverse simplifyRuleOnSecond (concat simplifiedSpecClaims)
         let claims = fmap makeClaim specAxioms
             axioms = coerce rewriteRules
-            initializedProver = InitializedProver { axioms, claims}
+            alreadyProven = fmap makeClaim claimsAlreadyProven
+            initializedProver =
+                InitializedProver {axioms, claims, alreadyProven}
         within initializedProver
   where
     expandClaim
@@ -678,9 +751,15 @@ evalProver
     -- ^ The main module
     -> VerifiedModule StepperAttributes Attribute.Axiom
     -- ^ The spec module
+    -> Maybe (VerifiedModule StepperAttributes Attribute.Axiom)
+    -- ^ The module containing the claims that were proven in a previous run.
     -> (InitializedProver -> Simplifier.SimplifierT smt a)
     -- The prover
     -> smt a
-evalProver definitionModule specModule prover =
+evalProver definitionModule specModule maybeAlreadyProvenModule prover =
     evalSimplifier definitionModule
-    $ initializeProver definitionModule specModule prover
+    $ initializeProver
+        definitionModule
+        specModule
+        maybeAlreadyProvenModule
+        prover

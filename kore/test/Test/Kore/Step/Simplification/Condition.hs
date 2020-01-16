@@ -4,7 +4,7 @@ module Test.Kore.Step.Simplification.Condition
 
 import Test.Tasty
 
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 
 import Kore.Internal.Condition
     ( Condition
@@ -20,6 +20,12 @@ import Kore.Internal.Predicate
     ( makeAndPredicate
     , makeEqualsPredicate_
     , makeTruePredicate_
+    )
+import Kore.Internal.SideCondition
+    ( SideCondition
+    )
+import qualified Kore.Internal.SideCondition as SideCondition
+    ( top
     )
 import Kore.Internal.TermLike
 import Kore.Step.Axiom.EvaluationStrategy
@@ -272,7 +278,7 @@ runSimplifier
 runSimplifier patternSimplifierMap predicate =
     fmap MultiOr.make
     $ Test.runSimplifierBranch env
-    $ simplifier predicate
+    $ simplifier SideCondition.top predicate
   where
     env = Mock.env { Test.simplifierAxioms = patternSimplifierMap }
     ConditionSimplifier simplifier =
@@ -294,14 +300,14 @@ simpleEvaluator
     :: (SimplifierVariable variable, MonadSimplify simplifier)
     => [(TermLike variable, TermLike variable)]
     -> TermLike variable
-    -> Condition variable
+    -> SideCondition variable
     -> simplifier (AttemptedAxiom variable)
 simpleEvaluator [] _  _ = return NotApplicable
-simpleEvaluator ((from, to) : ps) patt predicate
+simpleEvaluator ((from, to) : ps) patt sideCondition
   | from == patt =
     return $ Applied AttemptedAxiomResults
         { results = OrPattern.fromTermLike to
         , remainders = OrPattern.bottom
         }
   | otherwise =
-    simpleEvaluator ps patt predicate
+    simpleEvaluator ps patt sideCondition

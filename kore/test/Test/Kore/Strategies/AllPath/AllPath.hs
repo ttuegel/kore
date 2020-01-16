@@ -21,6 +21,9 @@ import Data.Function
     )
 import Data.Functor.Identity
 import qualified Data.Graph.Inductive as Gr
+import Data.Limit
+    ( Limit (..)
+    )
 import qualified Data.Maybe as Maybe
 import Data.Sequence
     ( Seq
@@ -38,9 +41,6 @@ import GHC.Stack
 
 import Kore.Debug
 import qualified Kore.Internal.MultiOr as MultiOr
-import Kore.Logger
-    ( MonadLog (..)
-    )
 import Kore.Profiler.Data
     ( Configuration (..)
     , Destination (..)
@@ -56,6 +56,9 @@ import Kore.Step.Transition
 import qualified Kore.Step.Transition as Transition
 import qualified Kore.Strategies.Goal as Goal
 import qualified Kore.Strategies.ProofState as ProofState
+import Log
+    ( MonadLog (..)
+    )
 import SMT
     ( MonadSMT (..)
     )
@@ -137,8 +140,8 @@ test_transitionRule_CheckProven =
 test_transitionRule_CheckGoalRem :: [TestTree]
 test_transitionRule_CheckGoalRem =
     [ unmodified ProofState.Proven
-    , unmodified (ProofState.Goal    (A, B))
-    , done       (ProofState.GoalRemainder undefined)
+    , unmodified (ProofState.Goal          (A, B))
+    , done       (ProofState.GoalRemainder (A, B))
     ]
   where
     run = runTransitionRule ProofState.CheckGoalRemainder
@@ -230,6 +233,7 @@ test_runStrategy =
         runIdentity
         . unAllPathIdentity
         $ Strategy.runStrategy
+            Unlimited
             Goal.transitionRule
             (Foldable.toList $ Goal.strategy (unRule goal) [unRule goal] axioms)
             (ProofState.Goal . unRule $ goal)
@@ -379,13 +383,11 @@ instance Diff (Goal.Rule Goal)
 
 -- | The destination-removal rule for our unit test goal.
 removeDestination
-    :: ProofState
+    :: (Goal -> ProofState)
+    -> Goal
     -> Strategy.TransitionT (Goal.Rule Goal) m ProofState
-removeDestination (ProofState.Goal (src, dst)) =
-    return . ProofState.Goal $ (difference src dst, dst)
-removeDestination (ProofState.GoalRemainder (src, dst)) =
-    return . ProofState.GoalRemainder $ (difference src dst, dst)
-removeDestination state = return state
+removeDestination constr (src, dst) =
+    return . constr $ (difference src dst, dst)
 
 -- | The goal is trivially valid when the members are equal.
 isTriviallyValid :: Goal -> Bool

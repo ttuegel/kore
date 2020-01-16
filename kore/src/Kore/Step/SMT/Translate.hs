@@ -41,6 +41,9 @@ import Data.Map.Strict
     )
 import qualified Data.Map.Strict as Map
 import Data.Reflection
+import Prelude hiding
+    ( zipWith
+    )
 
 import Kore.Attribute.Hook
 import Kore.Attribute.Smtlib
@@ -212,9 +215,7 @@ translatePredicate translateUninterpreted predicate =
             , applicationChildren
             }
       = do
-        sexpr <- case translateSymbol applicationSymbolOrAlias of
-            Nothing -> empty  -- The symbol was not declared, give up.
-            Just sexpr -> return sexpr
+        sexpr <- maybe empty return $ translateSymbol applicationSymbolOrAlias
         children <-
             zipWithM
                 translatePattern
