@@ -563,6 +563,13 @@ instance
     (InternalVariable variable, Typeable variable)
     => SQL.Table (ReachabilityRule variable)
 
+instance
+    (InternalVariable variable, Typeable variable)
+    => SQL.Column (ReachabilityRule variable)
+  where
+    defineColumn = SQL.defineForeignKeyColumn
+    toColumn = SQL.toForeignKeyColumn
+
 toSentence :: ReachabilityRule Variable -> Verified.Sentence
 toSentence rule =
     Syntax.SentenceClaimSentence $ Syntax.SentenceClaim Syntax.SentenceAxiom
