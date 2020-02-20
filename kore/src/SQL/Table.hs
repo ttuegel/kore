@@ -4,6 +4,10 @@ License     : NCSA
 
 -}
 
+-- For instance Column Maybe below. This is actually safe because the Column
+-- instance runs through the Table instance.
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module SQL.Table
     ( defineForeignKeyColumn
     , toForeignKeyColumn
@@ -117,6 +121,10 @@ class Typeable a => Table a where
 instance Table ()
 
 instance (Column a, Typeable a) => Table (Maybe a)
+
+instance (Column a, Typeable a) => Column (Maybe a) where
+    defineColumn = defineForeignKeyColumn
+    toColumn = toForeignKeyColumn
 
 instance (Column a, Typeable a, Column b, Typeable b) => Table (Either a b)
 
