@@ -126,6 +126,7 @@ import Kore.Variables.UnifiedVariable
     ( UnifiedVariable (..)
     )
 import qualified Kore.Verified as Verified
+import qualified SQL
 
 {-| Defines the right-hand-side of a rewrite rule / claim
 -}
@@ -149,6 +150,17 @@ instance SOP.HasDatatypeInfo (RHS variable)
 instance Debug variable => Debug (RHS variable)
 
 instance (Debug variable, Diff variable) => Diff (RHS variable)
+
+instance
+    (InternalVariable variable, Typeable variable)
+    => SQL.Table (RHS variable)
+
+instance
+    (InternalVariable variable, Typeable variable)
+    => SQL.Column (RHS variable)
+  where
+    defineColumn = SQL.defineForeignKeyColumn
+    toColumn = SQL.toForeignKeyColumn
 
 {-| Given a collection of 'FreeVariables' and a RHS, it removes
 converts existential quantifications at the top of the term to implicit
@@ -235,6 +247,17 @@ instance InternalVariable variable => Pretty (RulePattern variable) where
 instance TopBottom (RulePattern variable) where
     isTop _ = False
     isBottom _ = False
+
+instance
+    (InternalVariable variable, Typeable variable)
+    => SQL.Table (RulePattern variable)
+
+instance
+    (InternalVariable variable, Typeable variable)
+    => SQL.Column (RulePattern variable)
+  where
+    defineColumn = SQL.defineForeignKeyColumn
+    toColumn = SQL.toForeignKeyColumn
 
 -- | Creates a basic, unconstrained, Equality pattern
 rulePattern
@@ -498,6 +521,17 @@ instance TopBottom (OnePathRule variable) where
     isTop _ = False
     isBottom _ = False
 
+instance
+    (InternalVariable variable, Typeable variable) =>
+    SQL.Table (OnePathRule variable)
+
+instance
+    (InternalVariable variable, Typeable variable) =>
+    SQL.Column (OnePathRule variable)
+  where
+    defineColumn = SQL.defineForeignKeyColumn
+    toColumn = SQL.toForeignKeyColumn
+
 {-  | Unified One-Path and All-Path Claim rule pattern.
 -}
 data ReachabilityRule variable
@@ -524,6 +558,10 @@ instance InternalVariable variable => Unparse (ReachabilityRule variable) where
 instance TopBottom (ReachabilityRule variable) where
     isTop _ = False
     isBottom _ = False
+
+instance
+    (InternalVariable variable, Typeable variable)
+    => SQL.Table (ReachabilityRule variable)
 
 toSentence :: ReachabilityRule Variable -> Verified.Sentence
 toSentence rule =
@@ -592,6 +630,16 @@ instance FromRulePattern (ReachabilityRule Variable) where
         OnePath $ coerce rulePat
     fromRulePattern (AllPath _) rulePat =
         AllPath $ coerce rulePat
+
+instance
+    (InternalVariable variable, Typeable variable)
+    => SQL.Table (AllPathRule variable)
+
+instance
+    (InternalVariable variable, Typeable variable)
+    => SQL.Column (AllPathRule variable) where
+    defineColumn = SQL.defineForeignKeyColumn
+    toColumn = SQL.toForeignKeyColumn
 
 {-| Reverses an 'RewriteRule' back into its 'Pattern' representation.
   Should be the inverse of 'Rule.termToAxiomPattern'.
