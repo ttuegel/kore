@@ -4,7 +4,10 @@ License     : NCSA
 
 -}
 
--- For instance Column Maybe below. This is actually safe because the Column
+-- For:
+--    * instance Column (Maybe a)
+--    * instance Column [a]
+-- below. This is actually safe because the Column
 -- instance runs through the Table instance.
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -127,6 +130,12 @@ instance (Column a, Typeable a) => Column (Maybe a) where
     toColumn = toForeignKeyColumn
 
 instance (Column a, Typeable a, Column b, Typeable b) => Table (Either a b)
+
+instance (Column a, Typeable a) => Table [a]
+
+instance (Column a, Typeable a) => Column [a] where
+    defineColumn = defineForeignKeyColumn
+    toColumn = toForeignKeyColumn
 
 {- | @(insertUniqueRow a)@ inserts @a@ into the table if not present.
 
