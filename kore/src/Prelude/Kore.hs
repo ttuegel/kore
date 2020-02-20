@@ -10,6 +10,9 @@ module Prelude.Kore
     -- * Functions
     , (&)
     , on
+    -- * Monad
+    , when
+    , unless
     -- * Maybe
     , isJust
     , isNothing
@@ -49,6 +52,10 @@ import Control.Error
     )
 import Control.Exception
     ( assert
+    )
+import Control.Monad
+    ( unless
+    , when
     )
 import Data.Function
     ( on

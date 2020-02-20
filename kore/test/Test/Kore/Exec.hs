@@ -13,7 +13,6 @@ import Control.Applicative
     ( liftA2
     )
 import Control.Exception as Exception
-import Control.Monad.Except
 import Data.Limit
     ( Limit (..)
     )
