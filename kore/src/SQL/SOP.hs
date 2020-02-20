@@ -42,7 +42,6 @@ module SQL.SOP
 import Prelude.Kore
 
 import qualified Control.Monad as Monad
-import qualified Data.Foldable as Foldable
 import Data.Functor.Product
 import Data.Proxy
     ( Proxy (..)
@@ -173,17 +172,18 @@ addColumnDefs names defs = do
             let ColumnDef { columnType } = defined
             addColumnType columnType
             let ColumnDef { columnConstraints } = defined
-            Foldable.for_ columnConstraints $ \constraint -> do
-                Query.addSpace
-                addColumnConstraint constraint
+            addColumnConstraints columnConstraints
             Query.addComma
         Query.add "id INTEGER PRIMARY KEY"
 
 addColumnType :: Monad monad => TypeName -> AccumT Query monad ()
 addColumnType = Query.addString . Column.getTypeName
 
-addColumnConstraint :: Monad monad => ColumnConstraint -> AccumT Query monad ()
-addColumnConstraint = Query.addString . Column.getColumnConstraint
+addColumnConstraints :: Monad monad => ColumnConstraints -> AccumT Query monad ()
+addColumnConstraints ColumnConstraints { notNull } = do
+    when notNull $ do
+        Query.addSpace
+        Query.addString "NOT NULL"
 
 defineColumns
     :: SOP.All Column fields

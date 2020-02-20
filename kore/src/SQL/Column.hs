@@ -9,10 +9,7 @@ module SQL.Column
     , getTypeName
     , typeInteger
     , typeText
-    , ColumnConstraint
-    , getColumnConstraint
-    , notNull
-    , primaryKey
+    , ColumnConstraints (..)
     , ColumnDef (..)
     , Column (..)
     , columnDef
@@ -23,15 +20,12 @@ module SQL.Column
 import Prelude.Kore
 
 import qualified Control.Lens as Lens
+import Data.Default
 import Data.Generics.Product.Fields
 import Data.Int
     ( Int64
     )
 import Data.Proxy
-import Data.Set
-    ( Set
-    )
-import qualified Data.Set as Set
 import Data.Text
     ( Text
     )
@@ -49,27 +43,30 @@ typeInteger = TypeName "INTEGER"
 typeText :: TypeName
 typeText = TypeName "TEXT"
 
-newtype ColumnConstraint = ColumnConstraint { getColumnConstraint :: String }
-    deriving (Eq, Ord, Read, Show)
+data ColumnConstraints =
+    ColumnConstraints
+        { notNull :: !Bool
+        }
+    deriving (GHC.Generic)
 
-notNull :: Set ColumnConstraint
-notNull = Set.singleton (ColumnConstraint "NOT NULL")
-
-primaryKey :: Set ColumnConstraint
-primaryKey = Set.singleton (ColumnConstraint "PRIMARY KEY")
+instance Default ColumnConstraints where
+    def =
+        ColumnConstraints
+            { notNull = False
+            }
 
 data ColumnDef =
     ColumnDef
         { columnType :: !TypeName
-        , columnConstraints :: !(Set ColumnConstraint)
+        , columnConstraints :: !ColumnConstraints
         }
     deriving (GHC.Generic)
 
 columnDef :: TypeName -> ColumnDef
-columnDef columnType = ColumnDef { columnType, columnConstraints = mempty }
+columnDef columnType = ColumnDef { columnType, columnConstraints = def }
 
 columnNotNull :: ColumnDef -> ColumnDef
-columnNotNull = Lens.over (field @"columnConstraints") (<> notNull)
+columnNotNull = Lens.set (field @"columnConstraints" . field @"notNull") True
 
 class Column a where
     defineColumn :: proxy a -> SQL ColumnDef

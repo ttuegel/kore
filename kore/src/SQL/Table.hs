@@ -32,7 +32,6 @@ import qualified Database.SQLite.Simple as SQLite
 
 import SQL.Column
     ( Column (..)
-    , ColumnConstraint
     , ColumnDef (..)
     , TypeName
     , defineTextColumn
