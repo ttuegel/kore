@@ -25,6 +25,8 @@ import Kore.Syntax.Variable
     ( SortedVariable (..)
     )
 import Kore.Unparser
+import qualified Pretty
+import qualified SQL
 
 -- | Element (singleton) Kore variables
 newtype ElementVariable variable
@@ -52,3 +54,7 @@ instance
   where
     lensVariableSort = _Unwrapped . lensVariableSort
     {-# INLINE lensVariableSort #-}
+
+instance Unparse variable => SQL.Column (ElementVariable variable) where
+    defineColumn = SQL.defineTextColumn
+    toColumn = SQL.toColumn . Pretty.renderText . Pretty.layoutOneLine . unparse
