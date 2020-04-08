@@ -284,7 +284,7 @@ logStateWhile
     -> Maybe Text
     -> log a
     -> log a
-logStateWhile state identifier secondaryIdentifier action =
+logStateWhile state identifier secondaryIdentifier =
     logWhile
         DebugAxiomEvaluation
             { identifier
@@ -292,7 +292,7 @@ logStateWhile state identifier secondaryIdentifier action =
             , logPatterns = False
             , state
             }
-        action
+{-# INLINE logStateWhile #-}
 
 logState
     :: MonadLog log
