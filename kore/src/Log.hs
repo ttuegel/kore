@@ -257,10 +257,9 @@ runLoggerT LoggerT { getLoggerT } logAction =
 {-# INLINE runLoggerT #-}
 
 instance Monad m => MonadLog (LoggerT m) where
-    logEntry entry = LoggerT $ do
-        LoggerEnv { logAction } <- ask
-        let entryLogger = fromLogAction @ActualEntry logAction
-        lift $ entryLogger <& toEntry entry
+    logEntry entry = do
+        someLogAction <- askLogAction
+        lift $ someLogAction <& toEntry entry
     {-# INLINE logEntry #-}
     {-# SCC logEntry "logEntry/LoggerT" #-}
 
