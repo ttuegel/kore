@@ -155,7 +155,7 @@ log
     -- ^ Message to be logged
     -> m ()
 log s t = logMsg $ LogMessage t s GHC.callStack
-{-# SCC log #-}
+-- {-# SCC log #-}
 
 -- | Logs using 'Debug' log level. See 'log'.
 logDebug
@@ -260,7 +260,7 @@ instance Monad m => MonadLog (LoggerT m) where
         someLogAction <- askLogAction
         lift $ someLogAction <& toEntry entry
     {-# INLINE logEntry #-}
-    {-# SCC logEntry "logEntry/LoggerT" #-}
+    -- {-# SCC logEntry "logEntry/LoggerT" #-}
 
     logWhile !entry2 action = do
         logEntry entry2
