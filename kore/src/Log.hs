@@ -201,7 +201,6 @@ class Monad m => MonadLog m where
         -> m ()
     logEntry = lift . logEntry
     {-# INLINE logEntry #-}
-    {-# SCC logEntry "logEntry/default" #-}
 
     logWhile :: Entry entry => entry -> m a -> m a
     default logWhile
