@@ -118,3 +118,4 @@ gather
     :: (InternalVariable variable, Monad m)
     => BranchT m (Condition variable) -> m (OrCondition variable)
 gather = MultiOr.gather
+{-# INLINE gather #-}
