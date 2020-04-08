@@ -103,18 +103,21 @@ whileMatch
     => ExceptT (MatchError (Target variable)) monad a
     -> ExceptT (ApplyEquationError variable) monad a
 whileMatch = withExceptT WhileMatch
+{-# INLINE whileMatch #-}
 
 whileApplyMatchResult
     :: Functor monad
     => ExceptT (ApplyMatchResultErrors (Target variable)) monad a
     -> ExceptT (ApplyEquationError variable) monad a
 whileApplyMatchResult = withExceptT WhileApplyMatchResult
+{-# INLINE whileApplyMatchResult #-}
 
 whileCheckRequires
     :: Functor monad
     => ExceptT (CheckRequiresError variable) monad a
     -> ExceptT (ApplyEquationError variable) monad a
 whileCheckRequires = withExceptT WhileCheckRequires
+{-# INLINE whileCheckRequires #-}
 
 instance SOP.Generic (ApplyEquationError variable)
 
