@@ -5,6 +5,7 @@ License     : NCSA
 -}
 
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -fno-prof-auto #-}
 
 module Kore.Internal.TermLike.TermLike
     ( Builtin
@@ -667,6 +668,7 @@ mapVariables mapElemVar mapSetVar termLike =
                         mapVariablesF mapElemVar mapSetVar
                         $ Env.env renaming <$> termLikeF
         in attrs' :< termLikeF'
+{-# SCC mapVariables #-}
 
 {- | Use the provided traversal to replace all variables in a 'TermLike'.
 
@@ -725,6 +727,7 @@ traverseVariables trElemVar trSetVar termLike =
                 -- because all the cases with variables are handled above.
                 traverseVariablesF askElementVariable askSetVariable
         (pure . Recursive.embed) (attrs' :< termLikeF')
+{-# SCC traverseVariables #-}
 
 {- | Transform a 'sequence'-like function into its dual with an 'Adjunction'.
 
@@ -1014,6 +1017,7 @@ externalizeFreshVariables termLike =
                         patt
                     >>= sequence
         (return . Recursive.embed) (attrs' :< patt')
+{-# SCC externalizeFreshVariables #-}
 
 updateCallStack
     :: forall variable
@@ -1042,6 +1046,7 @@ mkVar
     => UnifiedVariable variable
     -> TermLike variable
 mkVar = updateCallStack . synthesize . VariableF . Const
+{-# INLINE mkVar #-}
 
 depth :: TermLike variable -> Int
 depth = Recursive.fold levelDepth
