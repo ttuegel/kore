@@ -4,6 +4,8 @@ License     : NCSA
 
 -}
 
+{-# OPTIONS_GHC -fno-prof-auto #-}
+
 module Log
     (
     -- * Entries
@@ -153,6 +155,7 @@ log
     -- ^ Message to be logged
     -> m ()
 log s t = logMsg $ LogMessage t s GHC.callStack
+{-# SCC log #-}
 
 -- | Logs using 'Debug' log level. See 'log'.
 logDebug
@@ -198,6 +201,7 @@ class Monad m => MonadLog m where
         -> m ()
     logEntry = lift . logEntry
     {-# INLINE logEntry #-}
+    {-# SCC logEntry "logEntry/default" #-}
 
     logWhile :: Entry entry => entry -> m a -> m a
     default logWhile
@@ -258,6 +262,7 @@ instance Monad m => MonadLog (LoggerT m) where
         let entryLogger = fromLogAction @ActualEntry logAction
         lift $ entryLogger <& toEntry entry
     {-# INLINE logEntry #-}
+    {-# SCC logEntry "logEntry/LoggerT" #-}
 
     logWhile !entry2 action = do
         logEntry entry2

@@ -1,7 +1,11 @@
 {- |
 Copyright   : (c) Runtime Verification, 2019
 License     : NCSA
+
 -}
+
+{-# OPTIONS_GHC -fno-prof-auto #-}
+
 module Kore.Profiler.Data
     ( MonadProfiler (..)
     , profileEvent
