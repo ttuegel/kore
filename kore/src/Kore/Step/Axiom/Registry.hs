@@ -47,17 +47,14 @@ mkEvaluator PartitionedEquations { functionRules, simplificationRules } =
         (Just sEvaluator, Just dEvaluator) ->
             Just (simplifierWithFallback dEvaluator sEvaluator)
   where
-    simplificationEvaluator =
-        if null simplificationRules
-            then Nothing
-            else
-                Just . firstFullEvaluation
-                $ simplificationEvaluation
-                <$> simplificationRules
-    definitionEvaluator =
-        if null functionRules
-            then Nothing
-            else Just $ definitionEvaluation functionRules
+    simplificationEvaluator
+      | null simplificationRules = Nothing
+      | otherwise =
+        Just . firstFullEvaluation
+        $ map simplificationEvaluation simplificationRules
+    definitionEvaluator
+      | null functionRules = Nothing
+      | otherwise = Just $ definitionEvaluation functionRules
 
 mkEvaluatorRegistry
     :: Map AxiomIdentifier [Equation Variable]
