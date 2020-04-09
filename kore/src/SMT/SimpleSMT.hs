@@ -285,7 +285,7 @@ newSolver exe opts logger = do
             debug (Solver solverHandle logger) errs
 
     setOption solver ":print-success" "true"
-    setOption solver ":produce-models" "true"
+    -- setOption solver ":produce-models" "true"
     Monad.when featureProduceAssertions
         $ setOption solver ":produce-assertions" "true"
 
@@ -644,8 +644,8 @@ check solver = do
                 warn solver (buildText asserts)
             return Unknown
         Atom "sat"     -> do
-            model <- command solver (List [Atom "get-model"])
-            debug solver (buildText model)
+            -- model <- command solver (List [Atom "get-model"])
+            -- debug solver (buildText model)
             return Sat
         _ -> fail $ unlines
             [ "Unexpected result from the SMT solver:"
