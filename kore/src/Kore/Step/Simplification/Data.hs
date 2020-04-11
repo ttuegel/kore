@@ -11,6 +11,8 @@ Portability : portable
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-prof-auto #-}
 
+{-# OPTIONS_GHC -fno-prof-auto #-}
+
 module Kore.Step.Simplification.Data
     ( MonadSimplify (..), InternalVariable
     , Simplifier
@@ -158,6 +160,7 @@ runSimplifierBranch
     -- ^ simplifier computation
     -> smt [a]
 runSimplifierBranch env = runSimplifier env . gather
+{-# INLINE runSimplifierBranch #-}
 
 {- | Run a simplification, returning the result of only one branch.
 
@@ -168,6 +171,7 @@ that may branch.
  -}
 runSimplifier :: Env (SimplifierT smt) -> SimplifierT smt a -> smt a
 runSimplifier env simplifier = runReaderT (runSimplifierT simplifier) env
+{-# INLINE runSimplifier #-}
 
 {- | Evaluate a simplifier computation, returning the result of only one branch.
 
@@ -183,6 +187,7 @@ evalSimplifier
     => VerifiedModule Attribute.Symbol
     -> SimplifierT smt a
     -> smt a
+{-# SCC evalSimplifier #-}
 evalSimplifier verifiedModule simplifier = do
     !env <- runSimplifier earlyEnv initialize
     runReaderT (runSimplifierT simplifier) env
@@ -251,6 +256,5 @@ mapSimplifierT
     => (forall a . m a -> m a)
     -> SimplifierT m b
     -> SimplifierT m b
-mapSimplifierT f simplifierT =
-    SimplifierT
-    $ Morph.hoist f (runSimplifierT simplifierT)
+mapSimplifierT f = SimplifierT . Morph.hoist f . runSimplifierT
+{-# INLINE mapSimplifierT #-}
