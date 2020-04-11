@@ -7,6 +7,8 @@ License     : NCSA
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-prof-auto #-}
 
+{-# OPTIONS_GHC -fno-prof-auto #-}
+
 module Kore.Internal.TermLike.TermLike
     ( Builtin
     , Evaluated (..)
@@ -833,6 +835,7 @@ ensuring that no 'Variable' in the result is accidentally captured.
 
  -}
 externalizeFreshVariables :: TermLike Variable -> TermLike Variable
+{-# SCC externalizeFreshVariables #-}
 externalizeFreshVariables termLike =
     Reader.runReader
         (Recursive.fold externalizeFreshVariablesWorker termLike)
@@ -1045,6 +1048,7 @@ mkVar
     => InternalVariable variable
     => UnifiedVariable variable
     -> TermLike variable
+{-# INLINE mkVar #-}
 mkVar = updateCallStack . synthesize . VariableF . Const
 {-# INLINE mkVar #-}
 
