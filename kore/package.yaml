@@ -1,12 +1,10 @@
+_package-common: !include "../package-common.yaml"
+
 name:                kore
-version:             0.20.0.0
 github:              "kframework/kore"
-license:             NCSA
-license-file:        LICENSE
-author:              "Virgil Serbanuta"
-maintainer:          "virgil.serbanuta@runtimeverification.com"
-copyright:           "2018-2020 Runtime Verification Inc"
 category:            Language
+<<: *version
+<<: *legal
 
 extra-source-files:
   - README.md
@@ -24,14 +22,10 @@ extra-source-files:
 description: Please see the [README](README.md) file.
 
 flags:
-  threaded:
-    description: Use the threaded runtime. Recommended to disable for profiling.
-    manual: true
-    default: true
-  release:
-    description: Build a faster runtime, at the expense of a slower build.
-    manual: true
-    default: false
+  <<: *flags
+  <<: *flag_threaded
+
+<<: *when_release
 
 dependencies:
   - base >=4.7
@@ -91,69 +85,9 @@ dependencies:
 build-tools:
   - tasty-discover:tasty-discover >=4.2
 
-default-extensions:
-  - BangPatterns
-  - ConstraintKinds
-  - DataKinds
-  - DefaultSignatures
-  - DeriveDataTypeable
-  - DeriveFoldable
-  - DeriveFunctor
-  - DeriveGeneric
-  - DeriveTraversable
-  - DerivingVia
-  - DuplicateRecordFields
-  - EmptyCase
-  - ExistentialQuantification
-  - FlexibleContexts
-  - FlexibleInstances
-  - FunctionalDependencies
-  - GADTs
-  - GeneralizedNewtypeDeriving
-  - InstanceSigs
-  - KindSignatures
-  - LambdaCase
-  - MultiParamTypeClasses
-  - NamedFieldPuns
-  - NoImplicitPrelude
-  - OverloadedStrings
-  - PatternSynonyms
-  - RankNTypes
-  - ScopedTypeVariables
-  - StandaloneDeriving
-  - TypeApplications
-  - TypeFamilies
-  - TypeOperators
-  - TypeSynonymInstances
-  - ViewPatterns
-
-ghc-options:
-  - -fno-ignore-asserts
-  - -Wall
-  - -Wcompat
-  - -Widentities
-  - -Wincomplete-uni-patterns
-  - -Wincomplete-record-updates
-  - -Wpartial-fields
-  - -Wredundant-constraints
-  - -Wmissing-export-lists
-
-when:
-  - condition: "!flag(release)"
-    ghc-options:
-      - -fno-specialise
-
-
 library:
   source-dirs: src
-
-_common-exe: &common-exe
-  when:
-    - condition: flag(threaded)
-      then:
-        ghc-options: -threaded -rtsopts "-with-rtsopts=-N -T -A32M -qn4"
-      else:
-        ghc-options: -rtsopts "-with-rtsopts=-A32M"
+  <<: *haskell
 
 executables:
   kore-parser:
@@ -163,7 +97,8 @@ executables:
       - app/share
     dependencies:
       - kore
-    <<: *common-exe
+    <<: *haskell
+    <<: *executable
 
   kore-exec:
     main: Main.hs
@@ -172,7 +107,8 @@ executables:
       - app/share
     dependencies:
       - kore
-    <<: *common-exe
+    <<: *haskell
+    <<: *executable
 
   kore-format:
     main: Main.hs
@@ -181,7 +117,8 @@ executables:
       - app/share
     dependencies:
       - kore
-    <<: *common-exe
+    <<: *haskell
+    <<: *executable
 
   kore-repl:
     main: Main.hs
@@ -190,7 +127,8 @@ executables:
       - app/share
     dependencies:
       - kore
-    <<: *common-exe
+    <<: *haskell
+    <<: *executable
 
   kore-profiler:
     main: Main.hs
@@ -199,7 +137,8 @@ executables:
       - app/share
     dependencies:
       - kore
-    <<: *common-exe
+    <<: *haskell
+    <<: *executable
 
 tests:
   kore-test:
@@ -220,7 +159,8 @@ tests:
       - tasty-quickcheck >=0.10
       - template-haskell >=2.14
       - temporary >=1.3
-    <<: *common-exe
+    <<: *haskell
+    <<: *executable
 
 benchmarks:
   kore-parser-benchmark:
@@ -234,7 +174,8 @@ benchmarks:
       - kore
       - criterion >=1.5
       - template-haskell >=2.14
-    <<: *common-exe
+    <<: *haskell
+    <<: *executable
 
   kore-exec-benchmark:
     main: Main.hs
@@ -248,4 +189,5 @@ benchmarks:
       - criterion >=1.5
       - template-haskell >=2.14
       - temporary >=1.3
-    <<: *common-exe
+    <<: *haskell
+    <<: *executable
