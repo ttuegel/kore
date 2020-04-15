@@ -22,7 +22,7 @@ import qualified Data.Map.Strict as Map
 import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
-import Kore.Debug
+import Debug
 
 newtype TopologicalSortCycles node = TopologicalSortCycles [node]
     deriving (Eq, GHC.Generic, Show)

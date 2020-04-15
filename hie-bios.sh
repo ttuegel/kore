@@ -13,23 +13,32 @@ out() {
     done
 }
 
+stack_dist_dir=$(stack path --dist-dir)
+
 out -i
-out -ikore/src/
-out -ikore/test/
-out -ikore/app/share/
-out -ikore/bench/
-out -ikore/$(stack path --dist-dir)/build/autogen/
+
+yq -r '. "packages" []' < ./stack.yaml | while read pkg
+do
+    for dir in src test app/share bench "$stack_dist_dir/build/autogen"
+    do
+        if [ -d "$pkg/$dir" ]
+        then
+            out -i"$pkg/$dir"
+        fi
+    done
+done
+
 out -clear-package-db
 out -package-db $(stack path --local-pkg-db)
 out -package-db $(stack path --snapshot-pkg-db)
 out -package-db $(stack path --global-pkg-db)
 
-yq -r '. "ghc-options" []' < ./kore/package.yaml | while read opt
+yq -r '. "ghc-options" []' < ./package-haskell.yaml | while read opt
 do
     out "${opt}"
 done
 
-yq -r '. "default-extensions" []' < ./kore/package.yaml | while read ext
+yq -r '. "default-extensions" []' < ./package-haskell.yaml | while read ext
 do
     out "-X${ext}"
 done

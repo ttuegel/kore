@@ -1,4 +1,7 @@
 packages:
+  kore-prelude
+  kore-base
+  kore-test-base
   kore
 
 allow-newer:

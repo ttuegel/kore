@@ -1,7 +1,6 @@
 module Test.Debug
     ( test_debug
     , test_debugPrec
-    , test_Debug
     , test_diff
     ) where
 
@@ -15,10 +14,7 @@ import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
 import Debug
-import Kore.Sort
-import Kore.Syntax.Variable
 
-import Test.Kore
 import qualified Test.Terse as Terse
 
 -- A simple type with one constructor
@@ -214,36 +210,6 @@ test_debugPrec =
     layout =
         Pretty.layoutSmart
             Pretty.LayoutOptions { layoutPageWidth = Pretty.Unbounded }
-
-test_Debug :: [TestTree]
-test_Debug =
-    [ Variable
-        { variableName = testId "v"
-        , variableCounter = mempty
-        , variableSort = SortVariableSort (SortVariable (testId "sv"))
-        }
-        `yields`
-        "Variable\n\
-        \{ variableName = Id { getId = \"v\", idLocation = AstLocationTest }\n\
-        \, variableCounter = Nothing\n\
-        \, variableSort =\n\
-        \    SortVariableSort\n\
-        \        SortVariable\n\
-        \        { getSortVariable = Id { getId = \"sv\", idLocation = AstLocationTest }\n\
-        \        }\n\
-        \}"
-        $  "Variable"
-    , Just (testId "v")
-        `yields`
-        "Just Id { getId = \"v\", idLocation = AstLocationTest }"
-        $ "Maybe - Just"
-    , (Nothing :: Maybe Id)
-        `yields`
-        "Nothing"
-        $ "Maybe - Nothing"
-    ]
-  where
-    yields input = Terse.equals (show $ debug input)
 
 test_diff :: [TestTree]
 test_diff =

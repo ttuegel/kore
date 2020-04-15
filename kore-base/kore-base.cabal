@@ -1,0 +1,207 @@
+cabal-version: 2.2
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: a601bb302e08c1bebb977fc8739a1e4b24f7f7e342c98e383874cc1c5b9b9645
+
+name:           kore-base
+version:        0.20.0.0
+description:    Please see the [README](README.md) file.
+category:       Language
+homepage:       https://github.com/kframework/kore#readme
+bug-reports:    https://github.com/kframework/kore/issues
+author:         Runtime Verification, Inc.
+maintainer:     thomas.tuegel@runtimeverification.com
+copyright:      2018-2020 Runtime Verification, Inc.
+license:        NCSA
+license-file:   LICENSE
+build-type:     Simple
+
+source-repository head
+  type: git
+  location: https://github.com/kframework/kore
+
+flag release
+  description: Build a faster runtime, at the expense of a slower build.
+  manual: True
+  default: False
+
+flag threaded
+  description: Use the threaded runtime. Recommended to disable for profiling.
+  manual: True
+  default: True
+
+library
+  exposed-modules:
+      Control.Monad.Counter
+      Data.Graph.TopologicalSort
+      Data.Limit
+      Data.Sup
+      Generically
+      ListT
+      Pair
+      Pretty
+      Stats
+  other-modules:
+      Paths_kore_base
+  hs-source-dirs:
+      src
+  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingVia DuplicateRecordFields EmptyCase ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses NamedFieldPuns NoImplicitPrelude OverloadedStrings PatternSynonyms RankNTypes ScopedTypeVariables StandaloneDeriving TypeApplications TypeFamilies TypeOperators TypeSynonymInstances ViewPatterns
+  ghc-options: -fno-ignore-asserts -Wall -Wcompat -Widentities -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Wredundant-constraints -Wmissing-export-lists
+  build-tool-depends:
+      tasty-discover:tasty-discover >=4.2
+  build-depends:
+      adjunctions >=4.4
+    , aeson >=1.4
+    , array >=0.5
+    , async >=2.2
+    , base >=4.7
+    , bytestring >=0.10
+    , clock >=0.8
+    , co-log >=0.3
+    , comonad >=5.0
+    , containers >=0.5.8
+    , cryptonite >=0.25
+    , data-default >=0.7
+    , deepseq >=1.4
+    , directory >=1.3
+    , errors >=2.3
+    , exceptions >=0.10
+    , extra >=1.6
+    , fgl >=5.7
+    , filepath >=1.4
+    , free >=5.1
+    , generic-lens >=1.1
+    , generics-sop >=0.4 && <0.5
+    , ghc-trace-events >=0.0
+    , gitrev >=1.3
+    , graphviz >=2999.20
+    , groom >=0.1
+    , hashable >=1.2
+    , haskeline >=0.7
+    , integer-gmp >=1.0
+    , kore-prelude
+    , lens >=4.17
+    , megaparsec >=7.0.4
+    , memory >=0.14
+    , mmorph >=1.1
+    , mtl >=2.2
+    , optparse-applicative >=0.14
+    , parser-combinators >=1.1
+    , prettyprinter >=1.2
+    , process >=1.6
+    , profunctors >=5.3
+    , recursion-schemes >=5.1
+    , reflection >=2.1
+    , semialign >=1
+    , sqlite-simple >=0.4
+    , stm >=2.5
+    , streams
+    , template-haskell >=2.14
+    , text >=1.2
+    , these >=1.0
+    , time >=1.8
+    , transformers >=0.4
+    , unordered-containers >=0.2
+    , vector >=0.12
+    , witherable >=0.3
+  if !flag(release)
+    ghc-options: -fno-specialise
+  default-language: Haskell2010
+
+test-suite kore-base-test
+  type: exitcode-stdio-1.0
+  main-is: Test.hs
+  other-modules:
+      Driver
+      Paths
+      Test.Data.Graph.TopologicalSort
+      Test.Data.Sup
+      Test.Debug
+      Test.ListT
+      Test.Pretty
+      Test.Stats
+      Paths_kore_base
+  hs-source-dirs:
+      test
+  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingVia DuplicateRecordFields EmptyCase ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses NamedFieldPuns NoImplicitPrelude OverloadedStrings PatternSynonyms RankNTypes ScopedTypeVariables StandaloneDeriving TypeApplications TypeFamilies TypeOperators TypeSynonymInstances ViewPatterns
+  ghc-options: -fno-ignore-asserts -Wall -Wcompat -Widentities -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Wredundant-constraints -Wmissing-export-lists
+  build-tool-depends:
+      tasty-discover:tasty-discover >=4.2
+  build-depends:
+      QuickCheck >=2.13
+    , adjunctions >=4.4
+    , aeson >=1.4
+    , array >=0.5
+    , async >=2.2
+    , base >=4.7
+    , bytestring >=0.10
+    , call-stack >=0.1
+    , clock >=0.8
+    , co-log >=0.3
+    , comonad >=5.0
+    , containers >=0.5.8
+    , cryptonite >=0.25
+    , data-default >=0.7
+    , deepseq >=1.4
+    , directory >=1.3
+    , errors >=2.3
+    , exceptions >=0.10
+    , extra >=1.6
+    , fgl >=5.7
+    , filepath >=1.4
+    , free >=5.1
+    , generic-lens >=1.1
+    , generics-sop >=0.4 && <0.5
+    , ghc-trace-events >=0.0
+    , gitrev >=1.3
+    , graphviz >=2999.20
+    , groom >=0.1
+    , hashable >=1.2
+    , haskeline >=0.7
+    , hedgehog >=1.0
+    , integer-gmp >=1.0
+    , kore-base
+    , kore-prelude
+    , kore-test-base
+    , lens >=4.17
+    , megaparsec >=7.0.4
+    , memory >=0.14
+    , mmorph >=1.1
+    , mtl >=2.2
+    , optparse-applicative >=0.14
+    , parser-combinators >=1.1
+    , prettyprinter >=1.2
+    , process >=1.6
+    , profunctors >=5.3
+    , quickcheck-instances >=0.3
+    , recursion-schemes >=5.1
+    , reflection >=2.1
+    , semialign >=1
+    , sqlite-simple >=0.4
+    , stm >=2.5
+    , streams
+    , tasty >=1.2
+    , tasty-ant-xml >=1.1
+    , tasty-golden >=2.3
+    , tasty-hedgehog >=1.0
+    , tasty-hunit >=0.10
+    , tasty-quickcheck >=0.10
+    , template-haskell >=2.14
+    , temporary >=1.3
+    , text >=1.2
+    , these >=1.0
+    , time >=1.8
+    , transformers >=0.4
+    , unordered-containers >=0.2
+    , vector >=0.12
+    , witherable >=0.3
+  if !flag(release)
+    ghc-options: -fno-specialise
+  if flag(threaded)
+    ghc-options: -threaded -rtsopts "-with-rtsopts=-N -T -A32M -qn4"
+  else
+    ghc-options: -rtsopts "-with-rtsopts=-A32M"
+  default-language: Haskell2010

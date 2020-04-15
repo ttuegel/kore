@@ -100,8 +100,6 @@ import System.Exit
     ( ExitCode (..)
     )
 
-import Data.Sup
-
 {- | Insert a separator between the items and enclose them with the delimiters.
 
 When the document is grouped with 'Pretty.group' and fits on one line, the
@@ -299,8 +297,6 @@ instance Debug Char where
     debugPrec x = \_ -> Pretty.squotes (Pretty.pretty x)
 
 instance Debug a => Debug (Maybe a)
-
-instance Debug a => Debug (Sup a)
 
 instance Debug a => Debug (Identity a)
 
@@ -577,8 +573,6 @@ instance Diff Char where
 instance (Debug a, Diff a) => Diff (Const a b)
 
 instance (Debug a, Diff a) => Diff (Maybe a)
-
-instance (Debug a, Diff a) => Diff (Sup a)
 
 instance (Debug a, Diff a) => Diff (Identity a)
 

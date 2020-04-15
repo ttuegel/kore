@@ -3,7 +3,7 @@ module Test.Tasty.HUnit.Ext
     , assertSubstring
     , assertErrorIO
     , module Test.Tasty.HUnit
-    , module Kore.Debug
+    , module Debug
     ) where
 
 import Prelude.Kore
@@ -23,7 +23,7 @@ import Data.List
     )
 import qualified Data.Text.Prettyprint.Doc as Pretty
 
-import Kore.Debug
+import Debug
 
 assertEqual
     :: (Diff a, MonadIO io, HasCallStack)

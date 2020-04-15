@@ -42,6 +42,9 @@ nix:
 # non-dependency (i.e. a user package), and its test suites and benchmarks
 # will not be run. This is useful for tweaking upstream packages.
 packages:
+  - kore-prelude
+  - kore-base
+  - kore-test-base
   - kore
 
 # Dependency packages to be pulled from upstream that are not in the resolver

@@ -8,6 +8,6 @@ project.shellFor {
   buildInputs =
     with pkgs;
     [
-      ghcid ghcide gnumake hlint stylish-haskell yq z3
+      ghcid ghcide gnumake hie-bios hlint stylish-haskell yq z3
     ];
 }

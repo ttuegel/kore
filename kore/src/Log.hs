@@ -89,6 +89,10 @@ import qualified GHC.Stack as GHC
 import Control.Monad.Counter
     ( CounterT
     )
+import ListT
+    ( ListT
+    , mapListT
+    )
 import Log.Entry
 
 -- | This type should not be used directly, but rather should be created and
@@ -218,6 +222,10 @@ instance MonadLog log => MonadLog (CounterT log)
 instance MonadLog log => MonadLog (ExceptT error log)
 
 instance MonadLog log => MonadLog (IdentityT log)
+
+instance MonadLog log => MonadLog (ListT log) where
+    logWhile entry = mapListT $ logWhile entry
+    {-# INLINE logWhile #-}
 
 instance MonadLog log => MonadLog (MaybeT log)
 

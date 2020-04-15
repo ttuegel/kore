@@ -25,6 +25,8 @@ import Data.Text.Prettyprint.Doc
 import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
+import Debug
+
 {- | @Sup a@ is an extension of @a@ with a least upper bound.
 
 If @a@ already has a least upper bound, 'Sup' is greater than that bound.
@@ -64,3 +66,7 @@ instance Applicative Sup where
 instance Pretty a => Pretty (Sup a) where
     pretty (Element a) = pretty a
     pretty Sup = mempty
+
+instance Debug a => Debug (Sup a)
+
+instance (Debug a, Diff a) => Diff (Sup a)
