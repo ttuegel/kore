@@ -4,7 +4,7 @@ cabal-version: 2.2
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a601bb302e08c1bebb977fc8739a1e4b24f7f7e342c98e383874cc1c5b9b9645
+-- hash: 7c1782329a0644331b87498bdcf390758f5c19ebfe1c961d0e50d7851a2d26a5
 
 name:           kore-base
 version:        0.20.0.0
@@ -43,6 +43,12 @@ library
       ListT
       Pair
       Pretty
+      SQL
+      SQL.ColumnDef
+      SQL.Key
+      SQL.Query
+      SQL.SOP
+      SQL.SQL
       Stats
   other-modules:
       Paths_kore_base

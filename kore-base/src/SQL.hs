@@ -56,9 +56,6 @@ import Data.Text
 import qualified Database.SQLite.Simple as SQLite
 import qualified Generics.SOP as SOP
 
-import qualified SMT.SimpleSMT as SMT
-    ( Result (..)
-    )
 import SQL.ColumnDef
 import SQL.Key
 import SQL.SOP
@@ -115,13 +112,6 @@ instance (Column a, Typeable a) => Column (NonEmpty a) where
 
 defineTextColumn :: TableName -> proxy a -> SQL ColumnDef
 defineTextColumn tableName _ = defineColumn tableName (Proxy @Text)
-
-instance Column SMT.Result where
-    defineColumn = defineTextColumn
-
-    toColumn SMT.Unsat = toColumn @Text "unsat"
-    toColumn SMT.Sat = toColumn @Text "sat"
-    toColumn SMT.Unknown = toColumn @Text "unknown"
 
 {- | Reify a 'Column' constraint into a concrete implementation 'ColumnImpl'.
  -}

@@ -221,6 +221,7 @@ import Kore.Log.DebugSolver
     )
 import qualified Log
 import SMT.AST
+import qualified SQL
 
 -- ---------------------------------------------------------------------
 -- * Features
@@ -240,6 +241,13 @@ data Result = Sat         -- ^ The assertions are satisfiable
             | Unsat       -- ^ The assertions are unsatisfiable
             | Unknown     -- ^ The result is inconclusive
               deriving (Eq,Show)
+
+instance SQL.Column Result where
+    defineColumn = SQL.defineTextColumn
+
+    toColumn Unsat = SQL.toColumn @Text "unsat"
+    toColumn Sat = SQL.toColumn @Text "sat"
+    toColumn Unknown = SQL.toColumn @Text "unknown"
 
 -- | Common values returned by SMT solvers.
 data Value =  Bool  !Bool           -- ^ Boolean value
