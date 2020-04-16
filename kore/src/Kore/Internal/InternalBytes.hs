@@ -19,11 +19,11 @@ import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
 import Kore.Attribute.Pattern.FreeVariables
-import Kore.Attribute.Synthetic
 import qualified Kore.Builtin.Encoding as Encoding
 import Kore.Debug
 import Kore.Syntax
 import Kore.Unparser
+import Synthetic
 
 data InternalBytes =
     InternalBytes

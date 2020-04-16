@@ -21,7 +21,6 @@ import qualified GHC.Generics as GHC
 import Kore.Attribute.Pattern.FreeVariables
     ( FreeVariables
     )
-import Kore.Attribute.Synthetic
 import Kore.Debug
 import Kore.Internal.ApplicationSorts
 import Kore.Sort
@@ -31,6 +30,7 @@ import Kore.Syntax.Variable
     )
 import Kore.Unparser
 import Kore.Variables.UnifiedVariable
+import Synthetic
 
 data Alias patternType =
     Alias

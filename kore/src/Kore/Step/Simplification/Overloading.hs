@@ -29,9 +29,6 @@ import Data.String
 import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
-import Kore.Attribute.Synthetic
-    ( synthesize
-    )
 import Kore.Debug
 import qualified Kore.Internal.Inj as Inj
 import Kore.Internal.Pattern
@@ -46,6 +43,9 @@ import Kore.Step.Simplification.Simplify as Simplifier
     )
 import Kore.Unification.Unify as Unify
 import Pair
+import Synthetic
+    ( synthesize
+    )
 
 -- | Describes the possible errors encountered during unification.
 data UnifyOverloadingError

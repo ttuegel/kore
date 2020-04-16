@@ -214,7 +214,6 @@ import qualified Kore.Attribute.Pattern.FreeVariables as FreeVariables
 import qualified Kore.Attribute.Pattern.Function as Pattern
 import qualified Kore.Attribute.Pattern.Functional as Pattern
 import qualified Kore.Attribute.Pattern.Simplified as Pattern
-import Kore.Attribute.Synthetic
 import Kore.Builtin.Endianness.Endianness
     ( Endianness
     )
@@ -275,6 +274,7 @@ import Kore.Variables.Fresh
     )
 import qualified Kore.Variables.Fresh as Fresh
 import Kore.Variables.UnifiedVariable
+import Synthetic
 
 hasFreeVariable
     :: Ord variable

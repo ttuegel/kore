@@ -26,7 +26,6 @@ import qualified Data.Text.Prettyprint.Doc as Pretty
 
 import qualified Branch as BranchT
 import qualified Kore.Attribute.Pattern.Simplified as Attribute.Simplified
-import Kore.Attribute.Synthetic
 import qualified Kore.Internal.MultiOr as MultiOr
     ( flatten
     , merge
@@ -70,6 +69,7 @@ import qualified Kore.Step.Simplification.Simplify as AttemptedAxiomResults
     )
 import Kore.TopBottom
 import Kore.Unparser
+import Synthetic
 
 {-| Evaluates functions on an application pattern.
 -}

@@ -9,7 +9,6 @@ import Test.Tasty.HUnit
 
 import qualified Control.Exception as Exception
 
-import Kore.Attribute.Synthetic
 import Kore.Internal.TermLike
     ( TermLikeF (..)
     )
@@ -18,6 +17,7 @@ import Kore.Syntax hiding
     ( PatternF (..)
     )
 import Kore.Variables.UnifiedVariable
+import Synthetic
 
 import qualified Test.Kore.Step.MockSymbols as Mock
 

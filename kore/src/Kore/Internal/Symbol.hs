@@ -46,7 +46,6 @@ import qualified GHC.Generics as GHC
 
 import Kore.Attribute.Pattern.FreeVariables
 import qualified Kore.Attribute.Symbol as Attribute
-import Kore.Attribute.Synthetic
 import Kore.Debug
 import Kore.Internal.ApplicationSorts
 import Kore.Sort
@@ -57,6 +56,7 @@ import SMT.AST
     ( SExpr
     )
 import qualified SQL
+import Synthetic
 
 data Symbol =
     Symbol

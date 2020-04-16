@@ -28,11 +28,11 @@ import qualified Data.Traversable as Traversable
 import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
-import Kore.Attribute.Synthetic
 import Kore.Debug
 import Kore.Syntax.ElementVariable
 import Kore.Syntax.SetVariable
 import Kore.Variables.UnifiedVariable
+import Synthetic
 
 newtype FreeVariables variable =
     FreeVariables { getFreeVariables :: Set (UnifiedVariable variable) }

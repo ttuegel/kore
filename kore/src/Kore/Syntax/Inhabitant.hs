@@ -19,10 +19,10 @@ import qualified GHC.Generics as GHC
 import Kore.Attribute.Pattern.FreeVariables
     ( FreeVariables
     )
-import Kore.Attribute.Synthetic
 import Kore.Debug
 import Kore.Sort
 import Kore.Unparser
+import Synthetic
 
 -- | 'Inhabitant' symbolizes the inhabitants of a sort.
 newtype Inhabitant child = Inhabitant { inhSort :: Sort }

@@ -70,11 +70,11 @@ import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
 import Kore.Attribute.Pattern.FreeVariables
-import Kore.Attribute.Synthetic
 import Kore.Debug
 import Kore.Internal.Symbol
 import Kore.Syntax
 import Kore.Unparser
+import Synthetic
 
 -- * Helpers
 

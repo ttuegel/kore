@@ -8,7 +8,6 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 import Kore.Attribute.Pattern.Defined
-import Kore.Attribute.Synthetic
 import qualified Kore.Builtin.AssociativeCommutative as Ac
 import qualified Kore.Domain.Builtin as Domain
 import Kore.Internal.TermLike
@@ -19,6 +18,7 @@ import Kore.Syntax hiding
     ( PatternF (..)
     )
 import Kore.Variables.UnifiedVariable
+import Synthetic
 
 import Test.Kore.Builtin.Builtin
     ( emptyNormalizedSet

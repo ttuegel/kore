@@ -19,10 +19,10 @@ import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
 import Kore.Attribute.Pattern.FreeVariables
-import Kore.Attribute.Synthetic
 import Kore.Debug
 import Kore.Sort
 import Kore.Unparser
+import Synthetic
 
 {-|'Implies' corresponds to the @\implies@ branches of the @object-pattern@ and
 @meta-pattern@ syntactic categories from the Semantics of K,

@@ -55,7 +55,6 @@ import qualified Kore.Attribute.Pattern.Simplified as Simplified
     ( isFullySimplified
     , isSimplified
     )
-import Kore.Attribute.Synthetic
 import Kore.Debug
 import qualified Kore.Internal.SideCondition.SideCondition as SideCondition
     ( Representation
@@ -68,6 +67,7 @@ import Kore.Variables.UnifiedVariable
     , SetVariable
     , UnifiedVariable (..)
     )
+import Synthetic
 
 {- | @Pattern@ are the attributes of a pattern collected during verification.
  -}

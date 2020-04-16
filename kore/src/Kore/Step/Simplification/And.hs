@@ -57,9 +57,6 @@ import Data.Traversable
 import Branch
 import qualified Branch as BranchT
 import Changed
-import Kore.Attribute.Synthetic
-    ( synthesize
-    )
 import Kore.Internal.Conditional
     ( Conditional (..)
     )
@@ -126,6 +123,9 @@ import Kore.Variables.UnifiedVariable
     ( UnifiedVariable (ElemVar, SetVar)
     )
 import qualified Pretty
+import Synthetic
+    ( synthesize
+    )
 
 {-|'simplify' simplifies an 'And' of 'OrPattern'.
 

@@ -28,9 +28,6 @@ import Data.Sup
 import Kore.Attribute.Pattern.FreeVariables
     ( FreeVariables (FreeVariables)
     )
-import Kore.Attribute.Synthetic
-    ( resynthesize
-    )
 import Kore.Domain.Builtin
     ( Builtin (..)
     , InternalInt (..)
@@ -41,6 +38,9 @@ import Kore.Variables.Fresh
     )
 import Kore.Variables.UnifiedVariable
     ( UnifiedVariable (..)
+    )
+import Synthetic
+    ( resynthesize
     )
 
 import Kore.Internal.ApplicationSorts

@@ -28,9 +28,6 @@ import Kore.Attribute.Pattern.FreeVariables
     ( FreeVariables
     )
 import qualified Kore.Attribute.Symbol as Attribute
-import Kore.Attribute.Synthetic
-    ( Synthetic (..)
-    )
 import Kore.Internal.ApplicationSorts
 import Kore.Internal.Symbol
 import Kore.Sort
@@ -38,6 +35,9 @@ import Kore.Syntax.Application
     ( Application (..)
     )
 import Kore.Unparser
+import Synthetic
+    ( Synthetic (..)
+    )
 
 data Inj a =
     Inj

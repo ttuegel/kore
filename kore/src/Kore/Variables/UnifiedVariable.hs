@@ -47,7 +47,6 @@ import GHC.Generics
     ( Generic
     )
 
-import Kore.Attribute.Synthetic
 import Kore.Debug
 import Kore.Sort
 import Kore.Syntax.ElementVariable
@@ -58,6 +57,7 @@ import Kore.Syntax.Variable
     )
 import Kore.Unparser
 import Kore.Variables.Fresh
+import Synthetic
 
 {- | @UnifiedVariable@ helps distinguish set variables (introduced by 'SetVar')
 from element variables (introduced by 'ElemVar').

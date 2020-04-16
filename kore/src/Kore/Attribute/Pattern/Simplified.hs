@@ -25,7 +25,6 @@ import Data.Text
 import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
-import Kore.Attribute.Synthetic
 import Kore.Debug
 import Kore.Domain.Builtin
 import Kore.Internal.Inj
@@ -63,6 +62,7 @@ import Kore.Syntax
     , Top
     )
 import Kore.Variables.UnifiedVariable
+import Synthetic
 
 {- | How well simplified is a pattern.
 -}

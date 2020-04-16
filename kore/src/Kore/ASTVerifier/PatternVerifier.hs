@@ -45,7 +45,6 @@ import Kore.Attribute.Pattern.FreeVariables
     )
 import qualified Kore.Attribute.Sort as Attribute.Sort
 import qualified Kore.Attribute.Sort.HasDomainValues as Attribute.HasDomainValues
-import Kore.Attribute.Synthetic
 import qualified Kore.Builtin as Builtin
 import Kore.Error
 import Kore.IndexedModule.Error
@@ -66,6 +65,7 @@ import Kore.Unparser
 import qualified Kore.Variables.Free as Variables
 import Kore.Variables.UnifiedVariable
 import qualified Kore.Verified as Verified
+import Synthetic
 
 withBuiltinVerifiers :: Builtin.Verifiers -> Context -> Context
 withBuiltinVerifiers verifiers context =

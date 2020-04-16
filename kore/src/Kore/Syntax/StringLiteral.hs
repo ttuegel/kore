@@ -24,10 +24,10 @@ import qualified GHC.Generics as GHC
 import Kore.Attribute.Pattern.FreeVariables
     ( FreeVariables
     )
-import Kore.Attribute.Synthetic
 import Kore.Debug
 import Kore.Sort
 import Kore.Unparser
+import Synthetic
 
 {-|'StringLiteral' corresponds to the @string@ literal from the Semantics of K,
 Section 9.1.1 (Lexicon).

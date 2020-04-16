@@ -28,9 +28,6 @@ import Kore.Attribute.SortInjection
 import Kore.Attribute.Subsort
     ( subsortAttribute
     )
-import Kore.Attribute.Synthetic
-    ( synthesize
-    )
 import qualified Kore.Builtin as Builtin
 import qualified Kore.Builtin.Endianness as Endianness
 import qualified Kore.Builtin.Signedness as Signedness
@@ -54,6 +51,9 @@ import Kore.Internal.TermLike hiding
     , bytesSort
     )
 import Kore.Syntax.Definition as Syntax
+import Synthetic
+    ( synthesize
+    )
 
 import Test.Kore
 import qualified Test.Kore.Step.MockSymbols as Mock

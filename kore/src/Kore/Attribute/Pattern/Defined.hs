@@ -18,7 +18,6 @@ import Data.Monoid
 import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
-import Kore.Attribute.Synthetic
 import Kore.Debug
 import Kore.Domain.Builtin
 import qualified Kore.Internal.Alias as Internal
@@ -34,6 +33,7 @@ import Kore.Syntax
 import Kore.Variables.UnifiedVariable
     ( UnifiedVariable (..)
     )
+import Synthetic
 
 {- | A pattern is 'Defined' if it matches at least one element.
  -}

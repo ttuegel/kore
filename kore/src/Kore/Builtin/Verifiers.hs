@@ -87,9 +87,6 @@ import qualified Kore.Attribute.Symbol as Attribute
     ( Symbol (..)
     )
 import qualified Kore.Attribute.Symbol as Attribute.Symbol
-import Kore.Attribute.Synthetic
-    ( synthesize
-    )
 import Kore.Builtin.Error
 import Kore.Error
     ( Error
@@ -109,6 +106,9 @@ import Kore.Syntax.Definition
     )
 import Kore.Unparser
 import qualified Kore.Verified as Verified
+import Synthetic
+    ( synthesize
+    )
 
 type Parser = Parsec Void Text
 

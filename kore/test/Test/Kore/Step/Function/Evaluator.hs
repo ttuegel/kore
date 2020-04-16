@@ -8,9 +8,6 @@ import Test.Tasty.HUnit
 
 import qualified Data.Map.Strict as Map
 
-import Kore.Attribute.Synthetic
-    ( synthesize
-    )
 import qualified Kore.Equation as Equation
 import Kore.Internal.Condition
     ( Condition
@@ -36,6 +33,9 @@ import qualified Kore.Step.Function.Evaluator as Kore
 import qualified Kore.Step.Simplification.Simplify as Kore
 import Kore.Syntax.Application
     ( Application (..)
+    )
+import Synthetic
+    ( synthesize
     )
 
 import Test.Kore

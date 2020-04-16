@@ -12,7 +12,6 @@ import Kore.Attribute.Pattern.FreeVariables
     ( FreeVariables
     )
 import qualified Kore.Attribute.Pattern.FreeVariables as FreeVariables
-import Kore.Attribute.Synthetic
 import Kore.Internal.TermLike
     ( Symbol
     , TermLikeF (..)
@@ -23,6 +22,7 @@ import Kore.Syntax hiding
 import Kore.Variables.UnifiedVariable
     ( UnifiedVariable (..)
     )
+import Synthetic
 
 import qualified Test.Kore.Step.MockSymbols as Mock
 

@@ -16,9 +16,6 @@ import Data.Functor.Const
 import qualified Data.Functor.Foldable as Recursive
 
 import qualified Kore.Attribute.Null as Attribute
-import Kore.Attribute.Synthetic
-    ( synthesize
-    )
 import qualified Kore.Builtin.Bool.Bool as Bool
 import qualified Kore.Builtin.Endianness.Endianness as Endianness
 import qualified Kore.Builtin.Int.Int as Int
@@ -34,6 +31,9 @@ import qualified Kore.Internal.Inj as Inj
 import qualified Kore.Internal.Symbol as Symbol
 import Kore.Internal.TermLike
 import qualified Kore.Syntax.Pattern as Syntax
+import Synthetic
+    ( synthesize
+    )
 
 {- | Externalize the 'TermLike' into a 'Syntax.Pattern'.
 

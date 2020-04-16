@@ -17,9 +17,6 @@ import qualified Data.Set as Set
 import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
-import Kore.Attribute.Synthetic
-    ( synthesize
-    )
 import Kore.Debug
 import Kore.IndexedModule.SortGraph
     ( SortGraph
@@ -29,6 +26,9 @@ import Kore.IndexedModule.SortGraph
 import Kore.Internal.Inj
 import Kore.Internal.TermLike
 import Pair
+import Synthetic
+    ( synthesize
+    )
 
 {- | Two 'Inj' are 'Distinct' if they are known not to unify.
 

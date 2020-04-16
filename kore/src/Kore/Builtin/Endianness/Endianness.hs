@@ -28,13 +28,13 @@ import Kore.Attribute.Pattern.FreeVariables
 import Kore.Attribute.Pattern.Function
 import Kore.Attribute.Pattern.Functional
 import Kore.Attribute.Pattern.Simplified
-import Kore.Attribute.Synthetic
 import Kore.Internal.Symbol
 import Kore.Sort
 import Kore.Syntax.Application
     ( Application (..)
     )
 import Kore.Unparser
+import Synthetic
 
 data Endianness
     = BigEndian !Symbol

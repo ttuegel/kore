@@ -23,8 +23,8 @@ import GHC.Stack
     )
 import qualified GHC.Stack as GHC
 
-import Kore.Attribute.Synthetic
 import Kore.Debug
+import Synthetic
 
 -- | 'Created' is used for debugging patterns, specifically for finding out
 -- where a pattern was created. This is a field in the attributes of a pattern,

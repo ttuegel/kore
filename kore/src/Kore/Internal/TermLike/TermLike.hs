@@ -81,7 +81,6 @@ import qualified Kore.Attribute.Pattern.Simplified as Pattern
 import qualified Kore.Attribute.Pattern.Simplified as Simplified
     ( unparseTag
     )
-import Kore.Attribute.Synthetic
 import Kore.Builtin.Endianness.Endianness
     ( Endianness
     )
@@ -133,6 +132,7 @@ import Kore.Variables.Fresh
 import qualified Kore.Variables.Fresh as Fresh
 import qualified Pretty
 import qualified SQL
+import Synthetic
 
 {- | @Evaluated@ wraps patterns which are fully evaluated.
 

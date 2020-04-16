@@ -18,10 +18,10 @@ import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
 import Kore.Attribute.Pattern.FreeVariables
-import Kore.Attribute.Synthetic
 import Kore.Debug
 import Kore.Sort
 import Kore.Unparser
+import Synthetic
 
 {-|'DomainValue' corresponds to the @\dv@ branch of the @object-pattern@
 syntactic category, which are not yet in the Semantics of K document,

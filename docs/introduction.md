@@ -37,7 +37,7 @@ The `Synthetic` typeclass ensures that the annotations are always kept updated, 
 
 References:
 
-- `Kore.Attribute.Synthetic`
+- `Synthetic`
 - `Kore.Attribute.Pattern`
 - `Control.Comonad.Trans.Cofree`
 

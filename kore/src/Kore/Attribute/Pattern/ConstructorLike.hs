@@ -18,7 +18,6 @@ import qualified Data.Map.Strict as Map
 import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
-import Kore.Attribute.Synthetic
 import Kore.Debug
 import Kore.Domain.Builtin
 import Kore.Internal.Alias
@@ -41,6 +40,7 @@ import Kore.Syntax.Application
 import Kore.Variables.UnifiedVariable
     ( UnifiedVariable
     )
+import Synthetic
 
 {- | A pattern is 'ConstructorLike' if logical equality is syntactic equality.
 

@@ -50,9 +50,6 @@ import qualified Kore.Attribute.Sort.Element as Attribute
 import qualified Kore.Attribute.Sort.Unit as Attribute
 import Kore.Attribute.Subsort
 import qualified Kore.Attribute.Symbol as Attribute
-import Kore.Attribute.Synthetic
-    ( synthesize
-    )
 import qualified Kore.Builtin.Bool as Builtin.Bool
 import qualified Kore.Builtin.Int as Builtin.Int
 import qualified Kore.Builtin.List as List
@@ -110,6 +107,9 @@ import Kore.Syntax.Variable
 import Kore.Variables.UnifiedVariable
 import qualified SMT.AST as SMT
 import qualified SMT.SimpleSMT as SMT
+import Synthetic
+    ( synthesize
+    )
 
 import qualified Test.ConsistentKore as ConsistentKore
     ( CollectionSorts (..)

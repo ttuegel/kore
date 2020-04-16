@@ -18,13 +18,13 @@ import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
 import Kore.Attribute.Pattern.FreeVariables
-import Kore.Attribute.Synthetic
 import Kore.Debug
 import Kore.Sort
 import Kore.Syntax.ElementVariable
 import Kore.Syntax.Variable
 import Kore.Unparser
 import Kore.Variables.UnifiedVariable
+import Synthetic
 
 {-|'Forall' corresponds to the @\forall@ branches of the @object-pattern@ and
 @meta-pattern@ syntactic categories from the Semantics of K,

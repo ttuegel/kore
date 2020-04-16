@@ -30,7 +30,6 @@ import Kore.Attribute.Pattern.FreeVariables
     ( HasFreeVariables (..)
     )
 import qualified Kore.Attribute.Pattern.FreeVariables as FreeVariables
-import Kore.Attribute.Synthetic
 import Kore.Internal.Variable
 import Kore.Syntax
 import Kore.Variables.Binding
@@ -38,6 +37,7 @@ import Kore.Variables.Fresh
 import Kore.Variables.UnifiedVariable
     ( UnifiedVariable (..)
     )
+import Synthetic
 
 {- | Traverse the pattern from the top down and apply substitutions.
 
