@@ -22,7 +22,13 @@ let
     in import haskell-nix.sources.nixpkgs-1909 args;
   pkgs = nixpkgs;
   yq = "${pkgs.lib.getBin pkgs.yq}/bin/yq";
-  localPackages = [ "kore-prelude" "kore-base" "kore-test-base" "kore" ];
+  localPackages = [
+    "kore-prelude"
+    "kore-base"
+    "kore-test-base"
+    "kore-syntax"
+    "kore"
+  ];
   localModule = package: {
     packages.${package} = {
       enableLibraryProfiling = profiling;

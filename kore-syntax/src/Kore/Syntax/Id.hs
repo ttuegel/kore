@@ -12,6 +12,7 @@ module Kore.Syntax.Id
     , getIdForError
     , noLocationId
     , implicitId
+    , testId
     -- * Locations
     , AstLocation (..)
     , FileLocation (..)
@@ -97,6 +98,13 @@ noLocationId name = Id name AstLocationNone
 -- | Create an implicit 'Id'.
 implicitId :: Text -> Id
 implicitId name = Id name AstLocationImplicit
+
+testId :: Text -> Id
+testId name =
+    Id
+        { getId = name
+        , idLocation = AstLocationTest
+        }
 
 {- | Get the identifier name for an error message 'String'.
  -}

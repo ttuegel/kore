@@ -9,9 +9,9 @@ import Test.Tasty
 
 import Kore.Parser.Lexeme
 import Kore.Syntax.Definition
+import Kore.Syntax.Id
 import Kore.Syntax.StringLiteral
 
-import Test.Kore
 import Test.Kore.Parser
 
 test_koreLexeme :: [TestTree]

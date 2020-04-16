@@ -727,13 +727,6 @@ definitionGen senGen =
         <$> attributesGen
         <*> couple1 (moduleGen senGen)
 
-testId :: Text -> Id
-testId name =
-    Id
-        { getId = name
-        , idLocation = AstLocationTest
-        }
-
 sortVariable :: Text -> SortVariable
 sortVariable name =
     SortVariable { getSortVariable = testId name }

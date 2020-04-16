@@ -1,15 +1,9 @@
 _package-common: !include "../package-common.yaml"
 
-name:                kore
+name:                kore-syntax
 category:            Language
 <<: *version
 <<: *legal
-
-extra-source-files:
-  - README.md
-  - CHANGELOG.md
-  - test/resources/*.kore
-  - test/resources/*.kore.golden
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
@@ -32,7 +26,6 @@ dependencies:
   - base >=4.7
   - kore-prelude
   - kore-base
-  - kore-syntax
   - adjunctions >=4.4
   - aeson >=1.4
   - array >=0.5
@@ -92,60 +85,14 @@ build-tools:
 library:
   source-dirs: src
 
-executables:
-  kore-parser:
-    main: Main.hs
-    source-dirs:
-      - app/parser
-      - app/share
-    dependencies:
-      - kore
-    <<: *executable
-
-  kore-exec:
-    main: Main.hs
-    source-dirs:
-      - app/exec
-      - app/share
-    dependencies:
-      - kore
-    <<: *executable
-
-  kore-format:
-    main: Main.hs
-    source-dirs:
-      - app/format
-      - app/share
-    dependencies:
-      - kore
-    <<: *executable
-
-  kore-repl:
-    main: Main.hs
-    source-dirs:
-      - app/repl
-      - app/share
-    dependencies:
-      - kore
-    <<: *executable
-
-  kore-profiler:
-    main: Main.hs
-    source-dirs:
-      - app/profiler
-      - app/share
-    dependencies:
-      - kore
-    <<: *executable
-
 tests:
-  kore-test:
+  kore-syntax-test:
     main: Test.hs
     source-dirs:
       - test
     dependencies:
-      - kore
       - kore-test-base
+      - kore-syntax
       - QuickCheck >=2.13
       - call-stack >=0.1
       - hedgehog >=1.0
@@ -169,21 +116,7 @@ benchmarks:
       - bench/parser
       - test
     dependencies:
-      - kore
+      - kore-syntax
       - criterion >=1.5
       - template-haskell >=2.14
-    <<: *executable
-
-  kore-exec-benchmark:
-    main: Main.hs
-    other-modules:
-      - Paths
-    source-dirs:
-      - bench/exec
-      - test
-    dependencies:
-      - kore
-      - criterion >=1.5
-      - template-haskell >=2.14
-      - temporary >=1.3
     <<: *executable

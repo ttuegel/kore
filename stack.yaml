@@ -45,6 +45,7 @@ packages:
   - kore-prelude
   - kore-base
   - kore-test-base
+  - kore-syntax
   - kore
 
 # Dependency packages to be pulled from upstream that are not in the resolver

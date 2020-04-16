@@ -2,6 +2,7 @@ packages:
   kore-prelude
   kore-base
   kore-test-base
+  kore-syntax
   kore
 
 allow-newer:
