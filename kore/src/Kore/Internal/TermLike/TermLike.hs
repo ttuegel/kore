@@ -212,6 +212,188 @@ instance
     unparse = Unparser.unparseGeneric
     unparse2 = Unparser.unparse2Generic
 
+instance Injection (TermLikeF variable child) (And Sort child) where
+    inject = AndF
+    {-# INLINE inject #-}
+    retract = \case { AndF and' -> Just and'; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Application Symbol child) where
+    inject = ApplySymbolF
+    {-# INLINE inject #-}
+    retract = \case { ApplySymbolF app -> Just app; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance
+    Injection
+        (TermLikeF variable child)
+        (Application (Alias (TermLike Variable)) child)
+  where
+    inject = ApplyAliasF
+    {-# INLINE inject #-}
+    retract = \case { ApplyAliasF app -> Just app; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Bottom Sort child) where
+    inject = BottomF
+    {-# INLINE inject #-}
+    retract = \case { BottomF bot -> Just bot; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Ceil Sort child) where
+    inject = CeilF
+    {-# INLINE inject #-}
+    retract = \case { CeilF ceil' -> Just ceil'; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (DomainValue Sort child) where
+    inject = DomainValueF
+    {-# INLINE inject #-}
+    retract = \case { DomainValueF dv -> Just dv; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Equals Sort child) where
+    inject = EqualsF
+    {-# INLINE inject #-}
+    retract = \case { EqualsF equals -> Just equals; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Exists Sort variable child) where
+    inject = ExistsF
+    {-# INLINE inject #-}
+    retract = \case { ExistsF exists -> Just exists; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Floor Sort child) where
+    inject = FloorF
+    {-# INLINE inject #-}
+    retract = \case { FloorF floor' -> Just floor'; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Forall Sort variable child) where
+    inject = ForallF
+    {-# INLINE inject #-}
+    retract = \case { ForallF forall -> Just forall; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Iff Sort child) where
+    inject = IffF
+    {-# INLINE inject #-}
+    retract = \case { IffF iff -> Just iff; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Implies Sort child) where
+    inject = ImpliesF
+    {-# INLINE inject #-}
+    retract = \case { ImpliesF implies -> Just implies; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (In Sort child) where
+    inject = InF
+    {-# INLINE inject #-}
+    retract = \case { InF in' -> Just in'; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Mu variable child) where
+    inject = MuF
+    {-# INLINE inject #-}
+    retract = \case { MuF mu -> Just mu; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Next Sort child) where
+    inject = NextF
+    {-# INLINE inject #-}
+    retract = \case { NextF next -> Just next; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Not Sort child) where
+    inject = NotF
+    {-# INLINE inject #-}
+    retract = \case { NotF not' -> Just not'; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Nu variable child) where
+    inject = NuF
+    {-# INLINE inject #-}
+    retract = \case { NuF nu -> Just nu; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Or Sort child) where
+    inject = OrF
+    {-# INLINE inject #-}
+    retract = \case { OrF or' -> Just or'; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Rewrites Sort child) where
+    inject = RewritesF
+    {-# INLINE inject #-}
+    retract = \case { RewritesF rewrites -> Just rewrites; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Top Sort child) where
+    inject = TopF
+    {-# INLINE inject #-}
+    retract = \case { TopF top -> Just top; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Inhabitant child) where
+    inject = InhabitantF
+    {-# INLINE inject #-}
+    retract = \case { InhabitantF inh -> Just inh; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Builtin child) where
+    inject = BuiltinF
+    {-# INLINE inject #-}
+    retract = \case { BuiltinF builtin -> Just builtin; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Evaluated child) where
+    inject = EvaluatedF
+    {-# INLINE inject #-}
+    retract = \case { EvaluatedF evaluated -> Just evaluated; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Const StringLiteral child) where
+    inject = StringLiteralF
+    {-# INLINE inject #-}
+    retract = \case { StringLiteralF lit -> Just lit; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Const InternalBytes child) where
+    inject = InternalBytesF
+    {-# INLINE inject #-}
+    retract = \case { InternalBytesF bytes -> Just bytes; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Const Endianness child) where
+    inject = EndiannessF
+    {-# INLINE inject #-}
+    retract = \case { EndiannessF end -> Just end; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Const Signedness child) where
+    inject = SignednessF
+    {-# INLINE inject #-}
+    retract = \case { SignednessF sgn -> Just sgn; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance Injection (TermLikeF variable child) (Inj child) where
+    inject = InjF
+    {-# INLINE inject #-}
+    retract = \case { InjF inj -> Just inj; _ -> Nothing }
+    {-# INLINE retract #-}
+
+instance
+    Injection
+        (TermLikeF variable child)
+        (Const (UnifiedVariable variable) child)
+  where
+    inject = VariableF
+    {-# INLINE inject #-}
+    retract = \case { VariableF var -> Just var; _ -> Nothing }
+    {-# INLINE retract #-}
+
 newtype TermLike variable =
     TermLike
         { getTermLike
