@@ -8,7 +8,6 @@ License     : NCSA
 
 module Kore.Internal.TermLike.TermLike
     ( Builtin
-    , Evaluated (..)
     , TermLike (..)
     , TermLikeF (..)
     , externalizeFreshVariables
@@ -20,6 +19,8 @@ module Kore.Internal.TermLike.TermLike
     , traverseVariablesF
     , updateCallStack
     , depth
+    -- * Re-exports
+    , module Kore.Internal.Evaluated
     ) where
 
 import Prelude.Kore
@@ -93,6 +94,7 @@ import Kore.Builtin.Signedness.Signedness
 import Kore.Debug
 import qualified Kore.Domain.Builtin as Domain
 import Kore.Internal.Alias
+import Kore.Internal.Evaluated
 import Kore.Internal.Inj
 import Kore.Internal.InternalBytes
 import Kore.Internal.Symbol hiding
@@ -136,40 +138,10 @@ import qualified Kore.Variables.Fresh as Fresh
 import qualified Pretty
 import qualified SQL
 
-{- | @Evaluated@ wraps patterns which are fully evaluated.
+type Key = TermLike Concrete
 
-Fully-evaluated patterns will not be simplified further because no progress
-could be made.
-
- -}
-newtype Evaluated child = Evaluated { getEvaluated :: child }
-    deriving (Eq, Foldable, Functor, GHC.Generic, Ord, Show, Traversable)
-
-instance SOP.Generic (Evaluated child)
-
-instance SOP.HasDatatypeInfo (Evaluated child)
-
-instance Debug child => Debug (Evaluated child)
-
-instance (Debug child, Diff child) => Diff (Evaluated child)
-
-instance Hashable child => Hashable (Evaluated child)
-
-instance NFData child => NFData (Evaluated child)
-
-instance Unparse child => Unparse (Evaluated child) where
-    unparse evaluated =
-        Pretty.vsep ["/* evaluated: */", Unparser.unparseGeneric evaluated]
-    unparse2 evaluated =
-        Pretty.vsep ["/* evaluated: */", Unparser.unparse2Generic evaluated]
-
-instance Synthetic syn Evaluated where
-    synthetic = getEvaluated
-    {-# INLINE synthetic #-}
-
-instance {-# OVERLAPS #-} Synthetic Pattern.Simplified Evaluated where
-    synthetic = const Pattern.fullySimplified
-    {-# INLINE synthetic #-}
+-- | The type of internal domain values.
+type Builtin = Domain.Builtin Key
 
 {- | 'TermLikeF' is the 'Base' functor of internal term-like patterns.
 
@@ -509,9 +481,6 @@ instance
             (from @(ElementVariable Concrete))
             (from @(SetVariable     Concrete))
     {-# INLINE from #-}
-
--- | The type of internal domain values.
-type Builtin = Domain.Builtin (TermLike Concrete)
 
 instance
     ( AstWithLocation variable
