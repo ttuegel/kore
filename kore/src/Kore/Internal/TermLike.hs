@@ -191,6 +191,8 @@ import Data.Functor.Const
     )
 import Data.Functor.Foldable
     ( Base
+    , Corecursive
+    , Recursive
     )
 import qualified Data.Functor.Foldable as Recursive
 import qualified Data.Map.Strict as Map
@@ -690,10 +692,10 @@ same sort.
 
  -}
 makeSortsAgree
-    :: (InternalVariable variable, HasCallStack)
-    => (TermLike variable -> TermLike variable -> Sort -> a)
-    -> TermLike variable
-    -> TermLike variable
+    :: HasCallStack
+    => (term -> term -> Sort -> a)
+    -> term
+    -> term
     -> a
 makeSortsAgree withPatterns = \pattern1 pattern2 ->
     let
@@ -953,8 +955,7 @@ See also: 'mkBottom_'
 
  -}
 mkBottom
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => Sort
     -> TermLike variable
 mkBottom bottomSort =
@@ -969,8 +970,7 @@ See also: 'mkBottom'
 
  -}
 mkBottom_
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => TermLike variable
 mkBottom_ = updateCallStack $ mkBottom predicateSort
 
@@ -980,8 +980,7 @@ See also: 'mkCeil_'
 
  -}
 mkCeil
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => Sort
     -> TermLike variable
     -> TermLike variable
@@ -1000,8 +999,7 @@ See also: 'mkCeil'
 
  -}
 mkCeil_
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => TermLike variable
     -> TermLike variable
 mkCeil_ = updateCallStack . mkCeil predicateSort
@@ -1009,8 +1007,7 @@ mkCeil_ = updateCallStack . mkCeil predicateSort
 {- | Construct a builtin pattern.
  -}
 mkBuiltin
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => Domain.Builtin (TermLike Concrete) (TermLike variable)
     -> TermLike variable
 mkBuiltin = updateCallStack . synthesize . BuiltinF
@@ -1018,8 +1015,7 @@ mkBuiltin = updateCallStack . synthesize . BuiltinF
 {- | Construct a builtin list pattern.
  -}
 mkBuiltinList
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => Domain.InternalList (TermLike variable)
     -> TermLike variable
 mkBuiltinList = updateCallStack . synthesize . BuiltinF . Domain.BuiltinList
@@ -1027,8 +1023,7 @@ mkBuiltinList = updateCallStack . synthesize . BuiltinF . Domain.BuiltinList
 {- | Construct a builtin map pattern.
  -}
 mkBuiltinMap
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => Domain.InternalMap (TermLike Concrete) (TermLike variable)
     -> TermLike variable
 mkBuiltinMap = updateCallStack . synthesize . BuiltinF . Domain.BuiltinMap
@@ -1036,8 +1031,7 @@ mkBuiltinMap = updateCallStack . synthesize . BuiltinF . Domain.BuiltinMap
 {- | Construct a builtin set pattern.
  -}
 mkBuiltinSet
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => Domain.InternalSet (TermLike Concrete) (TermLike variable)
     -> TermLike variable
 mkBuiltinSet = updateCallStack . synthesize . BuiltinF . Domain.BuiltinSet
@@ -1045,8 +1039,7 @@ mkBuiltinSet = updateCallStack . synthesize . BuiltinF . Domain.BuiltinSet
 {- | Construct a 'DomainValue' pattern.
  -}
 mkDomainValue
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => DomainValue Sort (TermLike variable)
     -> TermLike variable
 mkDomainValue = updateCallStack . synthesize . DomainValueF
@@ -1096,8 +1089,7 @@ mkEquals_ t1 t2 = updateCallStack $ mkEquals predicateSort t1 t2
 {- | Construct an 'Exists' pattern.
  -}
 mkExists
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => ElementVariable variable
     -> TermLike variable
     -> TermLike variable
@@ -1110,8 +1102,7 @@ mkExists existsVariable existsChild =
 {- | Construct a sequence of 'Exists' patterns over several variables.
  -}
 mkExistsN
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => Foldable foldable
     => foldable (ElementVariable variable)
     -> TermLike variable
@@ -1124,8 +1115,7 @@ See also: 'mkFloor_'
 
  -}
 mkFloor
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => Sort
     -> TermLike variable
     -> TermLike variable
@@ -1144,8 +1134,7 @@ See also: 'mkFloor'
 
  -}
 mkFloor_
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => TermLike variable
     -> TermLike variable
 mkFloor_ = updateCallStack . mkFloor predicateSort
@@ -1153,8 +1142,7 @@ mkFloor_ = updateCallStack . mkFloor predicateSort
 {- | Construct a 'Forall' pattern.
  -}
 mkForall
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => ElementVariable variable
     -> TermLike variable
     -> TermLike variable
@@ -1167,8 +1155,7 @@ mkForall forallVariable forallChild =
 {- | Construct a sequence of 'Forall' patterns over several variables.
  -}
 mkForallN
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => Foldable foldable
     => foldable (ElementVariable variable)
     -> TermLike variable
@@ -1261,8 +1248,7 @@ mkMu muVar = updateCallStack . makeSortsAgree mkMuWorker (mkSetVar muVar)
 {- | Construct a 'Next' pattern.
  -}
 mkNext
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => TermLike variable
     -> TermLike variable
 mkNext nextChild =
@@ -1273,8 +1259,7 @@ mkNext nextChild =
 {- | Construct a 'Not' pattern.
  -}
 mkNot
-    :: HasCallStack
-    => InternalVariable variable
+    :: InternalVariable variable
     => TermLike variable
     -> TermLike variable
 mkNot notChild =
@@ -1312,15 +1297,19 @@ mkOr t1 t2 = updateCallStack $ makeSortsAgree mkOrWorker t1 t2
 {- | Construct a 'Rewrites' pattern.
  -}
 mkRewrites
-    :: HasCallStack
-    => InternalVariable variable
-    => TermLike variable
-    -> TermLike variable
-    -> TermLike variable
+    :: forall attr term termF
+    .  Base term ~ CofreeF termF attr
+    => Injection (termF term) (Top Sort term)
+    => Synthetic attr termF
+    => (Corecursive term, Recursive term)
+    => HasCallStack
+    => term
+    -> term
+    -> term
 mkRewrites t1 t2 = updateCallStack $ makeSortsAgree mkRewritesWorker t1 t2
   where
     mkRewritesWorker rewritesFirst rewritesSecond rewritesSort =
-        synthesize (RewritesF rewrites')
+        synthesize (inject rewrites')
       where
         rewrites' = Rewrites { rewritesSort, rewritesFirst, rewritesSecond }
 
@@ -1330,12 +1319,14 @@ See also: 'mkTop_'
 
  -}
 mkTop
-    :: HasCallStack
-    => InternalVariable variable
+    :: forall attr term termF
+    .  Base term ~ CofreeF termF attr
+    => Injection (termF term) (Top Sort term)
+    => Synthetic attr termF
+    => (Corecursive term, Recursive term)
     => Sort
-    -> TermLike variable
-mkTop topSort =
-    updateCallStack $ synthesize (TopF Top { topSort })
+    -> term
+mkTop = updateCallStack . synthesize . inject . Top @_ @term
 
 {- | Construct a 'Top' pattern in 'predicateSort'.
 
@@ -1346,93 +1337,117 @@ See also: 'mkTop'
 
  -}
 mkTop_
-    :: HasCallStack
-    => InternalVariable variable
-    => TermLike variable
+    :: forall attr term termF
+    .  Base term ~ CofreeF termF attr
+    => Injection (termF term) (Top Sort term)
+    => Synthetic attr termF
+    => (Corecursive term, Recursive term)
+    => term
 mkTop_ = updateCallStack $ mkTop predicateSort
 
 {- | Construct an element variable pattern.
  -}
 mkElemVar
-    :: HasCallStack
-    => InternalVariable variable
+    :: forall attr term termF variable
+    .  Base term ~ CofreeF termF attr
+    => Injection (termF term) (Const (UnifiedVariable variable) term)
+    => Synthetic attr termF
+    => (Corecursive term, Recursive term)
     => ElementVariable variable
-    -> TermLike variable
+    -> term
 mkElemVar = updateCallStack . mkVar . ElemVar
 
 {- | Construct a set variable pattern.
  -}
 mkSetVar
-    :: HasCallStack
-    => InternalVariable variable
+    :: forall attr term termF variable
+    .  Base term ~ CofreeF termF attr
+    => Injection (termF term) (Const (UnifiedVariable variable) term)
+    => Synthetic attr termF
+    => (Corecursive term, Recursive term)
     => SetVariable variable
-    -> TermLike variable
+    -> term
 mkSetVar = updateCallStack . mkVar . SetVar
 
 {- | Construct a 'StringLiteral' pattern.
  -}
 mkStringLiteral
-    :: HasCallStack
-    => InternalVariable variable
+    :: forall attr term termF
+    .  Base term ~ CofreeF termF attr
+    => Injection (termF term) (Const StringLiteral term)
+    => Synthetic attr termF
+    => (Corecursive term, Recursive term)
     => Text
-    -> TermLike variable
+    -> term
 mkStringLiteral =
-    updateCallStack . synthesize . StringLiteralF . Const . StringLiteral
+    updateCallStack . synthesize . inject . Const @_ @term . StringLiteral
 
 mkInternalBytes
-    :: HasCallStack
-    => InternalVariable variable
+    :: forall attr term termF
+    .  Base term ~ CofreeF termF attr
+    => Injection (termF term) (Const InternalBytes term)
+    => Synthetic attr termF
+    => (Corecursive term, Recursive term)
     => Sort
     -> ByteString
-    -> TermLike variable
-mkInternalBytes sort value =
-    updateCallStack . synthesize . InternalBytesF . Const
-        $ InternalBytes
-            { bytesSort = sort
-            , bytesValue = value
-            }
+    -> term
+mkInternalBytes bytesSort bytesValue =
+    (updateCallStack . synthesize . inject . Const @_ @term)
+        InternalBytes { bytesSort, bytesValue }
 
 mkInternalBytes'
-    :: HasCallStack
-    => InternalVariable variable
+    :: forall attr term termF
+    .  Base term ~ CofreeF termF attr
+    => Injection (termF term) (Const InternalBytes term)
+    => Synthetic attr termF
+    => (Corecursive term, Recursive term)
     => InternalBytes
-    -> TermLike variable
-mkInternalBytes' = updateCallStack . synthesize . InternalBytesF . Const
+    -> term
+mkInternalBytes' = updateCallStack . synthesize . inject . Const @_ @term
 
 mkInhabitant
-    :: HasCallStack
-    => InternalVariable variable
+    :: forall attr term termF
+    .  Base term ~ CofreeF termF attr
+    => Injection (termF term) (Inhabitant term)
+    => Synthetic attr termF
+    => (Corecursive term, Recursive term)
     => Sort
-    -> TermLike variable
-mkInhabitant = updateCallStack . synthesize . InhabitantF . Inhabitant
+    -> term
+mkInhabitant = updateCallStack . synthesize . inject . Inhabitant @term
 
 mkEvaluated
-    :: HasCallStack
-    => Ord variable
-    => SortedVariable variable
-    => TermLike variable
-    -> TermLike variable
-mkEvaluated = updateCallStack . synthesize . EvaluatedF . Evaluated
+    :: forall attr term termF
+    .  Base term ~ CofreeF termF attr
+    => Injection (termF term) (Evaluated term)
+    => Synthetic attr termF
+    => (Corecursive term, Recursive term)
+    => term
+    -> term
+mkEvaluated = updateCallStack . synthesize . inject . Evaluated
 
 {- | Construct an 'Endianness' pattern.
  -}
 mkEndianness
-    :: HasCallStack
-    => Ord variable
-    => SortedVariable variable
+    :: forall attr term termF
+    .  Base term ~ CofreeF termF attr
+    => Injection (termF term) (Const Endianness term)
+    => Synthetic attr termF
+    => (Corecursive term, Recursive term)
     => Endianness
-    -> TermLike variable
-mkEndianness = updateCallStack . synthesize . EndiannessF . Const
+    -> term
+mkEndianness = updateCallStack . synthesize . inject . Const @_ @term
 
 {- | Construct an 'Signedness' pattern.
  -}
 mkSignedness
-    :: HasCallStack
-    => Ord variable
-    => SortedVariable variable
+    :: forall attr term termF
+    .  Base term ~ CofreeF termF attr
+    => Injection (termF term) (Const Signedness term)
+    => Synthetic attr termF
+    => (Corecursive term, Recursive term)
     => Signedness
-    -> TermLike variable
-mkSignedness = updateCallStack . synthesize . SignednessF . Const
+    -> term
+mkSignedness = updateCallStack . synthesize . inject . Const @_ @term
 
 mkSort :: Id -> Sort
 mkSort name = SortActualSort $ SortActual name []

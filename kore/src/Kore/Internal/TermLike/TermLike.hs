@@ -26,15 +26,12 @@ module Kore.Internal.TermLike.TermLike
 import Prelude.Kore
 
 import Control.Comonad.Trans.Cofree
-    ( CofreeT (..)
-    , tailF
+    ( tailF
     )
 import qualified Control.Comonad.Trans.Env as Env
 import Control.DeepSeq
     ( NFData (..)
     )
-import qualified Control.Lens as Lens
-import qualified Control.Lens.Combinators as Lens.Combinators
 import Control.Monad.Reader
     ( Reader
     )
@@ -59,14 +56,12 @@ import qualified Data.Functor.Foldable as Recursive
 import Data.Functor.Identity
     ( Identity (..)
     )
-import qualified Data.Generics.Product as Lens.Product
 import Data.List
     ( foldl'
     )
 import qualified Data.Set as Set
 import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
-import qualified GHC.Stack as GHC
 
 import Generically
 import Kore.AST.AstWithLocation
@@ -1223,33 +1218,20 @@ externalizeFreshVariables termLike =
                     >>= sequence
         (return . Recursive.embed) (attrs' :< patt')
 
-updateCallStack
-    :: forall variable
-    .  HasCallStack
-    => TermLike variable
-    -> TermLike variable
-updateCallStack = Lens.set created callstack
-  where
-    created = Lens.Combinators.coerced . _extract . Lens.Product.field @"created"
-    callstack =
-        Created . Just . GHC.popCallStack . GHC.popCallStack $ GHC.callStack
-
-    _extract
-        :: Functor f
-        => (a -> f a)
-        -> Cofree g a
-        -> f (Cofree g a)
-    _extract f (CofreeT (Identity (a :< as)))
-        = CofreeT . Identity . (:< as) <$> f a
+updateCallStack :: forall a. a -> a
+updateCallStack = id
 
 {- | Construct a variable pattern.
  -}
 mkVar
-    :: HasCallStack
-    => InternalVariable variable
+    :: forall attr term termF variable
+    .  Base term ~ CofreeF termF attr
+    => Injection (termF term) (Const (UnifiedVariable variable) term)
+    => Synthetic attr termF
+    => (Corecursive term, Recursive term)
     => UnifiedVariable variable
-    -> TermLike variable
-mkVar = updateCallStack . synthesize . VariableF . Const
+    -> term
+mkVar = updateCallStack . synthesize . inject . Const @_ @term
 
 depth :: TermLike variable -> Int
 depth = Recursive.fold levelDepth
