@@ -21,7 +21,15 @@ module Kore.Attribute.Pattern.FreeVariables
 import Prelude.Kore
 
 import Control.DeepSeq
+import qualified Control.Lens as Lens
 import Data.Functor.Const
+import Data.Generics.Wrapped
+    ( _Unwrapped
+    )
+import qualified Data.Map as Map
+import Data.Map.Strict
+    ( Map
+    )
 import Data.Set
     ( Set
     )
@@ -32,12 +40,17 @@ import qualified GHC.Generics as GHC
 
 import Kore.Attribute.Synthetic
 import Kore.Debug
+import Kore.Sort
 import Kore.Syntax.ElementVariable
 import Kore.Syntax.SetVariable
+import Kore.Syntax.Variable
+    ( SortedVariable
+    , sortedVariableSort
+    )
 import Kore.Variables.UnifiedVariable
 
 newtype FreeVariables variable =
-    FreeVariables { getFreeVariables :: Set (UnifiedVariable variable) }
+    FreeVariables { getFreeVariables :: Map (UnifiedVariable variable) Sort }
     deriving GHC.Generic
     deriving (Eq, Ord, Show)
     deriving (Semigroup, Monoid)
@@ -53,10 +66,12 @@ instance (Debug variable, Diff variable) => Diff (FreeVariables variable)
 instance NFData variable => NFData (FreeVariables variable)
 
 instance Hashable variable => Hashable (FreeVariables variable) where
-    hashWithSalt salt (FreeVariables freeVars) =
-        hashWithSalt salt (Set.toList freeVars)
+    hashWithSalt salt = hashWithSalt salt . Map.toAscList . getFreeVariables
+    {-# INLINE hashWithSalt #-}
 
-instance Synthetic (FreeVariables variable) (Const (UnifiedVariable variable))
+instance
+    SortedVariable variable
+    => Synthetic (FreeVariables variable) (Const (UnifiedVariable variable))
   where
     synthetic (Const var) = freeVariable var
     {-# INLINE synthetic #-}
@@ -70,15 +85,15 @@ instance From (FreeVariables variable) (Set (UnifiedVariable variable)) where
     {-# INLINE from #-}
 
 toList :: FreeVariables variable -> [UnifiedVariable variable]
-toList = Set.toList . getFreeVariables
+toList = Map.keys . getFreeVariables
 {-# INLINE toList #-}
 
 toSet :: FreeVariables variable -> Set (UnifiedVariable variable)
-toSet = getFreeVariables
+toSet = Map.keysSet . getFreeVariables
 {-# INLINE toSet #-}
 
 nullFreeVariables :: FreeVariables variable -> Bool
-nullFreeVariables = Set.null . getFreeVariables
+nullFreeVariables = Map.null . getFreeVariables
 {-# INLINE nullFreeVariables #-}
 
 bindVariable
@@ -86,38 +101,47 @@ bindVariable
     => UnifiedVariable variable
     -> FreeVariables variable
     -> FreeVariables variable
-bindVariable variable (FreeVariables freeVars) =
-    FreeVariables (Set.delete variable freeVars)
+bindVariable variable = Lens.over _Unwrapped (Map.delete variable)
 {-# INLINE bindVariable #-}
 
 isFreeVariable
     :: Ord variable
     => UnifiedVariable variable -> FreeVariables variable -> Bool
-isFreeVariable variable (FreeVariables freeVars) =
-    Set.member variable freeVars
+isFreeVariable variable = Map.member variable . getFreeVariables
 {-# INLINE isFreeVariable #-}
 
-freeVariable :: UnifiedVariable variable -> FreeVariables variable
-freeVariable variable = FreeVariables (Set.singleton variable)
+freeVariable
+    :: SortedVariable variable
+    => UnifiedVariable variable
+    -> FreeVariables variable
+freeVariable variable =
+    FreeVariables (Map.singleton variable sort)
+  where
+    sort = sortedVariableSort variable
 {-# INLINE freeVariable #-}
 
 mapFreeVariables
-    :: Ord variable2
+    :: (Ord variable2, SortedVariable variable2)
     => (ElementVariable variable1 -> ElementVariable variable2)
     -> (SetVariable variable1 -> SetVariable variable2)
     -> FreeVariables variable1 -> FreeVariables variable2
-mapFreeVariables mapElemVar mapSetVar (FreeVariables freeVars) =
-    FreeVariables (Set.map (mapUnifiedVariable mapElemVar mapSetVar) freeVars)
+mapFreeVariables mapElemVar mapSetVar =
+    Set.map (mapUnifiedVariable mapElemVar mapSetVar)
+    & viaSet
+    & Lens.over _Unwrapped
+  where
+    viaSet f = Map.fromSet sortedVariableSort . f . Map.keysSet
 {-# INLINE mapFreeVariables #-}
 
 traverseFreeVariables
-    :: (Applicative f, Ord variable2)
+    :: Applicative f
+    => (Ord variable2, SortedVariable variable2)
     => (ElementVariable variable1 -> f (ElementVariable variable2))
     -> (SetVariable variable1 -> f (SetVariable variable2))
     -> FreeVariables variable1 -> f (FreeVariables variable2)
 traverseFreeVariables traverseElemVar traverseSetVar (FreeVariables freeVars) =
-    FreeVariables . Set.fromList
-    <$> Traversable.traverse traversal (Set.toList freeVars)
+    FreeVariables . Map.fromSet sortedVariableSort . Set.fromList
+    <$> Traversable.traverse traversal (Map.keys freeVars)
   where
     traversal = traverseUnifiedVariable traverseElemVar traverseSetVar
 {-# INLINE traverseFreeVariables #-}
@@ -126,7 +150,7 @@ traverseFreeVariables traverseElemVar traverseSetVar (FreeVariables freeVars) =
 -}
 getFreeElementVariables :: FreeVariables variable -> [ElementVariable variable]
 getFreeElementVariables =
-    mapMaybe extractElementVariable . Set.toList . getFreeVariables
+    mapMaybe extractElementVariable . Map.keys . getFreeVariables
 
 -- TODO (thomas.tuegel): Use an associated type family with HasFreeVariables to
 -- fix type inference.

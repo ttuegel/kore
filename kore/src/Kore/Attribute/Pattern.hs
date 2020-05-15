@@ -60,6 +60,7 @@ import Kore.Debug
 import qualified Kore.Internal.SideCondition.SideCondition as SideCondition
     ( Representation
     )
+import Kore.Syntax.Variable
 import Kore.Sort
     ( Sort
     )
@@ -176,7 +177,7 @@ See also: 'traverseVariables'
 
  -}
 mapVariables
-    :: Ord variable2
+    :: (Ord variable2, SortedVariable variable2)
     => (ElementVariable variable1 -> ElementVariable variable2)
     -> (SetVariable variable1 -> SetVariable variable2)
     -> Pattern variable1 -> Pattern variable2
@@ -190,8 +191,8 @@ See also: 'mapVariables'
 
  -}
 traverseVariables
-    ::  forall m variable1 variable2.
-        (Monad m, Ord variable2)
+    :: forall m variable1 variable2
+    .  (Monad m, Ord variable2, SortedVariable variable2)
     => (ElementVariable variable1 -> m (ElementVariable variable2))
     -> (SetVariable variable1 -> m (SetVariable variable2))
     -> Pattern variable1

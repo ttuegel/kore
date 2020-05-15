@@ -39,6 +39,7 @@ import Kore.Syntax.ElementVariable
 import Kore.Syntax.SetVariable
 import Kore.Syntax.Variable
     ( Variable
+    , SortedVariable
     )
 import Kore.Variables.UnifiedVariable
     ( UnifiedVariable
@@ -133,7 +134,7 @@ instance From (Concrete Variable) Attributes where
         . unConcrete
 
 mapConcreteVariables
-    :: Ord variable2
+    :: (Ord variable2, SortedVariable variable2)
     => (ElementVariable variable1 -> ElementVariable variable2)
     -> (SetVariable variable1 -> SetVariable variable2)
     ->  Concrete variable1 -> Concrete variable2
