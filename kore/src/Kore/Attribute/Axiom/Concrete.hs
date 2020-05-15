@@ -5,7 +5,7 @@ License     : NCSA
 -}
 
 module Kore.Attribute.Axiom.Concrete
-    ( Concrete (..), isConcrete
+    ( Concrete (..), isConcreteVariable, concreteVariable
     , concreteId, concreteSymbol, concreteAttribute
     , mapConcreteVariables
     , parseConcreteAttribute
@@ -16,9 +16,7 @@ module Kore.Attribute.Axiom.Concrete
 
 import Prelude.Kore
 
-import qualified Control.Error as Safe
 import qualified Control.Monad as Monad
-import qualified Data.List as List
 import Data.Set
     ( Set
     )
@@ -26,24 +24,26 @@ import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
 import Kore.Attribute.Parser as Parser
-import qualified Kore.Attribute.Pattern.FreeVariables as FreeVariables
 import Kore.Attribute.Pattern.FreeVariables
     ( FreeVariables
     , freeVariable
     , isFreeVariable
     , mapFreeVariables
     )
+import qualified Kore.Attribute.Pattern.FreeVariables as FreeVariables
 import Kore.Debug
 import qualified Kore.Error
 import Kore.Syntax.ElementVariable
 import Kore.Syntax.SetVariable
 import Kore.Syntax.Variable
-    ( Variable
-    , SortedVariable
+    ( SortedVariable
+    , Variable
     )
+import Kore.Unparser
 import Kore.Variables.UnifiedVariable
     ( UnifiedVariable
     )
+import qualified Pretty
 
 {- | @Concrete@ represents the @concrete@ attribute for axioms.
  -}
@@ -67,6 +67,20 @@ instance Ord variable => Default (Concrete variable) where
 instance From (Concrete variable) (Set (UnifiedVariable variable)) where
     from = from @(FreeVariables _) . unConcrete
     {-# INLINE from #-}
+
+isConcreteVariable
+    :: Ord variable
+    => UnifiedVariable variable
+    -> Concrete variable
+    -> Bool
+isConcreteVariable variable (Concrete freeVariables) =
+    FreeVariables.isFreeVariable variable freeVariables
+
+concreteVariable
+    :: SortedVariable variable
+    => UnifiedVariable variable
+    -> Concrete variable
+concreteVariable = Concrete . FreeVariables.freeVariable
 
 -- | Kore identifier representing the @concrete@ attribute symbol.
 concreteId :: Id
@@ -101,30 +115,41 @@ parseFreeVariables
     -> [AttributePattern]
     -> FreeVariables Variable
     -> Parser (FreeVariables Variable)
-parseFreeVariables freeVariables params args concreteVars = do
+parseFreeVariables freeVariables params args concretes = do
     Parser.getZeroParams params
-    vars <- mapM getVariable args
-    mapM_ checkFree vars
-    let newVars = -- if no arguments are provides, assume all free variables
-            if null vars
-                then FreeVariables.toList freeVariables
-                else vars
-        allVars = newVars ++ FreeVariables.toList concreteVars
-        groupedVars = List.group . List.sort $ allVars
-        nubVars = mapMaybe Safe.headMay groupedVars
-        duplicateVars =
-            mapMaybe (Safe.headMay Monad.<=< Safe.tailMay) groupedVars
-    unless (null duplicateVars)
-        $ Kore.Error.koreFail
-            ("duplicate concrete/symbolic variable annotations for "
-            ++ show duplicateVars)
-    return (foldMap freeVariable nubVars)
+    (duplicates, concretes') <-
+        Monad.foldM addVariable ([], concretes)
+        .   defaultFreeVariables
+        =<< mapM getVariable args
+    unless (null duplicates) $
+        (Kore.Error.koreFail . show . Pretty.vsep)
+            ( "duplicate concrete/symbolic variable annotations for:"
+            : (Pretty.indent 4 . unparse <$> duplicates)
+            )
+    return concretes'
   where
-    checkFree :: UnifiedVariable Variable -> Parser ()
-    checkFree variable =
-        unless (isFreeVariable variable freeVariables)
-        $ Kore.Error.koreFail
-            ("expected free variable, found " ++ show variable)
+    -- If no explicit arguments are given, use all the FreeVariables.
+    defaultFreeVariables
+        :: [UnifiedVariable Variable] -> [UnifiedVariable Variable]
+    defaultFreeVariables [] = FreeVariables.toList freeVariables
+    defaultFreeVariables xs = xs
+
+    addVariable
+        :: ([UnifiedVariable Variable], FreeVariables Variable)
+        -> UnifiedVariable Variable
+        -> Parser ([UnifiedVariable Variable], FreeVariables Variable)
+    addVariable (duplicates, concreteVariables) variable
+      | not (isFreeVariable variable freeVariables) =
+        (Kore.Error.koreFail . show . Pretty.hsep)
+            [ "expected free variable, but found:"
+            , unparse variable
+            ]
+      | isFreeVariable variable concreteVariables =
+        pure (variable : duplicates, concreteVariables)
+      | otherwise =
+        pure (duplicates, concreteVariables')
+      where
+        concreteVariables' = freeVariable variable <> concreteVariables
 
 instance From (Concrete Variable) Attributes where
     from =
@@ -140,7 +165,3 @@ mapConcreteVariables
     ->  Concrete variable1 -> Concrete variable2
 mapConcreteVariables mapElemVar mapSetVar (Concrete freeVariables) =
     Concrete (mapFreeVariables mapElemVar mapSetVar freeVariables)
-
-isConcrete
-    :: Ord variable => Concrete variable -> UnifiedVariable variable -> Bool
-isConcrete Concrete { unConcrete } var = isFreeVariable var unConcrete
