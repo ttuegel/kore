@@ -158,18 +158,26 @@ class Ord variable => FreshVariable variable where
         => Set variable
         -> variable
         -> Maybe variable
-    refreshVariable avoiding original = do
-        let sup = supVariable original
-        largest <- assignSort <$> Set.lookupLT sup avoiding
-        -- assignSort must not change the order with respect to sup.
-        assert (largest < sup) $ Monad.guard (largest >= infVariable original)
-        let next = nextVariable largest
-        -- nextVariable must yield a variable greater than largest.
-        assert (next > largest) $ pure next
-      where
-        originalSort = Lens.view lensVariableSort original
-        assignSort = Lens.set lensVariableSort originalSort
+    refreshVariable = defaultRefreshVariable
     {-# INLINE refreshVariable #-}
+
+defaultRefreshVariable
+    :: (FreshPartialOrd variable, SortedVariable variable)
+    => Set variable
+    -> variable
+    -> Maybe variable
+defaultRefreshVariable avoiding original = do
+    let sup = supVariable original
+    largest <- assignSort <$> Set.lookupLT sup avoiding
+    -- assignSort must not change the order with respect to sup.
+    assert (largest < sup) $ Monad.guard (largest >= infVariable original)
+    let next = nextVariable largest
+    -- nextVariable must yield a variable greater than largest.
+    assert (next > largest) $ pure next
+    where
+    originalSort = Lens.view lensVariableSort original
+    assignSort = Lens.set lensVariableSort originalSort
+{-# INLINE defaultRefreshVariable #-}
 
 instance
     (FreshPartialOrd variable, SortedVariable variable)
