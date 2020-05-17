@@ -1,6 +1,8 @@
 module Test.Kore.Rewriting.RewritingVariable
     ( test_FreshPartialOrd_RewritingVariable
     , test_FreshPartialOrd_UnifiedVariable_RewritingVariable
+    , test_FreshPartialOrd_RewritingVariableName
+    , test_FreshPartialOrd_SomeVariableName_RewritingVariableName
     , test_SortedVariable_RewritingVariable
     ) where
 
@@ -24,6 +26,7 @@ import qualified Test.Kore.Step.MockSymbols as Mock
 import Test.Kore.Variables.Fresh
     ( relatedUnifiedVariableGen
     , relatedVariableGen
+    , relatedVariableNameGen
     , testFreshPartialOrd
     )
 import Test.Tasty.HUnit.Ext
@@ -63,4 +66,31 @@ relatedUnifiedRewritingVariableGen =
     Gen.choice
     [ (fmap . fmap) mkUnifiedRuleVariable relatedUnifiedVariableGen
     , (fmap . fmap) mkUnifiedConfigVariable relatedUnifiedVariableGen
+    ]
+
+test_FreshPartialOrd_RewritingVariableName :: TestTree
+test_FreshPartialOrd_RewritingVariableName =
+    testGroup "instance FreshPartialOrd RewritingVariableName"
+    $ testFreshPartialOrd relatedRewritingVariableNameGen
+
+test_FreshPartialOrd_SomeVariableName_RewritingVariableName :: TestTree
+test_FreshPartialOrd_SomeVariableName_RewritingVariableName =
+    testGroup "instance FreshPartialOrd (SomeVariableName RewritingVariableName)"
+    $ testFreshPartialOrd relatedSomeRewritingVariableNameGen
+
+relatedRewritingVariableNameGen :: Gen (Pair RewritingVariableName)
+relatedRewritingVariableNameGen =
+    Gen.choice
+    [ (fmap . fmap) RuleVariableName relatedVariableNameGen
+    , (fmap . fmap) ConfigVariableName relatedVariableNameGen
+    ]
+
+relatedSomeRewritingVariableNameGen
+    :: Gen (Pair (SomeVariableName RewritingVariableName))
+relatedSomeRewritingVariableNameGen =
+    Gen.choice
+    [ (fmap . fmap) (SomeVariableNameElement . ElementVariableName)
+        relatedRewritingVariableNameGen
+    , (fmap . fmap) (SomeVariableNameSet . SetVariableName)
+        relatedRewritingVariableNameGen
     ]

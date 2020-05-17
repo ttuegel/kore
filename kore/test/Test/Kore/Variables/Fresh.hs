@@ -6,10 +6,16 @@ module Test.Kore.Variables.Fresh
     , test_FreshPartialOrd_ElementVariable
     , test_FreshPartialOrd_SetVariable
     , test_FreshPartialOrd_UnifiedVariable
+    , test_FreshPartialOrd_VariableName
+    , test_FreshPartialOrd_ElementVariableName
+    , test_FreshPartialOrd_SetVariableName
+    , test_FreshPartialOrd_SomeVariableName
     --
     , testFreshPartialOrd
     , relatedVariableGen
     , relatedUnifiedVariableGen
+    , relatedVariableNameGen
+    , relatedSomeVariableNameGen
     ) where
 
 import Prelude.Kore
@@ -403,6 +409,26 @@ test_FreshPartialOrd_UnifiedVariable =
     testGroup "instance FreshPartialOrd (UnifiedVariable Variable)"
     $ testFreshPartialOrd relatedUnifiedVariableGen
 
+test_FreshPartialOrd_VariableName :: TestTree
+test_FreshPartialOrd_VariableName =
+    testGroup "instance FreshPartialOrd VariableName"
+    $ testFreshPartialOrd relatedVariableNameGen
+
+test_FreshPartialOrd_ElementVariableName :: TestTree
+test_FreshPartialOrd_ElementVariableName =
+    testGroup "instance FreshPartialOrd (ElementVariableName VariableName)"
+    $ testFreshPartialOrd relatedElementVariableNameGen
+
+test_FreshPartialOrd_SetVariableName :: TestTree
+test_FreshPartialOrd_SetVariableName =
+    testGroup "instance FreshPartialOrd (SetVariableName VariableName)"
+    $ testFreshPartialOrd relatedSetVariableNameGen
+
+test_FreshPartialOrd_SomeVariableName :: TestTree
+test_FreshPartialOrd_SomeVariableName =
+    testGroup "instance FreshPartialOrd (SomeVariableName VariableName)"
+    $ testFreshPartialOrd relatedSomeVariableNameGen
+
 relatedVariableGen :: Gen (Pair Variable)
 relatedVariableGen = do
     Pair name1 name2 <-
@@ -422,6 +448,22 @@ relatedVariableGen = do
             ]
     let variable1 = Variable name1 counter1 sort1
         variable2 = Variable name2 counter2 sort2
+    return (Pair variable1 variable2)
+
+relatedVariableNameGen :: Gen (Pair VariableName)
+relatedVariableNameGen = do
+    Pair name1 name2 <-
+        Gen.choice
+            [ do { name <- idGen; return (Pair name name) }
+            , Pair <$> idGen <*> idGen
+            ]
+    Pair counter1 counter2 <-
+        Gen.choice
+            [ do { counter <- counterGen; return (Pair counter counter) }
+            , Pair <$> counterGen <*> counterGen
+            ]
+    let variable1 = VariableName name1 counter1
+        variable2 = VariableName name2 counter2
     return (Pair variable1 variable2)
 
 counterGen :: MonadGen gen => gen (Maybe (Sup Natural))
@@ -446,4 +488,19 @@ relatedUnifiedVariableGen =
     Gen.choice
         [ (fmap . fmap) ElemVar relatedElementVariableGen
         , (fmap . fmap) SetVar relatedSetVariableGen
+        ]
+
+relatedElementVariableNameGen :: Gen (Pair (ElementVariableName VariableName))
+relatedElementVariableNameGen =
+    (fmap . fmap) ElementVariableName relatedVariableNameGen
+
+relatedSetVariableNameGen :: Gen (Pair (SetVariableName VariableName))
+relatedSetVariableNameGen =
+    (fmap . fmap) SetVariableName relatedVariableNameGen
+
+relatedSomeVariableNameGen :: Gen (Pair (SomeVariableName VariableName))
+relatedSomeVariableNameGen =
+    Gen.choice
+        [ (fmap . fmap) SomeVariableNameElement relatedElementVariableNameGen
+        , (fmap . fmap) SomeVariableNameSet relatedSetVariableNameGen
         ]

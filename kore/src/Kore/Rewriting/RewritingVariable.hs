@@ -6,6 +6,7 @@ License     : NCSA
 
 module Kore.Rewriting.RewritingVariable
     ( RewritingVariable
+    , RewritingVariableName (..)
     , isConfigVariable
     , isRuleVariable
     , mkConfigVariable
@@ -90,6 +91,25 @@ data RewritingVariableName
     | RuleVariableName   !VariableName
     deriving (Eq, Ord, Show)
     deriving (GHC.Generic)
+
+instance FreshPartialOrd RewritingVariableName where
+    infVariable =
+        \case
+            RuleVariableName var   -> RuleVariableName (infVariable var)
+            ConfigVariableName var -> ConfigVariableName (infVariable var)
+    {-# INLINE infVariable #-}
+
+    supVariable =
+        \case
+            RuleVariableName var   -> RuleVariableName (supVariable var)
+            ConfigVariableName var -> ConfigVariableName (supVariable var)
+    {-# INLINE supVariable #-}
+
+    nextVariable =
+        \case
+            RuleVariableName var   -> RuleVariableName (nextVariable var)
+            ConfigVariableName var -> ConfigVariableName (nextVariable var)
+    {-# INLINE nextVariable #-}
 
 instance NamedVariable RewritingVariable where
     type VariableNameOf RewritingVariable = RewritingVariableName
