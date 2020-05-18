@@ -12,6 +12,7 @@ module Kore.Attribute.Pattern.FreeVariables
     , freeVariable
     , isFreeVariable
     , bindVariable
+    , bindVariables
     , mapFreeVariables
     , traverseFreeVariables
     , getFreeElementVariables
@@ -22,6 +23,7 @@ import Prelude.Kore
 
 import Control.DeepSeq
 import qualified Control.Lens as Lens
+import qualified Data.Foldable as Foldable
 import Data.Functor.Const
 import Data.Generics.Wrapped
     ( _Unwrapped
@@ -103,6 +105,16 @@ bindVariable
     -> FreeVariables variable
 bindVariable variable = Lens.over _Unwrapped (Map.delete variable)
 {-# INLINE bindVariable #-}
+
+bindVariables
+    :: Ord variable
+    => Foldable f
+    => f (UnifiedVariable variable)
+    -> FreeVariables variable
+    -> FreeVariables variable
+bindVariables bound free =
+    Foldable.foldl' (flip bindVariable) free bound
+{-# INLINE bindVariables #-}
 
 isFreeVariable
     :: Ord variable
