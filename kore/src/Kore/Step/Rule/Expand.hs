@@ -9,12 +9,20 @@ module Kore.Step.Rule.Expand
 
 import Prelude.Kore
 
-import Data.List
-    ( foldl'
-    , foldr
+import Control.Error
+    ( runMaybeT
     )
+import qualified Control.Monad as Monad
+import Control.Monad.State.Strict
+    ( State
+    , evalState
+    )
+import qualified Control.Monad.State.Strict as State
 import Data.List.NonEmpty
     ( NonEmpty ((:|))
+    )
+import Data.Map.Strict
+    ( Map
     )
 import qualified Data.Map.Strict as Map
 
@@ -114,7 +122,7 @@ instance ExpandSingleConstructors (RulePattern Variable) where
                     expandVariables
                         metadataTools
                         leftVariables
-                        allElementVariables
+                    & flip evalState allElementVariables
                 substitutionPredicate =
                     ( Substitution.toPredicate
                     . Substitution.wrap
@@ -158,63 +166,55 @@ instance ExpandSingleConstructors ReachabilityRule where
         . getAllPathRule
         $ rule
 
+type Expander = State (Avoiding (ElementVariable Variable))
+
+type Expansion = Map (UnifiedVariable Variable) (TermLike Variable)
+
 expandVariables
     :: SmtMetadataTools attributes
     -> [ElementVariable Variable]
-    -> Avoiding (ElementVariable Variable)
-    -> Map.Map (UnifiedVariable Variable) (TermLike Variable)
-expandVariables metadataTools variables toAvoid =
-    fst $ foldl' expandAddVariable (Map.empty, toAvoid) variables
+    -> Expander Expansion
+expandVariables metadataTools variables =
+    Map.fromList <$> witherM expandAddVariable variables
   where
     expandAddVariable
-        ::  ( Map.Map (UnifiedVariable Variable) (TermLike Variable)
-            , Avoiding (ElementVariable Variable)
-            )
-        -> ElementVariable Variable
-        ->  ( Map.Map (UnifiedVariable Variable) (TermLike Variable)
-            , Avoiding (ElementVariable Variable)
-            )
-    expandAddVariable (substitution, toAvoid') variable =
-        case expandVariable metadataTools toAvoid' variable of
-            (newVariables, term) ->
-                ( if mkElemVar variable == term
-                    then substitution
-                    else Map.insert (ElemVar variable) term substitution
-                , toAvoid' <> newVariables
-                )
+        :: ElementVariable Variable
+        -> Expander (Maybe (UnifiedVariable Variable, TermLike Variable))
+    expandAddVariable variable =
+        do
+            term <- lift $ expandVariable metadataTools variable
+            Monad.guard (term /= mkElemVar variable)
+            pure (ElemVar variable, term)
+        & runMaybeT
 
 expandVariable
     :: SmtMetadataTools attributes
-    -> Avoiding (ElementVariable Variable)
     -> ElementVariable Variable
-    -> (Avoiding (ElementVariable Variable), TermLike Variable)
+    -> Expander (TermLike Variable)
 expandVariable
     metadataTools
-    usedVariables
     variable@(ElementVariable Variable {variableSort})
-  = expandSort metadataTools usedVariables variable UseDirectly variableSort
+  =
+    expandSort metadataTools variable UseDirectly variableSort
 
 expandSort
     :: SmtMetadataTools attributes
-    -> Avoiding (ElementVariable Variable)
     -> ElementVariable Variable
     -> VariableUsage
     -> Sort
-    -> (Avoiding (ElementVariable Variable), TermLike Variable)
+    -> Expander (TermLike Variable)
 expandSort
     _metadataTools
-    usedVariables
     defaultVariable
     variableUsage
     sort@(SortVariableSort _)
   =
-    (updatedUsedVariables, variable)
+    variable
   where
-    (updatedUsedVariables, variable) =
-        maybeNewVariable usedVariables defaultVariable sort variableUsage
+    variable =
+        maybeNewVariable defaultVariable sort variableUsage
 expandSort
     metadataTools
-    usedVariables
     defaultVariable
     variableUsage
     sort@(SortActualSort SortActual { sortActualName })
@@ -231,41 +231,23 @@ expandSort
             ) ->
                 expandConstructor
                     metadataTools
-                    usedVariables
                     defaultVariable
                     constructor
-        _ -> maybeNewVariable usedVariables defaultVariable sort variableUsage
+        _ -> maybeNewVariable defaultVariable sort variableUsage
 
 expandConstructor
     :: SmtMetadataTools attributes
-    -> Avoiding (ElementVariable Variable)
     -> ElementVariable Variable
     -> Attribute.Constructors.Constructor
-    -> (Avoiding (ElementVariable Variable), TermLike Variable)
+    -> Expander (TermLike Variable)
 expandConstructor
     metadataTools
-    usedVariables
     defaultVariable
     Attribute.Constructors.Constructor { name = symbol, sorts }
-  = (finalUsedVariables, mkApplySymbol symbol children)
+  =
+    mkApplySymbol symbol <$> traverse expandChildSort sorts
   where
-    (children, finalUsedVariables) =
-        foldr expandChildSort ([], usedVariables) sorts
-
-    expandChildSort
-        :: Sort
-        -> ([TermLike Variable], Avoiding (ElementVariable Variable))
-        -> ([TermLike Variable], Avoiding (ElementVariable Variable))
-    expandChildSort sort (terms, beforeUsedVariables) =
-        (term : terms, afterUsedVariables)
-      where
-        (afterUsedVariables, term) =
-            expandSort
-                metadataTools
-                beforeUsedVariables
-                defaultVariable
-                UseAsPrototype
-                sort
+    expandChildSort = expandSort metadataTools defaultVariable UseAsPrototype
 
 {-| Context: we have a TermLike that contains a variables, and we
 attempt to expand them into constructor applications whenever that's possible.
@@ -290,26 +272,24 @@ data VariableUsage =
     -- variable, so we need to generate a new one based on it.
 
 maybeNewVariable
-    :: Avoiding (ElementVariable Variable)
-    -> ElementVariable Variable
+    :: ElementVariable Variable
     -> Sort
     -> VariableUsage
-    -> (Avoiding (ElementVariable Variable), TermLike Variable)
+    -> Expander (TermLike Variable)
 maybeNewVariable
-    usedVariables
     variable@(ElementVariable Variable {variableSort})
     sort
     UseDirectly
   =
     if sort /= variableSort
         then error "Unmatching sort for direct use variable."
-        else (usedVariables, mkElemVar variable)
-maybeNewVariable usedVariables variable sort UseAsPrototype =
+        else pure (mkElemVar variable)
+maybeNewVariable variable sort UseAsPrototype = do
+    usedVariables <- State.get
     case refreshVariable usedVariables variable' of
-        Just newVariable ->
-            ( avoid newVariable <> usedVariables
-            , mkElemVar newVariable
-            )
+        Just newVariable -> do
+            State.modify' (avoid newVariable <>)
+            pure (mkElemVar newVariable)
         Nothing ->
             (error . show . Pretty.hang 4 . Pretty.vsep)
                 [ "Failed to generate a new name for:"
