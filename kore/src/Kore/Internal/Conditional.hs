@@ -8,6 +8,8 @@ Representation of conditional terms.
 
 {-# OPTIONS_GHC -fno-prof-auto #-}
 
+{-# LANGUAGE UndecidableInstances #-}
+
 module Kore.Internal.Conditional
     ( Conditional (..)
     , withoutTerm

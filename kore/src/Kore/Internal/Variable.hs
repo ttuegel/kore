@@ -86,5 +86,5 @@ type InternalVariable variable =
     , Debug variable, Show variable, Unparse variable
     , NamedVariable variable, SortedVariable variable
     , VariableBase variable
-    , FreshPartialOrd variable, FreshVariable variable
+    , FreshPartialOrd (VariableNameOf variable), FreshVariable variable
     )

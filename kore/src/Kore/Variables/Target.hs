@@ -6,6 +6,8 @@ Target specific variables for unification.
 
  -}
 
+{-# LANGUAGE UndecidableInstances #-}
+
 module Kore.Variables.Target
     ( Target (..)
     , unTarget
@@ -172,7 +174,7 @@ instance FreshPartialOrd variable => FreshPartialOrd (Target variable) where
 {- | Ensures that fresh variables are unique under 'unwrapStepperVariable'.
  -}
 instance
-    (FreshPartialOrd variable, SortedVariable variable)
+    (FreshPartialOrd (VariableNameOf variable), NamedVariable variable)
     => FreshVariable (Target variable)
 
 instance

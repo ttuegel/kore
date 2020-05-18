@@ -4,6 +4,8 @@ License     : NCSA
 
 -}
 
+{-# LANGUAGE UndecidableInstances #-}
+
 module Kore.Internal.Predicate
     ( Predicate -- Constructor not exported on purpose
     , pattern PredicateAnd
@@ -734,7 +736,7 @@ isPredicate = Either.isRight . makePredicate
 {- | Replace all variables in a @Predicate@ using the provided mapping.
 -}
 mapVariables
-    :: (Ord from, FreshPartialOrd to, SortedVariable to)
+    :: (Ord from, FreshPartialOrd (VariableNameOf to), NamedVariable to, SortedVariable to)
     => (ElementVariable from -> ElementVariable to)
     -> (SetVariable from -> SetVariable to)
     -> Predicate from

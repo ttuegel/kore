@@ -298,11 +298,18 @@ test_refreshVariable =
     avoid0 :: variable -> Set variable
     avoid0 var = Set.singleton var
 
-    avoid1 :: FreshVariable variable => variable -> Set variable
+    avoid1 :: (Ord variable, FreshVariable variable) => variable -> Set variable
     avoid1 var = Set.insert (fresh0 var) (avoid0 var)
 
-    fresh0, fresh1 :: FreshVariable variable => variable -> variable
+    fresh0
+        :: FreshVariable variable
+        => variable
+        -> variable
     fresh0 var = fromJust $ refreshVariable (avoid0 var) var
+    fresh1
+        :: (Ord variable, FreshVariable variable)
+        => variable
+        -> variable
     fresh1 var = fromJust $ refreshVariable (avoid1 var) var
     fresh :: FreshVariable variable => Set variable -> variable -> variable
     fresh avoiding var = fromJust $ refreshVariable avoiding var

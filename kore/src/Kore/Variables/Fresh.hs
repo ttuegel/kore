@@ -1,7 +1,11 @@
 {- |
 Copyright   : (c) Runtime Verification, 2018
 License     : UIUC/NCSA
+
  -}
+
+{-# LANGUAGE UndecidableInstances #-}
+
 module Kore.Variables.Fresh
     ( FreshPartialOrd (..)
     , FreshVariable (..)
@@ -29,6 +33,7 @@ import Data.Set
     ( Set
     )
 import qualified Data.Set as Set
+import Data.Void
 
 import Data.Sup
 import Kore.Syntax.ElementVariable
@@ -87,6 +92,11 @@ class Ord variable => FreshPartialOrd variable where
     {- | @nextVariable@ increments the counter attached to a variable.
      -}
     nextVariable :: variable -> variable
+
+instance FreshPartialOrd Void where
+    infVariable = \case {}
+    supVariable = \case {}
+    nextVariable = \case {}
 
 instance FreshPartialOrd VariableName where
     infVariable variable = variable { counter = Nothing }
@@ -195,7 +205,7 @@ instance
 
 {- | A @FreshVariable@ can be renamed to avoid colliding with a set of names.
 -}
-class Ord variable => FreshVariable variable where
+class Ord (VariableNameOf variable) => FreshVariable variable where
     {- | Refresh a variable, renaming it avoid the given set.
 
     If the given variable occurs in the set, @refreshVariable@ must return
@@ -209,43 +219,63 @@ class Ord variable => FreshVariable variable where
         -> variable      -- ^ variable to rename
         -> Maybe variable
     default refreshVariable
-        :: (FreshPartialOrd variable, SortedVariable variable)
+        :: (FreshPartialOrd (VariableNameOf variable), NamedVariable variable)
         => Set variable
         -> variable
         -> Maybe variable
     refreshVariable = defaultRefreshVariable
     {-# INLINE refreshVariable #-}
 
+    refreshVariableName
+        :: Set (VariableNameOf variable)  -- ^ variables to avoid
+        -> variable      -- ^ variable to rename
+        -> Maybe variable
+    default refreshVariableName
+        :: (FreshPartialOrd (VariableNameOf variable), NamedVariable variable)
+        => Set (VariableNameOf variable)
+        -> variable
+        -> Maybe variable
+    refreshVariableName = defaultRefreshVariableName
+
 defaultRefreshVariable
-    :: (FreshPartialOrd variable, SortedVariable variable)
+    :: FreshPartialOrd (VariableNameOf variable)
+    => NamedVariable variable
     => Set variable
     -> variable
     -> Maybe variable
-defaultRefreshVariable avoiding original = do
-    let sup = supVariable original
-    largest <- assignSort <$> Set.lookupLT sup avoiding
-    -- assignSort must not change the order with respect to sup.
-    assert (largest < sup) $ Monad.guard (largest >= infVariable original)
-    let next = nextVariable largest
-    -- nextVariable must yield a variable greater than largest.
-    assert (next > largest) $ pure next
-    where
-    originalSort = Lens.view lensVariableSort original
-    assignSort = Lens.set lensVariableSort originalSort
+defaultRefreshVariable avoiding =
+    defaultRefreshVariableName (Set.map (Lens.view lensVariableName) avoiding)
 {-# INLINE defaultRefreshVariable #-}
 
+defaultRefreshVariableName
+    :: FreshPartialOrd (VariableNameOf variable)
+    => NamedVariable variable
+    => Set (VariableNameOf variable)
+    -> variable
+    -> Maybe variable
+defaultRefreshVariableName avoiding variable = do
+    let original = Lens.view lensVariableName variable
+    let sup = supVariable original
+    largest <- Set.lookupLT sup avoiding
+    Monad.guard (largest >= infVariable original)
+    let next = nextVariable largest
+    -- nextVariable must yield a variable greater than largest.
+    assert (next > largest) $ pure $ Lens.set lensVariableName next variable
+{-# INLINE defaultRefreshVariableName #-}
+
 instance
-    (FreshPartialOrd variable, SortedVariable variable)
+    (FreshPartialOrd (VariableNameOf variable), NamedVariable variable)
     => FreshVariable (ElementVariable variable)
 
 instance
-    (FreshPartialOrd variable, SortedVariable variable)
+    (FreshPartialOrd (VariableNameOf variable), NamedVariable variable)
     => FreshVariable (SetVariable variable)
 
 instance FreshVariable Variable
 
 instance FreshVariable Concrete where
     refreshVariable _ = \case {}
+    refreshVariableName _ = \case {}
 
 {- | Rename one set of variables while avoiding another.
 
@@ -265,7 +295,7 @@ result with 'Kore.Internal.TermLike.mkVar':
 
  -}
 refreshVariables
-    :: FreshVariable variable
+    :: (Ord variable, FreshVariable variable)
     => Set variable  -- ^ variables to avoid
     -> Set variable  -- ^ variables to rename
     -> Map variable variable

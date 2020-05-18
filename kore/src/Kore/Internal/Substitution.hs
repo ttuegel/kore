@@ -4,6 +4,8 @@ License     : NCSA
 
 -}
 
+{-# LANGUAGE UndecidableInstances #-}
+
 module Kore.Internal.Substitution
     ( Substitution
     -- Constructor for Assignment not exported

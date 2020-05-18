@@ -1,7 +1,10 @@
-{-|
+{- |
 Copyright   : (c) Runtime Verification, 2019
 License     : NCSA
+
 -}
+
+{-# LANGUAGE UndecidableInstances #-}
 
 module Kore.Step.Rule.Simplify
     ( SimplifyRuleLHS (..)

@@ -3,6 +3,9 @@ Copyright   : (c) Runtime Verification, 2019
 License     : NCSA
 
 -}
+
+{-# LANGUAGE UndecidableInstances #-}
+
 module Kore.Variables.UnifiedVariable
     ( UnifiedVariable (..)
     , ElementVariable (..), SetVariable (..)
@@ -150,7 +153,7 @@ instance
     {-# INLINE nextVariable #-}
 
 instance
-    (FreshPartialOrd variable, SortedVariable variable)
+    (FreshPartialOrd (VariableNameOf variable), NamedVariable variable)
     => FreshVariable (UnifiedVariable variable)
 
 instance From from to => From (UnifiedVariable from) (UnifiedVariable to) where

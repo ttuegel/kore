@@ -4,6 +4,8 @@ License     : NCSA
 
  -}
 
+{-# LANGUAGE UndecidableInstances #-}
+
 module Kore.Rewriting.UnifyingRule
     ( UnifyingRule (..)
     , InstantiationFailure (..)
@@ -27,9 +29,11 @@ import Kore.Internal.Predicate
 import Kore.Internal.TermLike
     ( ElementVariable
     , InternalVariable
+    , NamedVariable
     , SetVariable
     , SortedVariable
     , TermLike
+    , VariableNameOf
     )
 import Kore.Unparser
 import Kore.Variables.Fresh
@@ -100,7 +104,9 @@ class UnifyingRule rule where
     distinguishing rule variables from configuration variables.
     -}
     mapRuleVariables
-        :: (Ord variable1, FreshPartialOrd variable2, SortedVariable variable2)
+        :: Ord variable1
+        => FreshPartialOrd (VariableNameOf variable2)
+        => (NamedVariable variable2, SortedVariable variable2)
         => (ElementVariable variable1 -> ElementVariable variable2)
         -> (SetVariable variable1 -> SetVariable variable2)
         -> rule variable1

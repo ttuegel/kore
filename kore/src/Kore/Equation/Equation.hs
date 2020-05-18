@@ -4,6 +4,8 @@ License     : NCSA
 
 -}
 
+{-# LANGUAGE UndecidableInstances #-}
+
 module Kore.Equation.Equation
     ( Equation (..)
     , mkEquation

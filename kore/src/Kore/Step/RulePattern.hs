@@ -1,9 +1,11 @@
-{-|
+{- |
 Description : Rewrite rules
 Copyright   : (c) Runtime Verification, 2019
 License     : NCSA
 
 -}
+
+{-# LANGUAGE UndecidableInstances #-}
 
 module Kore.Step.RulePattern
     ( RulePattern (..)

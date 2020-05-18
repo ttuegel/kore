@@ -4,6 +4,8 @@ License     : NCSA
 
 -}
 
+{-# LANGUAGE UndecidableInstances #-}
+
 module Kore.Step.Simplification.Simplify
     ( InternalVariable
     , MonadSimplify (..)
