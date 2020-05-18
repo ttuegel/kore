@@ -67,6 +67,8 @@ import qualified Kore.Internal.Substitution as Substitution
 import Kore.Internal.TermLike
     ( InternalVariable
     , Sort
+    , SortedVariable
+    , SubstitutionOrd
     , TermLike
     , termLikeSort
     )
@@ -103,12 +105,12 @@ data Conditional variable child =
     deriving (Foldable, Functor, GHC.Generic, Traversable)
 
 deriving instance
-    (Eq child, InternalVariable variable) =>
-    Eq (Conditional variable child)
+    (Eq child, Ord variable, SubstitutionOrd variable, SortedVariable variable)
+    => Eq (Conditional variable child)
 
 deriving instance
-    (Ord child, InternalVariable variable) =>
-    Ord (Conditional variable child)
+    (Ord child, Ord variable, SubstitutionOrd variable, SortedVariable variable)
+    => Ord (Conditional variable child)
 
 deriving instance
     (Show child, Show variable) =>
