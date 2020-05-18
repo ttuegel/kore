@@ -8,6 +8,7 @@ module Kore.Attribute.Pattern.FreeVariables
     ( FreeVariables
     , toList
     , toSet
+    , toAvoiding
     , nullFreeVariables
     , freeVariable
     , isFreeVariable
@@ -48,6 +49,9 @@ import Kore.Syntax.SetVariable
 import Kore.Syntax.Variable
     ( SortedVariable
     , sortedVariableSort
+    )
+import Kore.Variables.Fresh
+    ( Avoiding
     )
 import Kore.Variables.UnifiedVariable
 
@@ -93,6 +97,10 @@ toList = Map.keys . getFreeVariables
 toSet :: FreeVariables variable -> Set (UnifiedVariable variable)
 toSet = Map.keysSet . getFreeVariables
 {-# INLINE toSet #-}
+
+toAvoiding :: FreeVariables variable -> Avoiding (UnifiedVariable variable)
+toAvoiding = from @(Set _) @(Avoiding _) . toSet
+{-# INLINE toAvoiding #-}
 
 nullFreeVariables :: FreeVariables variable -> Bool
 nullFreeVariables = Map.null . getFreeVariables

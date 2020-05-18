@@ -91,7 +91,8 @@ import Kore.Step.Simplification.Simplify
 import qualified Kore.Step.Simplification.Simplify as Simplifier
 import Kore.Variables.Binding
 import Kore.Variables.Fresh
-    ( FreshPartialOrd
+    ( Avoiding
+    , FreshPartialOrd
     )
 import qualified Kore.Variables.Fresh as Variables
 import Kore.Variables.UnifiedVariable
@@ -207,11 +208,11 @@ matchIncremental termLike1 termLike2 =
             , predicate = empty
             , substitution = mempty
             , bound = mempty
-            , targets = free1
+            , targets = from @_ @(Set _) free1
             , avoiding = free1 <> free2
             }
-    free1 = (FreeVariables.toSet . freeVariables) termLike1
-    free2 = (FreeVariables.toSet . freeVariables) termLike2
+    free1 = (FreeVariables.toAvoiding . freeVariables) termLike1
+    free2 = (FreeVariables.toAvoiding . freeVariables) termLike2
 
     -- | Check that matching is finished and construct the result.
     done :: MatcherT variable simplifier (Maybe (MatchResult variable))
@@ -438,7 +439,7 @@ data MatcherState variable =
         -- ^ Bound variable that must not escape in the solution.
         , targets :: !(Set (UnifiedVariable variable))
         -- ^ Target variables that may be substituted.
-        , avoiding :: !(Set (UnifiedVariable variable))
+        , avoiding :: !(Avoiding (UnifiedVariable variable))
         -- ^ Variables that must not be shadowed.
         }
     deriving (GHC.Generic)
@@ -668,7 +669,7 @@ bindVariable
     -> matcher ()
 bindVariable variable = do
     field @"bound" %= Set.insert variable
-    field @"avoiding" %= Set.insert variable
+    field @"avoiding" <>= Variables.avoid variable
 
 {- | Lift a (bound) variable to the top level by with a globally-unique name.
 

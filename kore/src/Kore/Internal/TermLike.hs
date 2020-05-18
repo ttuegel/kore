@@ -197,9 +197,6 @@ import qualified Data.Map.Strict as Map
 import Data.Monoid
     ( Endo (..)
     )
-import Data.Set
-    ( Set
-    )
 import Data.Text
     ( Text
     )
@@ -270,7 +267,8 @@ import Kore.Unparser
 import qualified Kore.Unparser as Unparser
 import Kore.Variables.Binding
 import Kore.Variables.Fresh
-    ( FreshPartialOrd
+    ( Avoiding
+    , FreshPartialOrd
     , FreshVariable
     )
 import qualified Kore.Variables.Fresh as Fresh
@@ -288,7 +286,7 @@ refreshVariables
     => FreeVariables variable
     -> TermLike variable
     -> TermLike variable
-refreshVariables (FreeVariables.toSet -> avoid) term =
+refreshVariables (FreeVariables.toAvoiding -> avoid) term =
     Substitute.substitute subst term
   where
     rename = Fresh.refreshVariables avoid originalFreeVariables
@@ -1883,12 +1881,17 @@ pattern Inj_ inj <- (Recursive.project -> _ :< InjF inj)
 
 refreshBinder
     :: InternalVariable variable
-    => (Set (UnifiedVariable variable) -> bound -> Maybe bound)
+    => (Avoiding (UnifiedVariable variable) -> bound -> Maybe bound)
     -> (bound -> UnifiedVariable variable)
     -> FreeVariables variable
     -> Binder bound (TermLike variable)
     -> Binder bound (TermLike variable)
-refreshBinder refreshBound mkUnified (FreeVariables.toSet -> avoiding) binder =
+refreshBinder
+    refreshBound
+    mkUnified
+    (FreeVariables.toAvoiding -> avoiding)
+    binder
+  =
     do
         binderVariable' <- refreshBound avoiding binderVariable
         let renaming =

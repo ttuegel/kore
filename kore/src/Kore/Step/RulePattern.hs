@@ -177,22 +177,24 @@ topExistsToImplicitForall
     => FreeVariables variable
     -> RHS variable
     -> Pattern variable
-topExistsToImplicitForall avoid' RHS { existentials, right, ensures } =
+topExistsToImplicitForall
+    (FreeVariables.toAvoiding -> avoiding)
+    RHS { existentials, right, ensures }
+  =
     Conditional
         { term = TermLike.substitute subst right
         , predicate = Predicate.substitute subst ensures
         , substitution = mempty
         }
   where
-    avoid = FreeVariables.toSet avoid'
     bindExistsFreeVariables =
         freeVariables right <> freeVariables ensures
         & FreeVariables.bindVariables (ElemVar <$> existentials)
-        & FreeVariables.toSet
+        & FreeVariables.toAvoiding
     rename :: Map (UnifiedVariable variable) (UnifiedVariable variable)
     rename =
         refreshVariables
-            (avoid <> bindExistsFreeVariables)
+            (avoiding <> bindExistsFreeVariables)
             (Set.fromList $ ElemVar <$> existentials)
     subst = TermLike.mkVar <$> rename
 
@@ -874,8 +876,8 @@ instance UnifyingRule RulePattern where
     precondition = requires
 
     refreshRule avoid' rule1@(RulePattern _ _ _ _ _) =
-        let avoid = FreeVariables.toSet avoid'
-            rename = refreshVariables (avoid <> exVars) originalFreeVariables
+        let avoiding = FreeVariables.toAvoiding avoid'
+            rename = refreshVariables (avoiding <> exVars) originalFreeVariables
             subst = TermLike.mkVar <$> rename
             left' = TermLike.substitute subst left
             antiLeft' = TermLike.substitute subst <$> antiLeft
@@ -891,7 +893,7 @@ instance UnifyingRule RulePattern where
         in (rename, rule2)
       where
         RulePattern { left, antiLeft, requires, rhs } = rule1
-        exVars = Set.fromList $ ElemVar <$> existentials rhs
+        exVars = foldMap (avoid . ElemVar) (existentials rhs)
         originalFreeVariables = freeVariables rule1 & FreeVariables.toSet
 
     mapRuleVariables mapElemVar mapSetVar rule1@(RulePattern _ _ _ _ _) =

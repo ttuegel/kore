@@ -22,7 +22,6 @@ import Data.Functor.Identity
     ( runIdentity
     )
 import qualified Data.Map.Strict as Map
-import qualified Data.Set as Set
 
 import Data.Sup
 import Kore.Attribute.Pattern.FreeVariables
@@ -36,14 +35,15 @@ import Kore.Domain.Builtin
     ( Builtin (..)
     , InternalInt (..)
     )
+import Kore.Internal.ApplicationSorts
 import Kore.Internal.TermLike
 import Kore.Variables.Fresh
-    ( refreshVariable
+    ( avoid
+    , refreshVariable
     )
 import Kore.Variables.UnifiedVariable
     ( UnifiedVariable (..)
     )
-import Kore.Internal.ApplicationSorts
 
 import Test.Kore hiding
     ( symbolGen
@@ -239,7 +239,7 @@ test_substitute =
                   where
                     Just (ElemVar z') =
                         refreshVariable
-                            (Set.singleton (ElemVar Mock.z))
+                            (avoid (ElemVar Mock.z))
                             (ElemVar Mock.z)
                 actual =
                     substitute (Map.singleton (ElemVar Mock.x) (mkElemVar Mock.z))

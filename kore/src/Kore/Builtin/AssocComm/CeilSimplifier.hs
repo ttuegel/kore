@@ -27,10 +27,10 @@ import qualified Data.Foldable as Foldable
 import qualified Data.List as List
 import qualified Data.Map.Strict as Map
 
-import qualified Kore.Attribute.Pattern.FreeVariables as FreeVariables
 import Kore.Attribute.Pattern.FreeVariables
     ( FreeVariables
     )
+import qualified Kore.Attribute.Pattern.FreeVariables as FreeVariables
 import qualified Kore.Builtin.Builtin as Builtin
 import Kore.Domain.Builtin
     ( AcWrapper
@@ -174,7 +174,7 @@ generalizeMapElement freeVariables' element =
     element' = Domain.wrapElement (key, MapValue $ TermLike.mkElemVar variable)
     avoiding =
         TermLike.freeVariables key <> freeVariables'
-        & FreeVariables.toSet
+        & FreeVariables.toAvoiding
     x =
         (ElementVariable . from @Variable @variable) Variable
             { variableName = "x"

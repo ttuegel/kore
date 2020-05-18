@@ -10,6 +10,8 @@ module Kore.Variables.Fresh
     ( FreshPartialOrd (..)
     , FreshVariable (..)
     , refreshVariables
+    , Avoiding
+    , avoid
     -- * Re-exports
     , module Kore.Syntax.Variable
     ) where
@@ -34,8 +36,11 @@ import Data.Set
     )
 import qualified Data.Set as Set
 import Data.Void
+import qualified Generics.SOP as SOP
+import qualified GHC.Generics as GHC
 
 import Data.Sup
+import Debug
 import Kore.Syntax.ElementVariable
 import Kore.Syntax.Id
 import Kore.Syntax.SetVariable
@@ -203,6 +208,38 @@ instance
     nextVariable = Lens.over _Unwrapped nextVariable
     {-# INLINE nextVariable #-}
 
+newtype Avoiding variable =
+    Avoiding { getAvoiding :: Set variable }
+    deriving (Eq, Ord, Show)
+    deriving (GHC.Generic)
+
+instance SOP.Generic (Avoiding variable)
+
+instance SOP.HasDatatypeInfo (Avoiding variable)
+
+instance Debug variable => Debug (Avoiding variable)
+
+instance (Debug variable, Diff variable) => Diff (Avoiding variable)
+
+instance Ord variable => Semigroup (Avoiding variable) where
+    (<>) a b = Avoiding (on (<>) getAvoiding a b)
+    {-# INLINE (<>) #-}
+
+instance Ord variable => Monoid (Avoiding variable) where
+    mempty = Avoiding mempty
+    {-# INLINE mempty #-}
+
+instance From (Set variable) (Avoiding variable) where
+    from = Avoiding
+    {-# INLINE from #-}
+
+instance From (Avoiding variable) (Set variable) where
+    from = getAvoiding
+    {-# INLINE from #-}
+
+avoid :: variable -> Avoiding variable
+avoid = Avoiding . Set.singleton
+
 {- | A @FreshVariable@ can be renamed to avoid colliding with a set of names.
 -}
 class Ord (VariableNameOf variable) => FreshVariable variable where
@@ -215,12 +252,12 @@ class Ord (VariableNameOf variable) => FreshVariable variable where
 
      -}
     refreshVariable
-        :: Set variable  -- ^ variables to avoid
+        :: Avoiding variable  -- ^ variables to avoid
         -> variable      -- ^ variable to rename
         -> Maybe variable
     default refreshVariable
         :: (FreshPartialOrd (VariableNameOf variable), NamedVariable variable)
-        => Set variable
+        => Avoiding variable
         -> variable
         -> Maybe variable
     refreshVariable = defaultRefreshVariable
@@ -240,11 +277,13 @@ class Ord (VariableNameOf variable) => FreshVariable variable where
 defaultRefreshVariable
     :: FreshPartialOrd (VariableNameOf variable)
     => NamedVariable variable
-    => Set variable
+    => Avoiding variable
     -> variable
     -> Maybe variable
 defaultRefreshVariable avoiding =
-    defaultRefreshVariableName (Set.map (Lens.view lensVariableName) avoiding)
+    getAvoiding avoiding
+    & Set.map (Lens.view lensVariableName)
+    & defaultRefreshVariableName
 {-# INLINE defaultRefreshVariable #-}
 
 defaultRefreshVariableName
@@ -296,23 +335,23 @@ result with 'Kore.Internal.TermLike.mkVar':
  -}
 refreshVariables
     :: (Ord variable, FreshVariable variable)
-    => Set variable  -- ^ variables to avoid
+    => Avoiding variable  -- ^ variables to avoid
     -> Set variable  -- ^ variables to rename
     -> Map variable variable
 refreshVariables avoid0 =
     snd <$> Foldable.foldl' refreshVariablesWorker (avoid0, Map.empty)
   where
-    refreshVariablesWorker (avoid, rename) var
-      | Just var' <- refreshVariable avoid var =
-        let avoid' =
+    refreshVariablesWorker (avoiding, rename) var
+      | Just var' <- refreshVariable avoiding var =
+        let avoiding' =
                 -- Avoid the freshly-generated variable in future renamings.
-                Set.insert var' avoid
+                avoid var' <> avoiding
             rename' =
                 -- Record a mapping from the original variable to the
                 -- freshly-generated variable.
                 Map.insert var var' rename
-        in (avoid', rename')
+        in (avoiding', rename')
       | otherwise =
         -- The variable does not collide with any others, so renaming is not
         -- necessary.
-        (Set.insert var avoid, rename)
+        (avoid var <> avoiding, rename)

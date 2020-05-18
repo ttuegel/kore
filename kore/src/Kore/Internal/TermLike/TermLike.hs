@@ -130,7 +130,8 @@ import Kore.Unparser
 import qualified Kore.Unparser as Unparser
 import Kore.Variables.Binding
 import Kore.Variables.Fresh
-    ( FreshPartialOrd
+    ( Avoiding
+    , FreshPartialOrd
     )
 import qualified Kore.Variables.Fresh as Fresh
 import qualified Pretty
@@ -710,7 +711,7 @@ mapVariables mapElemVar mapSetVar termLike =
         let attrs :< termLikeF = Recursive.project (extract env)
             renaming = Env.ask env
             attrs' = renameAttrs renaming attrs
-            avoiding = FreeVariables.toSet $ freeVariables attrs'
+            avoiding = FreeVariables.toAvoiding $ freeVariables attrs'
             termLikeF' =
                 case termLikeF of
                     VariableF (Const unifiedVariable1) ->
@@ -774,7 +775,7 @@ traverseVariables trElemVar trSetVar termLike =
                 askElementVariable
                 askSetVariable
                 attrs
-        let avoiding = FreeVariables.toSet $ freeVariables attrs'
+        let avoiding = FreeVariables.toAvoiding $ freeVariables attrs'
         termLikeF' <- case termLikeF of
             VariableF (Const unifiedVariable) -> do
                 unifiedVariable' <- askUnifiedVariable unifiedVariable
@@ -840,7 +841,7 @@ renameElementBinder
     =>  Ord variable1
     =>  (FreshPartialOrd (VariableNameOf variable2), NamedVariable variable2)
     =>  (ElementVariable variable1 -> m (ElementVariable variable2))
-    ->  Set.Set (UnifiedVariable variable2)
+    ->  Avoiding (UnifiedVariable variable2)
     ->  Binder (ElementVariable variable1)
             (RenamingT variable1 variable2 m any)
     ->  RenamingT variable1 variable2 m
@@ -867,7 +868,7 @@ renameSetBinder
     =>  Ord variable1
     =>  (FreshPartialOrd (VariableNameOf variable2), NamedVariable variable2)
     =>  (SetVariable variable1 -> m (SetVariable variable2))
-    ->  Set.Set (UnifiedVariable variable2)
+    ->  Avoiding (UnifiedVariable variable2)
     ->  Binder (SetVariable variable1)
             (RenamingT variable1 variable2 m any)
     ->  RenamingT variable1 variable2 m

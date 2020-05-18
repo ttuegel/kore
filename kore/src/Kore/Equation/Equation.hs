@@ -29,9 +29,6 @@ import Data.Map.Strict
     ( Map
     )
 import qualified Data.Map.Strict as Map
-import Data.Set
-    ( Set
-    )
 import Data.Text
     ( Text
     )
@@ -225,7 +222,7 @@ refreshVariables
     -> Equation variable
     -> (Renaming variable, Equation variable)
 refreshVariables
-    (from @_ @(Set (UnifiedVariable _)) -> avoid)
+    (FreeVariables.toAvoiding -> avoid)
     equation@(Equation _ _ _ _ _)
   =
     let rename = Fresh.refreshVariables avoid originalFreeVariables

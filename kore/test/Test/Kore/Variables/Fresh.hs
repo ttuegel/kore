@@ -30,10 +30,6 @@ import Test.Tasty.HUnit
 import Data.Maybe
     ( fromJust
     )
-import Data.Set
-    ( Set
-    )
-import qualified Data.Set as Set
 import Numeric.Natural
 
 import Data.Sup
@@ -84,7 +80,7 @@ test_refreshVariable =
         let x0 = Variable (testId "x0") Nothing testSort0
             x1 = x0 { variableSort = testSort1 }
             x1' = x1 { variableCounter = Just (Element 0) }
-        let avoiding = Set.singleton x0
+        let avoiding = avoid x0
         assertEqual "Expected fresh variable"
             (Just x1')
             (refreshVariable avoiding x1)
@@ -93,7 +89,7 @@ test_refreshVariable =
         [ testCase "refreshVariable - avoid empty set" $
             assertEqual "Expected no new variable"
                 Nothing
-                (refreshVariable Set.empty original)
+                (refreshVariable mempty original)
 
         , testCase "refreshVariable - avoid original" $
             assertBool "Expected fresh variable" (original < fresh0 original)
@@ -111,7 +107,7 @@ test_refreshVariable =
         , testCase "refreshVariable - sort order does not matter" $
             let assertRefreshes a b =
                     assertBool "Expected fresh variable"
-                        (isJust (refreshVariable (Set.singleton a) b))
+                        (isJust (refreshVariable (avoid a) b))
             in do
                 assertRefreshes original metaVariableDifferentSort
                 assertRefreshes metaVariableDifferentSort original
@@ -121,7 +117,7 @@ test_refreshVariable =
         [ testCase "refreshVariable - avoid empty set" $
             assertEqual "Expected no new variable"
                 Nothing
-                (refreshVariable Set.empty targetOriginal)
+                (refreshVariable mempty targetOriginal)
 
         , testCase "refreshVariable - avoid original" $
             assertBool
@@ -143,7 +139,7 @@ test_refreshVariable =
         [ testCase "refreshVariable - avoid empty set" $
             assertEqual "Expected no new variable"
                 Nothing
-                (refreshVariable Set.empty elemOriginal)
+                (refreshVariable mempty elemOriginal)
 
         , testCase "refreshVariable - avoid original" $
             assertBool
@@ -160,7 +156,7 @@ test_refreshVariable =
         [ testCase "refreshVariable - avoid empty set" $
             assertEqual "Expected no new variable"
                 Nothing
-                (refreshVariable Set.empty setOriginal)
+                (refreshVariable mempty setOriginal)
 
         , testCase "refreshVariable - avoid original" $
             assertBool
@@ -177,7 +173,7 @@ test_refreshVariable =
         [ testCase "refreshVariable - avoid empty set" $
             assertEqual "Expected no new variable"
                 Nothing
-                (refreshVariable Set.empty elemOriginal)
+                (refreshVariable mempty elemOriginal)
 
         , testCase "refreshVariable - avoid original" $
             assertBool
@@ -194,7 +190,7 @@ test_refreshVariable =
         [ testCase "refreshVariable - avoid empty set" $
             assertEqual "Expected no new variable"
                 Nothing
-                (refreshVariable Set.empty unifiedSetOriginal)
+                (refreshVariable mempty unifiedSetOriginal)
 
         , testCase "refreshVariable - avoid original" $
             assertBool
@@ -211,7 +207,7 @@ test_refreshVariable =
         [ testCase "refreshVariable - avoid empty set" $
             assertEqual "Expected no new variable"
                 Nothing
-                (refreshVariable Set.empty elemTargetOriginal)
+                (refreshVariable mempty elemTargetOriginal)
 
         , testCase "refreshVariable - avoid original" $
             assertBool
@@ -232,7 +228,7 @@ test_refreshVariable =
         [ testCase "refreshVariable - avoid empty set" $
             assertEqual "Expected no new variable"
                 Nothing
-                (refreshVariable Set.empty setNonTargetOriginal)
+                (refreshVariable mempty setNonTargetOriginal)
 
         , testCase "refreshVariable - avoid original" $
             assertBool
@@ -253,7 +249,7 @@ test_refreshVariable =
         [ testCase "refreshVariable - avoid empty set" $
             assertEqual "Expected no new variable"
                 Nothing
-                (refreshVariable Set.empty unifiedElemTargetOriginal)
+                (refreshVariable mempty unifiedElemTargetOriginal)
 
         , testCase "refreshVariable - avoid original" $
             assertBool
@@ -272,7 +268,7 @@ test_refreshVariable =
         , testCase "refreshVariable - avoid empty set" $
             assertEqual "Expected no new variable"
                 Nothing
-                (refreshVariable Set.empty unifiedSetNonTargetOriginal)
+                (refreshVariable mempty unifiedSetNonTargetOriginal)
 
         , testCase "refreshVariable - avoid original" $
             assertBool
@@ -292,14 +288,16 @@ test_refreshVariable =
     ]
   where
     original = metaVariable
-    avoid2 = Set.singleton metaVariableDifferentSort
+    avoid2 = avoid metaVariableDifferentSort
     Just fresh2 = refreshVariable avoid2 original
 
-    avoid0 :: variable -> Set variable
-    avoid0 var = Set.singleton var
+    avoid0 :: variable -> Avoiding variable
+    avoid0 var = avoid var
 
-    avoid1 :: (Ord variable, FreshVariable variable) => variable -> Set variable
-    avoid1 var = Set.insert (fresh0 var) (avoid0 var)
+    avoid1
+        :: (Ord variable, FreshVariable variable)
+        => variable -> Avoiding variable
+    avoid1 var = avoid (fresh0 var) <> avoid0 var
 
     fresh0
         :: FreshVariable variable
@@ -311,7 +309,7 @@ test_refreshVariable =
         => variable
         -> variable
     fresh1 var = fromJust $ refreshVariable (avoid1 var) var
-    fresh :: FreshVariable variable => Set variable -> variable -> variable
+    fresh :: FreshVariable variable => Avoiding variable -> variable -> variable
     fresh avoiding var = fromJust $ refreshVariable avoiding var
 
     elemOriginal        = ElementVariable original
@@ -321,16 +319,16 @@ test_refreshVariable =
 
     targetOriginal = Target original
     nonTargetOriginal = NonTarget original
-    avoidT = Set.singleton nonTargetOriginal
+    avoidT = avoid nonTargetOriginal
 
     -- ElementVariable (Target Variable)
     elemTargetOriginal    = mkElementTarget elemOriginal
     elemNonTargetOriginal = mkElementNonTarget elemOriginal
-    avoidET = Set.singleton elemNonTargetOriginal
+    avoidET = avoid elemNonTargetOriginal
     -- SetVariable (Target Variable)
     setTargetOriginal     = mkSetTarget setOriginal
     setNonTargetOriginal  = mkSetNonTarget setOriginal
-    avoidST = Set.singleton setTargetOriginal
+    avoidST = avoid setTargetOriginal
 
     unifiedTarget = mapUnifiedVariable mkElementTarget mkSetTarget
 
@@ -341,8 +339,8 @@ test_refreshVariable =
     unifiedElemNonTargetOriginal = unifiedNonTarget unifiedElemOriginal
     unifiedSetTargetOriginal     = unifiedTarget  unifiedSetOriginal
     unifiedSetNonTargetOriginal  = unifiedNonTarget unifiedSetOriginal
-    avoidUET = Set.singleton unifiedElemNonTargetOriginal
-    avoidUST = Set.singleton unifiedSetTargetOriginal
+    avoidUET = avoid unifiedElemNonTargetOriginal
+    avoidUST = avoid unifiedSetTargetOriginal
 
 {- | Property tests of a 'FreshPartialOrd' instance using the given generator.
 

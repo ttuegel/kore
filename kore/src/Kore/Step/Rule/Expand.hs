@@ -17,16 +17,12 @@ import Data.List.NonEmpty
     ( NonEmpty ((:|))
     )
 import qualified Data.Map.Strict as Map
-import Data.Set
-    ( Set
-    )
-import qualified Data.Set as Set
 
 import qualified Debug
-import qualified Kore.Attribute.Pattern.FreeVariables as FreeVariables
 import Kore.Attribute.Pattern.FreeVariables
     ( freeVariables
     )
+import qualified Kore.Attribute.Pattern.FreeVariables as FreeVariables
 import qualified Kore.Attribute.Sort.Constructors as Attribute.Constructors
     ( Constructor (Constructor)
     , ConstructorLike (ConstructorLikeConstructor)
@@ -69,7 +65,9 @@ import Kore.Syntax.Variable
     ( Variable (Variable, variableSort)
     )
 import Kore.Variables.Fresh
-    ( refreshVariable
+    ( Avoiding
+    , avoid
+    , refreshVariable
     )
 import Kore.Variables.UnifiedVariable
     ( UnifiedVariable (ElemVar)
@@ -102,13 +100,14 @@ instance ExpandSingleConstructors (RulePattern Variable) where
                     mapMaybe extractElementVariable
                     $ FreeVariables.toList
                     $ freeVariables left
-                allUnifiedVariables :: Set (UnifiedVariable Variable)
+                allUnifiedVariables :: [UnifiedVariable Variable]
                 allUnifiedVariables =
-                    FreeVariables.toSet (freeVariables rule)
-                allElementVariables :: Set (ElementVariable Variable)
-                allElementVariables = Set.fromList
-                    $ [ v | ElemVar v <- Set.toList allUnifiedVariables]
-                        ++ existentials
+                    FreeVariables.toList (freeVariables rule)
+                allElementVariables :: Avoiding (ElementVariable Variable)
+                allElementVariables =
+                    [ v | ElemVar v <- allUnifiedVariables]
+                    & flip (++) existentials
+                    & foldMap avoid
                 expansion
                     :: Map.Map (UnifiedVariable Variable) (TermLike Variable)
                 expansion =
@@ -162,18 +161,18 @@ instance ExpandSingleConstructors ReachabilityRule where
 expandVariables
     :: SmtMetadataTools attributes
     -> [ElementVariable Variable]
-    -> Set.Set (ElementVariable Variable)
+    -> Avoiding (ElementVariable Variable)
     -> Map.Map (UnifiedVariable Variable) (TermLike Variable)
 expandVariables metadataTools variables toAvoid =
     fst $ foldl' expandAddVariable (Map.empty, toAvoid) variables
   where
     expandAddVariable
         ::  ( Map.Map (UnifiedVariable Variable) (TermLike Variable)
-            , Set.Set (ElementVariable Variable)
+            , Avoiding (ElementVariable Variable)
             )
         -> ElementVariable Variable
         ->  ( Map.Map (UnifiedVariable Variable) (TermLike Variable)
-            , Set.Set (ElementVariable Variable)
+            , Avoiding (ElementVariable Variable)
             )
     expandAddVariable (substitution, toAvoid') variable =
         case expandVariable metadataTools toAvoid' variable of
@@ -181,14 +180,14 @@ expandVariables metadataTools variables toAvoid =
                 ( if mkElemVar variable == term
                     then substitution
                     else Map.insert (ElemVar variable) term substitution
-                , foldr Set.insert toAvoid' newVariables
+                , toAvoid' <> newVariables
                 )
 
 expandVariable
     :: SmtMetadataTools attributes
-    -> Set.Set (ElementVariable Variable)
+    -> Avoiding (ElementVariable Variable)
     -> ElementVariable Variable
-    -> (Set.Set (ElementVariable Variable), TermLike Variable)
+    -> (Avoiding (ElementVariable Variable), TermLike Variable)
 expandVariable
     metadataTools
     usedVariables
@@ -197,11 +196,11 @@ expandVariable
 
 expandSort
     :: SmtMetadataTools attributes
-    -> Set.Set (ElementVariable Variable)
+    -> Avoiding (ElementVariable Variable)
     -> ElementVariable Variable
     -> VariableUsage
     -> Sort
-    -> (Set.Set (ElementVariable Variable), TermLike Variable)
+    -> (Avoiding (ElementVariable Variable), TermLike Variable)
 expandSort
     _metadataTools
     usedVariables
@@ -239,10 +238,10 @@ expandSort
 
 expandConstructor
     :: SmtMetadataTools attributes
-    -> Set.Set (ElementVariable Variable)
+    -> Avoiding (ElementVariable Variable)
     -> ElementVariable Variable
     -> Attribute.Constructors.Constructor
-    -> (Set.Set (ElementVariable Variable), TermLike Variable)
+    -> (Avoiding (ElementVariable Variable), TermLike Variable)
 expandConstructor
     metadataTools
     usedVariables
@@ -255,8 +254,8 @@ expandConstructor
 
     expandChildSort
         :: Sort
-        -> ([TermLike Variable], Set.Set (ElementVariable Variable))
-        -> ([TermLike Variable], Set.Set (ElementVariable Variable))
+        -> ([TermLike Variable], Avoiding (ElementVariable Variable))
+        -> ([TermLike Variable], Avoiding (ElementVariable Variable))
     expandChildSort sort (terms, beforeUsedVariables) =
         (term : terms, afterUsedVariables)
       where
@@ -291,11 +290,11 @@ data VariableUsage =
     -- variable, so we need to generate a new one based on it.
 
 maybeNewVariable
-    :: Set.Set (ElementVariable Variable)
+    :: Avoiding (ElementVariable Variable)
     -> ElementVariable Variable
     -> Sort
     -> VariableUsage
-    -> (Set.Set (ElementVariable Variable), TermLike Variable)
+    -> (Avoiding (ElementVariable Variable), TermLike Variable)
 maybeNewVariable
     usedVariables
     variable@(ElementVariable Variable {variableSort})
@@ -308,7 +307,7 @@ maybeNewVariable
 maybeNewVariable usedVariables variable sort UseAsPrototype =
     case refreshVariable usedVariables variable' of
         Just newVariable ->
-            ( Set.insert newVariable usedVariables
+            ( avoid newVariable <> usedVariables
             , mkElemVar newVariable
             )
         Nothing ->

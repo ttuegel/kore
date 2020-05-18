@@ -42,9 +42,6 @@ import Data.Map.Strict
     ( Map
     )
 import qualified Data.Map.Strict as Map
-import Data.Set
-    ( Set
-    )
 import qualified Generics.SOP as SOP
 import GHC.Generics
     ( Generic
@@ -226,7 +223,7 @@ unifiedVariableSort = foldMapVariable sortedVariableSort
 
 refreshElementVariable
     :: FreshVariable (UnifiedVariable variable)
-    => Set (UnifiedVariable variable)
+    => Avoiding (UnifiedVariable variable)
     -> ElementVariable variable
     -> Maybe (ElementVariable variable)
 refreshElementVariable avoiding =
@@ -236,7 +233,7 @@ refreshElementVariable avoiding =
 
 refreshSetVariable
     :: FreshVariable (UnifiedVariable variable)
-    => Set (UnifiedVariable variable)
+    => Avoiding (UnifiedVariable variable)
     -> SetVariable variable
     -> Maybe (SetVariable variable)
 refreshSetVariable avoiding =

@@ -167,6 +167,6 @@ substitute =
                     (either extractFreeVariables Set.singleton <$> subst')
 
         -- | Rename a bound variable, if needed.
-        avoidCapture = refreshVariable freeVariables'
+        avoidCapture = refreshVariable (from @(Set _) freeVariables')
 
 {-# INLINE substitute #-}

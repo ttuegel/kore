@@ -83,8 +83,9 @@ checkImplicationIsTop lhs rhs =
              , Pretty.indent 4 (unparse rhs)
              ]
       where
-        lhsFreeVariables = Set.fromList $
+        lhsFreeVariables =
             getFreeElementVariables (freeVariables lhs)
+            & foldMap avoid
         lhsMLPatt = Pattern.toTermLike lhs
 
 stripForallQuantifiers

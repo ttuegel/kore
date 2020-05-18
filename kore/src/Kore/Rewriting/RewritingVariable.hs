@@ -261,8 +261,10 @@ getResultPattern initial config@Conditional { substitution } =
     filtered = config { Pattern.substitution = substitution' }
     avoiding =
         initial
-        & FreeVariables.toSet
-        & Set.map (from @_ @(UnifiedVariable Variable))
+        & FreeVariables.mapFreeVariables
+            (from @_ @(ElementVariable Variable))
+            (from @_ @(SetVariable Variable))
+        & FreeVariables.toAvoiding
     introduced =
         Set.fromAscList
         . mapMaybe getUnifiedRuleVariable
