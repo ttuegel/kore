@@ -124,7 +124,7 @@ instance Hashable variable => Hashable (Assignment variable)
 -- that for variable renaming, the smaller variable will be on the
 -- left of the substitution.
 assign
-    :: InternalVariable variable
+    :: (Ord variable, SubstitutionOrd variable, SortedVariable variable)
     => UnifiedVariable variable
     -> TermLike variable
     -> Assignment variable
@@ -154,7 +154,7 @@ mapAssignedTerm f (Assignment variable term) =
     assign variable (f term)
 
 mkUnwrappedSubstitution
-    :: InternalVariable variable
+    :: (Ord variable, SubstitutionOrd variable, SortedVariable variable)
     => [(UnifiedVariable variable, TermLike variable)]
     -> [Assignment variable]
 mkUnwrappedSubstitution = fmap (uncurry assign)
@@ -183,11 +183,17 @@ data Substitution variable
     deriving GHC.Generic
 
 -- | 'Eq' does not differentiate normalized and denormalized 'Substitution's.
-instance InternalVariable variable => Eq (Substitution variable) where
+instance
+    (Ord variable, SubstitutionOrd variable, SortedVariable variable)
+    => Eq (Substitution variable)
+  where
     (==) = on (==) unwrap
 
 -- | 'Ord' does not differentiate normalized and denormalized 'Substitution's.
-instance InternalVariable variable => Ord (Substitution variable) where
+instance
+    (Ord variable, SubstitutionOrd variable, SortedVariable variable)
+    => Ord (Substitution variable)
+  where
     compare = on compare unwrap
 
 instance SOP.Generic (Substitution variable)
@@ -285,7 +291,7 @@ type UnwrappedSubstitution variable = [Assignment variable]
 
 -- | Unwrap the 'Substitution' to its inner list of substitutions.
 unwrap
-    :: InternalVariable variable
+    :: (Ord variable, SubstitutionOrd variable, SortedVariable variable)
     => Substitution variable
     -> [Assignment variable]
 unwrap (Substitution xs) =
@@ -352,7 +358,7 @@ cycles.
 
  -}
 normalOrder
-    :: InternalVariable variable
+    :: (Ord variable, SubstitutionOrd variable, SortedVariable variable)
     => (UnifiedVariable variable, TermLike variable)
     -> (UnifiedVariable variable, TermLike variable)
 normalOrder (uVar1, Var_ uVar2)
