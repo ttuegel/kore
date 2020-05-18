@@ -237,8 +237,11 @@ instance From (Avoiding variable) (Set variable) where
     from = getAvoiding
     {-# INLINE from #-}
 
-avoid :: variable -> Avoiding variable
-avoid = Avoiding . Set.singleton
+avoid
+    :: NamedVariable variable
+    => variable
+    -> Avoiding (VariableNameOf variable)
+avoid = Avoiding . Set.singleton . Lens.view lensVariableName
 
 {- | A @FreshVariable@ can be renamed to avoid colliding with a set of names.
 -}
@@ -252,12 +255,12 @@ class Ord (VariableNameOf variable) => FreshVariable variable where
 
      -}
     refreshVariable
-        :: Avoiding variable  -- ^ variables to avoid
+        :: Avoiding (VariableNameOf variable)  -- ^ variables to avoid
         -> variable      -- ^ variable to rename
         -> Maybe variable
     default refreshVariable
         :: (FreshPartialOrd (VariableNameOf variable), NamedVariable variable)
-        => Avoiding variable
+        => Avoiding (VariableNameOf variable)
         -> variable
         -> Maybe variable
     refreshVariable = defaultRefreshVariable
@@ -277,12 +280,11 @@ class Ord (VariableNameOf variable) => FreshVariable variable where
 defaultRefreshVariable
     :: FreshPartialOrd (VariableNameOf variable)
     => NamedVariable variable
-    => Avoiding variable
+    => Avoiding (VariableNameOf variable)
     -> variable
     -> Maybe variable
 defaultRefreshVariable avoiding =
     getAvoiding avoiding
-    & Set.map (Lens.view lensVariableName)
     & defaultRefreshVariableName
 {-# INLINE defaultRefreshVariable #-}
 
@@ -334,8 +336,8 @@ result with 'Kore.Internal.TermLike.mkVar':
 
  -}
 refreshVariables
-    :: (Ord variable, FreshVariable variable)
-    => Avoiding variable  -- ^ variables to avoid
+    :: (FreshVariable variable, NamedVariable variable)
+    => Avoiding (VariableNameOf variable)  -- ^ variables to avoid
     -> Set variable  -- ^ variables to rename
     -> Map variable variable
 refreshVariables avoid0 =

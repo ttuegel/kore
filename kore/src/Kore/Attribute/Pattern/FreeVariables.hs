@@ -47,7 +47,9 @@ import Kore.Sort
 import Kore.Syntax.ElementVariable
 import Kore.Syntax.SetVariable
 import Kore.Syntax.Variable
-    ( SortedVariable
+    ( NamedVariable (..)
+    , SomeVariableName
+    , SortedVariable
     , sortedVariableSort
     )
 import Kore.Variables.Fresh
@@ -98,8 +100,15 @@ toSet :: FreeVariables variable -> Set (UnifiedVariable variable)
 toSet = Map.keysSet . getFreeVariables
 {-# INLINE toSet #-}
 
-toAvoiding :: FreeVariables variable -> Avoiding (UnifiedVariable variable)
-toAvoiding = from @(Set _) @(Avoiding _) . toSet
+toAvoiding
+    :: NamedVariable variable
+    => Ord (VariableNameOf variable)
+    => FreeVariables variable
+    -> Avoiding (SomeVariableName (VariableNameOf variable))
+toAvoiding =
+    from @(Set _) @(Avoiding _)
+    . Set.map (Lens.view lensVariableName)
+    . toSet
 {-# INLINE toAvoiding #-}
 
 nullFreeVariables :: FreeVariables variable -> Bool

@@ -291,25 +291,31 @@ test_refreshVariable =
     avoid2 = avoid metaVariableDifferentSort
     Just fresh2 = refreshVariable avoid2 original
 
-    avoid0 :: variable -> Avoiding variable
+    avoid0
+        :: NamedVariable variable
+        => variable
+        -> Avoiding (VariableNameOf variable)
     avoid0 var = avoid var
 
     avoid1
-        :: (Ord variable, FreshVariable variable)
-        => variable -> Avoiding variable
+        :: (FreshVariable variable, NamedVariable variable)
+        => variable -> Avoiding (VariableNameOf variable)
     avoid1 var = avoid (fresh0 var) <> avoid0 var
 
     fresh0
-        :: FreshVariable variable
+        :: (FreshVariable variable, NamedVariable variable)
         => variable
         -> variable
     fresh0 var = fromJust $ refreshVariable (avoid0 var) var
     fresh1
-        :: (Ord variable, FreshVariable variable)
+        :: (FreshVariable variable, NamedVariable variable)
         => variable
         -> variable
     fresh1 var = fromJust $ refreshVariable (avoid1 var) var
-    fresh :: FreshVariable variable => Avoiding variable -> variable -> variable
+
+    fresh
+        :: FreshVariable variable
+        => Avoiding (VariableNameOf variable) -> variable -> variable
     fresh avoiding var = fromJust $ refreshVariable avoiding var
 
     elemOriginal        = ElementVariable original

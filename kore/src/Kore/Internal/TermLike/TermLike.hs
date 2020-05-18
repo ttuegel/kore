@@ -697,6 +697,10 @@ mapVariables mapElemVar mapSetVar termLike =
     askElementVariable' = rightAdjunct askElementVariable
     askSetVariable' = rightAdjunct askSetVariable
 
+    renameAttrs
+        :: UnifiedVariableMap variable1 variable2
+        -> Attribute.Pattern variable1
+        -> Attribute.Pattern variable2
     renameAttrs renaming =
         Attribute.mapVariables
             (askElementVariable' . Env.env renaming)
@@ -711,7 +715,9 @@ mapVariables mapElemVar mapSetVar termLike =
         let attrs :< termLikeF = Recursive.project (extract env)
             renaming = Env.ask env
             attrs' = renameAttrs renaming attrs
-            avoiding = FreeVariables.toAvoiding $ freeVariables attrs'
+            avoiding =
+                freeVariables @_ @variable2 attrs'
+                & FreeVariables.toAvoiding
             termLikeF' =
                 case termLikeF of
                     VariableF (Const unifiedVariable1) ->
@@ -775,7 +781,9 @@ traverseVariables trElemVar trSetVar termLike =
                 askElementVariable
                 askSetVariable
                 attrs
-        let avoiding = FreeVariables.toAvoiding $ freeVariables attrs'
+        let avoiding =
+                freeVariables @_ @variable2 attrs'
+                & FreeVariables.toAvoiding
         termLikeF' <- case termLikeF of
             VariableF (Const unifiedVariable) -> do
                 unifiedVariable' <- askUnifiedVariable unifiedVariable
@@ -841,7 +849,7 @@ renameElementBinder
     =>  Ord variable1
     =>  (FreshPartialOrd (VariableNameOf variable2), NamedVariable variable2)
     =>  (ElementVariable variable1 -> m (ElementVariable variable2))
-    ->  Avoiding (UnifiedVariable variable2)
+    ->  Avoiding (SomeVariableName (VariableNameOf variable2))
     ->  Binder (ElementVariable variable1)
             (RenamingT variable1 variable2 m any)
     ->  RenamingT variable1 variable2 m
@@ -868,7 +876,7 @@ renameSetBinder
     =>  Ord variable1
     =>  (FreshPartialOrd (VariableNameOf variable2), NamedVariable variable2)
     =>  (SetVariable variable1 -> m (SetVariable variable2))
-    ->  Avoiding (UnifiedVariable variable2)
+    ->  Avoiding (SomeVariableName (VariableNameOf variable2))
     ->  Binder (SetVariable variable1)
             (RenamingT variable1 variable2 m any)
     ->  RenamingT variable1 variable2 m

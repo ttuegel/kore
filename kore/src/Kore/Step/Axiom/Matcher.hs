@@ -208,11 +208,11 @@ matchIncremental termLike1 termLike2 =
             , predicate = empty
             , substitution = mempty
             , bound = mempty
-            , targets = from @_ @(Set _) free1
+            , targets = free1
             , avoiding = free1 <> free2
             }
-    free1 = (FreeVariables.toAvoiding . freeVariables) termLike1
-    free2 = (FreeVariables.toAvoiding . freeVariables) termLike2
+    free1 = (FreeVariables.toSet . freeVariables) termLike1
+    free2 = (FreeVariables.toSet . freeVariables) termLike2
 
     -- | Check that matching is finished and construct the result.
     done :: MatcherT variable simplifier (Maybe (MatchResult variable))
@@ -439,7 +439,7 @@ data MatcherState variable =
         -- ^ Bound variable that must not escape in the solution.
         , targets :: !(Set (UnifiedVariable variable))
         -- ^ Target variables that may be substituted.
-        , avoiding :: !(Avoiding (UnifiedVariable variable))
+        , avoiding :: !(Set (UnifiedVariable variable))
         -- ^ Variables that must not be shadowed.
         }
     deriving (GHC.Generic)
@@ -669,7 +669,7 @@ bindVariable
     -> matcher ()
 bindVariable variable = do
     field @"bound" %= Set.insert variable
-    field @"avoiding" <>= Variables.avoid variable
+    field @"avoiding" %= Set.insert variable
 
 {- | Lift a (bound) variable to the top level by with a globally-unique name.
 
@@ -683,7 +683,10 @@ liftVariable
     => UnifiedVariable variable
     -> matcher (Maybe (UnifiedVariable variable))
 liftVariable variable =
-    flip Variables.refreshVariable variable <$> Lens.use (field @"avoiding")
+    flip Variables.refreshVariable variable
+    . from @(Set _) @(Avoiding _)
+    . Set.map (Lens.view lensVariableName)
+    <$> Lens.use (field @"avoiding")
 
 leftAlignLists
     ::  Builtin.InternalList (TermLike variable)

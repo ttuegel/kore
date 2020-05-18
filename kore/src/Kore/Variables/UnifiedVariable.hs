@@ -223,7 +223,7 @@ unifiedVariableSort = foldMapVariable sortedVariableSort
 
 refreshElementVariable
     :: FreshVariable (UnifiedVariable variable)
-    => Avoiding (UnifiedVariable variable)
+    => Avoiding (SomeVariableName (VariableNameOf variable))
     -> ElementVariable variable
     -> Maybe (ElementVariable variable)
 refreshElementVariable avoiding =
@@ -233,7 +233,7 @@ refreshElementVariable avoiding =
 
 refreshSetVariable
     :: FreshVariable (UnifiedVariable variable)
-    => Avoiding (UnifiedVariable variable)
+    => Avoiding (SomeVariableName (VariableNameOf variable))
     -> SetVariable variable
     -> Maybe (SetVariable variable)
 refreshSetVariable avoiding =

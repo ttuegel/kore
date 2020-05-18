@@ -84,7 +84,8 @@ checkImplicationIsTop lhs rhs =
              ]
       where
         lhsFreeVariables =
-            getFreeElementVariables (freeVariables lhs)
+            freeVariables @_ @Variable lhs
+            & getFreeElementVariables
             & foldMap avoid
         lhsMLPatt = Pattern.toTermLike lhs
 

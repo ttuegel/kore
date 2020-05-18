@@ -70,7 +70,9 @@ import Kore.Syntax.ElementVariable
     ( ElementVariable (ElementVariable)
     )
 import Kore.Syntax.Variable
-    ( Variable (Variable, variableSort)
+    ( ElementVariableName (..)
+    , Variable (Variable, variableSort)
+    , VariableName (..)
     )
 import Kore.Variables.Fresh
     ( Avoiding
@@ -111,13 +113,13 @@ instance ExpandSingleConstructors (RulePattern Variable) where
                 allUnifiedVariables :: [UnifiedVariable Variable]
                 allUnifiedVariables =
                     FreeVariables.toList (freeVariables rule)
-                allElementVariables :: Avoiding (ElementVariable Variable)
+                allElementVariables
+                    :: Avoiding (ElementVariableName VariableName)
                 allElementVariables =
                     [ v | ElemVar v <- allUnifiedVariables]
                     & flip (++) existentials
                     & foldMap avoid
-                expansion
-                    :: Map.Map (UnifiedVariable Variable) (TermLike Variable)
+                expansion :: Expansion
                 expansion =
                     expandVariables
                         metadataTools
@@ -166,7 +168,7 @@ instance ExpandSingleConstructors ReachabilityRule where
         . getAllPathRule
         $ rule
 
-type Expander = State (Avoiding (ElementVariable Variable))
+type Expander = State (Avoiding (ElementVariableName VariableName))
 
 type Expansion = Map (UnifiedVariable Variable) (TermLike Variable)
 

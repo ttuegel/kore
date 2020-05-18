@@ -1881,7 +1881,7 @@ pattern Inj_ inj <- (Recursive.project -> _ :< InjF inj)
 
 refreshBinder
     :: InternalVariable variable
-    => (Avoiding (UnifiedVariable variable) -> bound -> Maybe bound)
+    => (Avoiding (SomeVariableName (VariableNameOf variable)) -> bound -> Maybe bound)
     -> (bound -> UnifiedVariable variable)
     -> FreeVariables variable
     -> Binder bound (TermLike variable)
