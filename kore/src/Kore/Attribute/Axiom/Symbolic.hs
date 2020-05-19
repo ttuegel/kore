@@ -23,18 +23,18 @@ import Kore.Attribute.Axiom.Concrete
     ( parseFreeVariables
     )
 import Kore.Attribute.Parser as Parser
-import qualified Kore.Attribute.Pattern.FreeVariables as FreeVariables
 import Kore.Attribute.Pattern.FreeVariables
     ( FreeVariables
     , isFreeVariable
     , mapFreeVariables
     )
+import qualified Kore.Attribute.Pattern.FreeVariables as FreeVariables
 import Kore.Debug
 import Kore.Syntax.ElementVariable
 import Kore.Syntax.SetVariable
 import Kore.Syntax.Variable
-    ( Variable
-    , SortedVariable
+    ( SortedVariable
+    , Variable
     )
 import Kore.Variables.UnifiedVariable
     ( UnifiedVariable

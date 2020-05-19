@@ -60,10 +60,10 @@ import Kore.Debug
 import qualified Kore.Internal.SideCondition.SideCondition as SideCondition
     ( Representation
     )
-import Kore.Syntax.Variable
 import Kore.Sort
     ( Sort
     )
+import Kore.Syntax.Variable
 import Kore.Variables.UnifiedVariable
     ( ElementVariable
     , SetVariable

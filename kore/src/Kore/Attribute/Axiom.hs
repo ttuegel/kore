@@ -89,8 +89,8 @@ import Kore.Internal.Symbol
 import Kore.Syntax.ElementVariable
 import Kore.Syntax.SetVariable
 import Kore.Syntax.Variable
-    ( Variable (..)
-    , SortedVariable
+    ( SortedVariable
+    , Variable (..)
     )
 import qualified SQL
 
