@@ -112,7 +112,6 @@ toSet = Map.keysSet . getFreeVariables
 
 toAvoiding
     :: NamedVariable variable
-    => Ord (VariableNameOf variable)
     => FreeVariables variable
     -> Avoiding (SomeVariableName (VariableNameOf variable))
 toAvoiding =
