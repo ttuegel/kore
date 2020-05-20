@@ -64,7 +64,7 @@ instance Synthetic Sort (Const InternalBytes) where
     {-# INLINE synthetic #-}
 
 instance
-    Ord variable =>
+    NamedVariable variable =>
     Synthetic (FreeVariables variable) (Const InternalBytes)
   where
     synthetic = const mempty

@@ -60,7 +60,7 @@ instance Unparse Signedness where
     unparse2 = unparse2 . toApplication @Void
 
 instance
-    Ord variable
+    NamedVariable variable
     => Synthetic (FreeVariables variable) (Const Signedness)
   where
     synthetic = const mempty

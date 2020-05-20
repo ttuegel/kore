@@ -12,6 +12,7 @@ module Kore.Attribute.Axiom.Concrete
     , parseFreeVariables -- used by Symbolic
     -- * Re-exports
     , FreeVariables
+    , NamedVariable
     ) where
 
 import Prelude.Kore
@@ -26,6 +27,7 @@ import qualified GHC.Generics as GHC
 import Kore.Attribute.Parser as Parser
 import Kore.Attribute.Pattern.FreeVariables
     ( FreeVariables
+    , NamedVariable
     , freeVariable
     , isFreeVariable
     , mapFreeVariables
@@ -36,8 +38,7 @@ import qualified Kore.Error
 import Kore.Syntax.ElementVariable
 import Kore.Syntax.SetVariable
 import Kore.Syntax.Variable
-    ( SortedVariable
-    , Variable
+    ( Variable
     )
 import Kore.Unparser
 import Kore.Variables.UnifiedVariable
@@ -61,7 +62,7 @@ instance (Debug variable, Diff variable) => Diff (Concrete variable)
 
 instance NFData variable => NFData (Concrete variable)
 
-instance Ord variable => Default (Concrete variable) where
+instance NamedVariable variable => Default (Concrete variable) where
     def = Concrete mempty
 
 instance From (Concrete variable) (Set (UnifiedVariable variable)) where
@@ -77,7 +78,7 @@ isConcreteVariable variable (Concrete freeVariables) =
     FreeVariables.isFreeVariable variable freeVariables
 
 concreteVariable
-    :: SortedVariable variable
+    :: NamedVariable variable
     => UnifiedVariable variable
     -> Concrete variable
 concreteVariable = Concrete . FreeVariables.freeVariable
@@ -159,7 +160,7 @@ instance From (Concrete Variable) Attributes where
         . unConcrete
 
 mapConcreteVariables
-    :: (Ord variable2, SortedVariable variable2)
+    :: NamedVariable variable2
     => (ElementVariable variable1 -> ElementVariable variable2)
     -> (SetVariable variable1 -> SetVariable variable2)
     ->  Concrete variable1 -> Concrete variable2

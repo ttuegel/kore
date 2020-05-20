@@ -104,7 +104,7 @@ instance From Symbol SymbolOrAlias where
     from = toSymbolOrAlias
 
 instance
-    Ord variable
+    NamedVariable variable
     => Synthetic (FreeVariables variable) (Application Symbol)
   where
     synthetic = Foldable.fold

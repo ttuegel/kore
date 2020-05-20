@@ -89,8 +89,7 @@ import Kore.Internal.Symbol
 import Kore.Syntax.ElementVariable
 import Kore.Syntax.SetVariable
 import Kore.Syntax.Variable
-    ( SortedVariable
-    , Variable (..)
+    ( Variable (..)
     )
 import qualified SQL
 
@@ -156,7 +155,7 @@ instance
 
 instance (NFData symbol, NFData variable) => NFData (Axiom symbol variable)
 
-instance Ord variable => Default (Axiom symbol variable) where
+instance NamedVariable variable => Default (Axiom symbol variable) where
     def =
         Axiom
             { heatCool = def
@@ -267,7 +266,7 @@ parseAxiomAttributes freeVariables (Attributes attrs) =
     Foldable.foldlM (flip $ parseAxiomAttribute freeVariables) Default.def attrs
 
 mapAxiomVariables
-    :: (Ord variable2, SortedVariable variable2)
+    :: NamedVariable variable2
     => (ElementVariable variable1 -> ElementVariable variable2)
     -> (SetVariable variable1 -> SetVariable variable2)
     -> Axiom symbol variable1 -> Axiom symbol variable2

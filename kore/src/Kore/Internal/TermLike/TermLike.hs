@@ -1112,7 +1112,7 @@ updateCallStack = Lens.set created callstack
  -}
 mkVar
     :: HasCallStack
-    => (Ord variable, SortedVariable variable)
+    => NamedVariable variable
     => UnifiedVariable variable
     -> TermLike variable
 mkVar = updateCallStack . synthesize . VariableF . Const

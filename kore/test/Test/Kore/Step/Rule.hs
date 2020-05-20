@@ -296,7 +296,8 @@ requiresP, ensuresP :: Predicate.Predicate Variable
 requiresP = Predicate.makeCeilPredicate_ (mkElemVar Mock.z)
 ensuresP = Predicate.makeCeilPredicate_ (mkElemVar Mock.t)
 
-attributesWithPriority :: Ord variable => Attribute.Axiom symbol variable
+attributesWithPriority
+    :: NamedVariable variable => Attribute.Axiom symbol variable
 attributesWithPriority =
     def & setField @"priority" (Attribute.Priority (Just 0))
 

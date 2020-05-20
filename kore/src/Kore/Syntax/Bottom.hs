@@ -48,7 +48,7 @@ instance Unparse (Bottom Sort child) where
         "\\bottom" <> parameters [bottomSort] <> noArguments
     unparse2 _ = "\\bottom"
 
-instance Ord variable => Synthetic (FreeVariables variable) (Bottom sort) where
+instance NamedVariable variable => Synthetic (FreeVariables variable) (Bottom sort) where
     synthetic = const mempty
     {-# INLINE synthetic #-}
 

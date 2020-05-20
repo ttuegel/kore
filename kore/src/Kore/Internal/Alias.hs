@@ -21,6 +21,7 @@ import qualified GHC.Generics as GHC
 import Kore.AST.AstWithLocation
 import Kore.Attribute.Pattern.FreeVariables
     ( FreeVariables
+    , NamedVariable
     )
 import Kore.Attribute.Synthetic
 import Kore.Debug
@@ -77,7 +78,7 @@ instance Unparse (Alias patternType) where
         unparse2 aliasConstructor
 
 instance
-    Ord variable =>
+    NamedVariable variable =>
     Synthetic (FreeVariables variable) (Application (Alias patternType))
   where
     -- TODO (thomas.tuegel): Consider that there could be bound variables here.

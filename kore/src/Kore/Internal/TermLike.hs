@@ -1403,8 +1403,7 @@ mkInhabitant = updateCallStack . synthesize . InhabitantF . Inhabitant
 
 mkEvaluated
     :: HasCallStack
-    => Ord variable
-    => SortedVariable variable
+    => NamedVariable variable
     => TermLike variable
     -> TermLike variable
 mkEvaluated = updateCallStack . synthesize . EvaluatedF . Evaluated
@@ -1413,8 +1412,7 @@ mkEvaluated = updateCallStack . synthesize . EvaluatedF . Evaluated
  -}
 mkEndianness
     :: HasCallStack
-    => Ord variable
-    => SortedVariable variable
+    => NamedVariable variable
     => Endianness
     -> TermLike variable
 mkEndianness = updateCallStack . synthesize . EndiannessF . Const
@@ -1423,8 +1421,7 @@ mkEndianness = updateCallStack . synthesize . EndiannessF . Const
  -}
 mkSignedness
     :: HasCallStack
-    => Ord variable
-    => SortedVariable variable
+    => NamedVariable variable
     => Signedness
     -> TermLike variable
 mkSignedness = updateCallStack . synthesize . SignednessF . Const

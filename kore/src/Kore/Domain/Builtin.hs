@@ -805,6 +805,6 @@ instance Synthetic Sort (Builtin key) where
     synthetic = builtinSort
     {-# INLINE synthetic #-}
 
-instance Ord variable => Synthetic (FreeVariables variable) (Builtin key) where
+instance NamedVariable variable => Synthetic (FreeVariables variable) (Builtin key) where
     synthetic = Foldable.fold
     {-# INLINE synthetic #-}

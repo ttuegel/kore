@@ -9,6 +9,7 @@ module Kore.Attribute.Axiom.Symbolic
     , parseSymbolicAttribute
     -- * Re-exports
     , FreeVariables
+    , NamedVariable
     ) where
 
 import Prelude.Kore
@@ -25,6 +26,7 @@ import Kore.Attribute.Axiom.Concrete
 import Kore.Attribute.Parser as Parser
 import Kore.Attribute.Pattern.FreeVariables
     ( FreeVariables
+    , NamedVariable
     , isFreeVariable
     , mapFreeVariables
     )
@@ -33,8 +35,7 @@ import Kore.Debug
 import Kore.Syntax.ElementVariable
 import Kore.Syntax.SetVariable
 import Kore.Syntax.Variable
-    ( SortedVariable
-    , Variable
+    ( Variable
     )
 import Kore.Variables.UnifiedVariable
     ( UnifiedVariable
@@ -56,7 +57,7 @@ instance (Debug variable, Diff variable) => Diff (Symbolic variable)
 
 instance NFData variable => NFData (Symbolic variable)
 
-instance Ord variable => Default (Symbolic variable) where
+instance NamedVariable variable => Default (Symbolic variable) where
     def = Symbolic mempty
 
 instance From (Symbolic variable) (Set (UnifiedVariable variable)) where
@@ -98,7 +99,7 @@ instance From (Symbolic Variable) Attributes where
         . unSymbolic
 
 mapSymbolicVariables
-    :: (Ord variable2, SortedVariable variable2)
+    :: NamedVariable variable2
     => (ElementVariable variable1 -> ElementVariable variable2)
     -> (SetVariable variable1 -> SetVariable variable2)
     ->  Symbolic variable1 -> Symbolic variable2

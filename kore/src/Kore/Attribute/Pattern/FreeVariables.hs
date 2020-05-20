@@ -18,6 +18,8 @@ module Kore.Attribute.Pattern.FreeVariables
     , traverseFreeVariables
     , getFreeElementVariables
     , HasFreeVariables (..)
+    -- * Re-exports
+    , NamedVariable
     ) where
 
 import Prelude.Kore
@@ -26,9 +28,6 @@ import Control.DeepSeq
 import qualified Control.Lens as Lens
 import qualified Data.Foldable as Foldable
 import Data.Functor.Const
-import Data.Generics.Wrapped
-    ( _Unwrapped
-    )
 import qualified Data.Map as Map
 import Data.Map.Strict
     ( Map
@@ -38,8 +37,6 @@ import Data.Set
     )
 import qualified Data.Set as Set
 import qualified Data.Traversable as Traversable
-import qualified Generics.SOP as SOP
-import qualified GHC.Generics as GHC
 
 import Kore.Attribute.Synthetic
 import Kore.Debug
@@ -49,7 +46,6 @@ import Kore.Syntax.SetVariable
 import Kore.Syntax.Variable
     ( NamedVariable (..)
     , SomeVariableName
-    , SortedVariable
     , sortedVariableSort
     )
 import Kore.Variables.Fresh
@@ -59,33 +55,40 @@ import Kore.Variables.UnifiedVariable
 
 data FreeVariables variable where
     FreeVariables
-        :: { getFreeVariables :: Map (UnifiedVariable variable) Sort }
+        :: NamedVariable variable
+        => { getFreeVariables :: Map (UnifiedVariable variable) Sort }
         -> FreeVariables variable
-    deriving GHC.Generic
-    deriving (Eq, Ord, Show)
+
+instance Eq variable => Eq (FreeVariables variable) where
+    (==) = on (==) toList
+
+instance Ord variable => Ord (FreeVariables variable) where
+    compare = on compare toList
+
+instance Show (FreeVariables variable) where
+    showsPrec _ _ = showChar '_'
 
 instance Ord variable => Semigroup (FreeVariables variable) where
-    (<>) a b = FreeVariables $ on (<>) getFreeVariables a b
+    (<>) a@(FreeVariables _) b = FreeVariables $ on (<>) getFreeVariables a b
 
-instance Ord variable => Monoid (FreeVariables variable) where
+instance NamedVariable variable => Monoid (FreeVariables variable) where
     mempty = FreeVariables mempty
 
-instance SOP.Generic (FreeVariables variable)
+instance Debug variable => Debug (FreeVariables variable) where
+    debugPrec _ _ = "_"
 
-instance SOP.HasDatatypeInfo (FreeVariables variable)
+instance (Debug variable, Diff variable) => Diff (FreeVariables variable) where
+    diffPrec a b = on diffPrec toList a b $> const "_"
 
-instance Debug variable => Debug (FreeVariables variable)
-
-instance (Debug variable, Diff variable) => Diff (FreeVariables variable)
-
-instance NFData variable => NFData (FreeVariables variable)
+instance NFData variable => NFData (FreeVariables variable) where
+    rnf = rnf . toList
 
 instance Hashable variable => Hashable (FreeVariables variable) where
     hashWithSalt salt = hashWithSalt salt . Map.toAscList . getFreeVariables
     {-# INLINE hashWithSalt #-}
 
 instance
-    SortedVariable variable
+    NamedVariable variable
     => Synthetic (FreeVariables variable) (Const (UnifiedVariable variable))
   where
     synthetic (Const var) = freeVariable var
@@ -127,7 +130,8 @@ bindVariable
     => UnifiedVariable variable
     -> FreeVariables variable
     -> FreeVariables variable
-bindVariable variable = Lens.over _Unwrapped (Map.delete variable)
+bindVariable variable (FreeVariables freeVars)=
+    FreeVariables (Map.delete variable freeVars)
 {-# INLINE bindVariable #-}
 
 bindVariables
@@ -147,7 +151,7 @@ isFreeVariable variable = Map.member variable . getFreeVariables
 {-# INLINE isFreeVariable #-}
 
 freeVariable
-    :: SortedVariable variable
+    :: NamedVariable variable
     => UnifiedVariable variable
     -> FreeVariables variable
 freeVariable variable =
@@ -157,21 +161,21 @@ freeVariable variable =
 {-# INLINE freeVariable #-}
 
 mapFreeVariables
-    :: (Ord variable2, SortedVariable variable2)
+    :: NamedVariable variable2
     => (ElementVariable variable1 -> ElementVariable variable2)
     -> (SetVariable variable1 -> SetVariable variable2)
     -> FreeVariables variable1 -> FreeVariables variable2
 mapFreeVariables mapElemVar mapSetVar =
-    Set.map (mapUnifiedVariable mapElemVar mapSetVar)
-    & viaSet
-    & Lens.over _Unwrapped
-  where
-    viaSet f = Map.fromSet sortedVariableSort . f . Map.keysSet
+    toList
+    >>> map (mapUnifiedVariable mapElemVar mapSetVar)
+    >>> Set.fromList
+    >>> Map.fromSet sortedVariableSort
+    >>> FreeVariables
 {-# INLINE mapFreeVariables #-}
 
 traverseFreeVariables
     :: Applicative f
-    => (Ord variable2, SortedVariable variable2)
+    => NamedVariable variable2
     => (ElementVariable variable1 -> f (ElementVariable variable2))
     -> (SetVariable variable1 -> f (SetVariable variable2))
     -> FreeVariables variable1 -> f (FreeVariables variable2)
@@ -195,5 +199,5 @@ getFreeElementVariables =
 class HasFreeVariables pat variable where
     freeVariables :: pat -> FreeVariables variable
 
-instance Ord variable => HasFreeVariables () variable where
+instance NamedVariable variable => HasFreeVariables () variable where
     freeVariables = const mempty

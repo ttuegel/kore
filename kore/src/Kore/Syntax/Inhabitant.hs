@@ -17,8 +17,6 @@ import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
 import Kore.Attribute.Pattern.FreeVariables
-    ( FreeVariables
-    )
 import Kore.Attribute.Synthetic
 import Kore.Debug
 import Kore.Sort
@@ -45,7 +43,7 @@ instance Unparse (Inhabitant child) where
     unparse2 = unparse2 . inhSort
 
 instance
-    Ord variable =>
+    NamedVariable variable =>
     Synthetic (FreeVariables variable) Inhabitant
   where
     synthetic = const mempty

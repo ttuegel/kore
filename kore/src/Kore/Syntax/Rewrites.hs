@@ -65,7 +65,7 @@ instance Unparse child => Unparse (Rewrites Sort child) where
             , unparse2 rewritesSecond
             ])
 
-instance Ord variable => Synthetic (FreeVariables variable) (Rewrites sort)
+instance NamedVariable variable => Synthetic (FreeVariables variable) (Rewrites sort)
   where
     synthetic = Foldable.fold
     {-# INLINE synthetic #-}

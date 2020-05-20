@@ -65,7 +65,7 @@ instance Unparse child => Unparse (Or Sort child) where
             , unparse2 orSecond
             ])
 
-instance Ord variable => Synthetic (FreeVariables variable) (Or sort) where
+instance NamedVariable variable => Synthetic (FreeVariables variable) (Or sort) where
     synthetic = Foldable.fold
     {-# INLINE synthetic #-}
 

@@ -22,8 +22,6 @@ import qualified Generics.SOP as SOP
 import qualified GHC.Generics as GHC
 
 import Kore.Attribute.Pattern.FreeVariables
-    ( FreeVariables
-    )
 import Kore.Attribute.Synthetic
 import Kore.Debug
 import Kore.Sort
@@ -52,7 +50,7 @@ instance Unparse StringLiteral where
     unparse2 = unparse
 
 instance
-    Ord variable =>
+    NamedVariable variable =>
     Synthetic (FreeVariables variable) (Const StringLiteral)
   where
     synthetic = const mempty
