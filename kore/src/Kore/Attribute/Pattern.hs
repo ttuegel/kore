@@ -203,8 +203,7 @@ traverseVariables trElemVar trSetVar =
 {- | Delete the given variable from the set of free variables.
  -}
 deleteFreeVariable
-    :: Ord variable
-    => UnifiedVariable variable
+    :: UnifiedVariable variable
     -> Pattern variable
     -> Pattern variable
 deleteFreeVariable variable =

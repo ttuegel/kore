@@ -68,10 +68,7 @@ instance
             , unparse2 muChild
             ])
 
-instance
-    Ord variable =>
-    Synthetic (FreeVariables variable) (Mu variable)
-  where
+instance Synthetic (FreeVariables variable) (Mu variable) where
     synthetic Mu { muVariable, muChild } =
         bindVariable (SetVar muVariable) muChild
     {-# INLINE synthetic #-}

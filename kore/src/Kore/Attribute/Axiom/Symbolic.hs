@@ -106,6 +106,5 @@ mapSymbolicVariables
 mapSymbolicVariables mapElemVar mapSetVar (Symbolic freeVariables) =
     Symbolic (mapFreeVariables mapElemVar mapSetVar freeVariables)
 
-isSymbolic
-    :: Ord variable => Symbolic variable -> UnifiedVariable variable -> Bool
+isSymbolic :: Symbolic variable -> UnifiedVariable variable -> Bool
 isSymbolic (Symbolic vars) = not . flip isFreeVariable  vars

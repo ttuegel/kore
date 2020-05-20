@@ -78,10 +78,7 @@ instance
             , unparse2 forallChild
             ])
 
-instance
-    Ord variable =>
-    Synthetic (FreeVariables variable) (Forall sort variable)
-  where
+instance Synthetic (FreeVariables variable) (Forall sort variable) where
     synthetic Forall { forallVariable, forallChild } =
         bindVariable (ElemVar forallVariable) forallChild
     {-# INLINE synthetic #-}

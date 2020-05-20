@@ -78,10 +78,7 @@ instance
             , unparse2 existsChild
             ])
 
-instance
-    Ord variable =>
-    Synthetic (FreeVariables variable) (Exists sort variable)
-  where
+instance Synthetic (FreeVariables variable) (Exists sort variable) where
     synthetic Exists { existsVariable, existsChild } =
         bindVariable (ElemVar existsVariable) existsChild
     {-# INLINE synthetic #-}

@@ -68,10 +68,7 @@ instance
             , unparse2 nuChild
             ])
 
-instance
-    Ord variable =>
-    Synthetic (FreeVariables variable) (Nu variable)
-  where
+instance Synthetic (FreeVariables variable) (Nu variable) where
     synthetic Nu { nuVariable, nuChild } =
         bindVariable (SetVar nuVariable) nuChild
     {-# INLINE synthetic #-}

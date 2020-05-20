@@ -275,8 +275,7 @@ import qualified Kore.Variables.Fresh as Fresh
 import Kore.Variables.UnifiedVariable
 
 hasFreeVariable
-    :: Ord variable
-    => UnifiedVariable variable
+    :: UnifiedVariable variable
     -> TermLike variable
     -> Bool
 hasFreeVariable variable = isFreeVariable variable . freeVariables

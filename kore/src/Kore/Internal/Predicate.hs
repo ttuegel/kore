@@ -812,8 +812,7 @@ freeElementVariables :: Predicate variable -> [ElementVariable variable]
 freeElementVariables = getFreeElementVariables . freeVariables
 
 hasFreeVariable
-    :: Ord variable
-    => UnifiedVariable variable
+    :: UnifiedVariable variable
     -> Predicate variable
     -> Bool
 hasFreeVariable variable = isFreeVariable variable . freeVariables

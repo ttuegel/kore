@@ -70,8 +70,7 @@ instance From (Concrete variable) (Set (UnifiedVariable variable)) where
     {-# INLINE from #-}
 
 isConcreteVariable
-    :: Ord variable
-    => UnifiedVariable variable
+    :: UnifiedVariable variable
     -> Concrete variable
     -> Bool
 isConcreteVariable variable (Concrete freeVariables) =

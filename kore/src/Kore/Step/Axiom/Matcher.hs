@@ -608,7 +608,7 @@ substituteTermLike
 substituteTermLike subst = Builtin.renormalize . TermLike.substitute subst
 
 occursCheck
-    :: (MatchingVariable variable, Monad simplifier)
+    :: Monad simplifier
     => UnifiedVariable variable
     -> TermLike variable
     -> MaybeT (MatcherT variable simplifier) ()
