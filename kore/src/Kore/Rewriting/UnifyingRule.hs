@@ -31,7 +31,6 @@ import Kore.Internal.TermLike
     , InternalVariable
     , NamedVariable
     , SetVariable
-    , SortedVariable
     , TermLike
     , VariableNameOf
     )
@@ -106,7 +105,7 @@ class UnifyingRule rule where
     mapRuleVariables
         :: Ord variable1
         => FreshPartialOrd (VariableNameOf variable2)
-        => (NamedVariable variable2, SortedVariable variable2)
+        => NamedVariable variable2
         => (ElementVariable variable1 -> ElementVariable variable2)
         -> (SetVariable variable1 -> SetVariable variable2)
         -> rule variable1

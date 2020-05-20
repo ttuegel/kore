@@ -386,7 +386,7 @@ composes with other tree transformations without allocating intermediates.
 
  -}
 fromConcrete
-    :: (FreshPartialOrd (VariableNameOf variable), NamedVariable variable, SortedVariable variable)
+    :: (FreshPartialOrd (VariableNameOf variable), NamedVariable variable)
     => TermLike Concrete
     -> TermLike variable
 fromConcrete = mapVariables (\case {}) (\case {})

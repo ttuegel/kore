@@ -503,7 +503,6 @@ instance Unparse (TermLike variable) => SQL.Column (TermLike variable) where
 
 instance
     ( NamedVariable variable
-    , SortedVariable variable
     , FreshPartialOrd (VariableNameOf variable)
     )
     => From (TermLike Concrete) (TermLike variable)
@@ -667,7 +666,7 @@ mapVariables
     :: forall variable1 variable2
     .  Ord variable1
     => FreshPartialOrd (VariableNameOf variable2)
-    => (NamedVariable variable2, SortedVariable variable2)
+    => NamedVariable variable2
     => (ElementVariable variable1 -> ElementVariable variable2)
     -> (SetVariable variable1 -> SetVariable variable2)
     -> TermLike variable1
@@ -751,7 +750,7 @@ traverseVariables
     :: forall variable1 variable2 m
     .  Ord variable1
     => FreshPartialOrd (VariableNameOf variable2)
-    => (NamedVariable variable2, SortedVariable variable2)
+    => NamedVariable variable2
     => Monad m
     => (ElementVariable variable1 -> m (ElementVariable variable2))
     -> (SetVariable variable1 -> m (SetVariable variable2))
