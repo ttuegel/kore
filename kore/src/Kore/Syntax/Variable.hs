@@ -6,7 +6,8 @@ Please refer to Section 9 (The Kore Language) of the
 <http://github.com/kframework/kore/blob/master/docs/semantics-of-k.pdf Semantics of K>.
 -}
 
-{-# LANGUAGE EmptyDataDeriving #-}
+{-# LANGUAGE EmptyDataDeriving    #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Kore.Syntax.Variable
     ( Variable (..)
@@ -14,6 +15,9 @@ module Kore.Syntax.Variable
     , illegalVariableCounter
     , externalizeFreshVariable
     , Variable1 (..)
+    , SomeVariable
+    , ElementVariable1
+    , SetVariable1
     , fromVariable1
     , toVariable1
     -- * Variable names
@@ -412,3 +416,17 @@ instance Unparse variable => Unparse (Variable1 variable) where
         <> unparse variableSort1
 
     unparse2 Variable1 { variableName1 } = unparse2 variableName1
+
+instance From variable VariableName => From (Variable1 variable) Variable where
+    from = fromVariable1 . fmap from
+
+instance SortedVariable (Variable1 variable) where
+    lensVariableSort = field @"variableSort1"
+
+instance (From variable VariableName, Ord variable) => NamedVariable (Variable1 variable) where
+    type VariableNameOf (Variable1 variable) = variable
+    isoVariable1 = Lens.iso id id
+
+type SomeVariable variable = Variable1 (SomeVariableName variable)
+type ElementVariable1 variable = Variable1 (ElementVariableName variable)
+type SetVariable1 variable = Variable1 (SetVariableName variable)
