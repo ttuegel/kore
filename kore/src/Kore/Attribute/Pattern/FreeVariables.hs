@@ -57,11 +57,18 @@ import Kore.Variables.Fresh
     )
 import Kore.Variables.UnifiedVariable
 
-newtype FreeVariables variable =
-    FreeVariables { getFreeVariables :: Map (UnifiedVariable variable) Sort }
+data FreeVariables variable where
+    FreeVariables
+        :: { getFreeVariables :: Map (UnifiedVariable variable) Sort }
+        -> FreeVariables variable
     deriving GHC.Generic
     deriving (Eq, Ord, Show)
-    deriving (Semigroup, Monoid)
+
+instance Ord variable => Semigroup (FreeVariables variable) where
+    (<>) a b = FreeVariables $ on (<>) getFreeVariables a b
+
+instance Ord variable => Monoid (FreeVariables variable) where
+    mempty = FreeVariables mempty
 
 instance SOP.Generic (FreeVariables variable)
 
