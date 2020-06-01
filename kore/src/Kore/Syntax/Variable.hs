@@ -451,6 +451,7 @@ data AdjSomeVariableName a =
     -- ^ compare to: 'SomeVariableNameSet'
     }
     deriving (Functor)
+    deriving (Foldable, Traversable)
     deriving (GHC.Generic1)
 
 instance Semigroup a => Semigroup (AdjSomeVariableName a) where
