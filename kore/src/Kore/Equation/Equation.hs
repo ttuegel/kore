@@ -20,17 +20,17 @@ import Prelude.Kore
 import Control.DeepSeq
     ( NFData
     )
-import qualified Control.Lens as Lens
 import qualified Data.Default as Default
 import qualified Data.Foldable as Foldable
 import qualified Data.Functor.Foldable as Recursive
-import Data.Generics.Wrapped
-    ( _Wrapped
-    )
 import Data.Map.Strict
     ( Map
     )
 import qualified Data.Map.Strict as Map
+import Data.Set
+    ( Set
+    )
+import qualified Data.Set as Set
 import Data.Text
     ( Text
     )
@@ -224,39 +224,58 @@ refreshVariables
   =
     let rename :: Map (SomeVariableName variable) (SomeVariable variable)
         rename =
-            FreeVariables.toSet originalFreeVariables
-            & Fresh.refreshVariables avoid
-        lookupSomeVariableName
-            :: forall variable'
-            .  Injection (SomeVariableName variable) variable'
-            => variable'
-            -> variable'
-        lookupSomeVariableName variable =
-            do
-                let injected = inject @(SomeVariableName _) variable
-                someVariableName <- variableName <$> Map.lookup injected rename
-                retract someVariableName
-            & fromMaybe variable
-        adj :: AdjSomeVariableName (variable -> variable)
-        adj =
             AdjSomeVariableName
-            { adjSomeVariableNameElement =
-                ElementVariableName . Lens.over _Wrapped
-                $ lookupSomeVariableName @(ElementVariableName _)
-            , adjSomeVariableNameSet =
-                SetVariableName . Lens.over _Wrapped
-                $ lookupSomeVariableName @(SetVariableName _)
-
-            }
+                (worker ElementVariableName & ElementVariableName)
+                (worker SetVariableName & SetVariableName)
+            <*> adjRename
+            & Foldable.fold
+          where
+            worker mk =
+                Map.mapKeys (inject . mk) >>> (fmap . fmap) (inject . mk)
+        adjOriginalFreeVariables
+            :: AdjSomeVariableName (Set (Variable variable))
+        adjOriginalFreeVariables =
+            AdjSomeVariableName
+                (FreeVariables.toList originalFreeVariables
+                    & mapMaybe retractElementVariable
+                    & (fmap . fmap) unElementVariableName
+                    & Set.fromList
+                    & ElementVariableName
+                )
+                (FreeVariables.toList originalFreeVariables
+                    & mapMaybe retractSetVariable
+                    & (fmap . fmap) unSetVariableName
+                    & Set.fromList
+                    & SetVariableName
+                )
+        adjAvoid :: AdjSomeVariableName (Set variable)
+        adjAvoid =
+            AdjSomeVariableName
+                (Set.toList avoid
+                    & mapMaybe retract
+                    & fmap unElementVariableName
+                    & Set.fromList
+                    & ElementVariableName
+                )
+                (Set.toList avoid
+                    & mapMaybe retract
+                    & fmap unSetVariableName
+                    & Set.fromList
+                    & SetVariableName
+                )
+        adjRename =
+            Fresh.refreshVariables
+            <$> adjAvoid
+            <*> adjOriginalFreeVariables
+        adj =
+            fmap
+                (\rename' variable ->
+                    Map.lookup variable rename'
+                    & maybe variable variableName
+                )
+                adjRename
         subst :: Map (SomeVariableName variable) (TermLike variable)
-        subst =
-            FreeVariables.toList originalFreeVariables
-            & map mkSubst
-            & Map.fromList
-        mkSubst variable =
-            ( variableName variable
-            , TermLike.mkVar (mapSomeVariable adj variable)
-            )
+        subst = TermLike.mkVar <$> rename
         left' = TermLike.substitute subst left
         requires' = Predicate.substitute subst requires
         right' = TermLike.substitute subst right
