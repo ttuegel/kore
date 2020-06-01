@@ -23,8 +23,17 @@ module Kore.Attribute.Pattern.FreeVariables
 import Prelude.Kore
 
 import Control.DeepSeq
+import qualified Data.Bifunctor as Bifunctor
 import qualified Data.Foldable as Foldable
+import Data.Functor.Adjunction
+    ( leftAdjunct
+    , rightAdjunct
+    , splitL
+    )
 import Data.Functor.Const
+import Data.Functor.Rep
+    ( tabulate
+    )
 import Data.Map.Strict
     ( Map
     )
@@ -42,7 +51,8 @@ import Kore.Sort
 import Kore.Syntax.Variable
 
 newtype FreeVariables variable =
-    FreeVariables { getFreeVariables :: Map (SomeVariableName variable) Sort }
+    FreeVariables
+    { getFreeVariables :: AdjSomeVariableName (Map variable Sort) }
     deriving GHC.Generic
     deriving (Eq, Ord, Show)
     deriving (Semigroup, Monoid)
@@ -58,7 +68,7 @@ instance (Debug variable, Diff variable) => Diff (FreeVariables variable)
 instance NFData variable => NFData (FreeVariables variable)
 
 instance Hashable variable => Hashable (FreeVariables variable) where
-    hashWithSalt salt = hashWithSalt salt . toList
+    hashWithSalt salt = hashWithSalt salt . fmap Map.toList . getFreeVariables
     {-# INLINE hashWithSalt #-}
 
 instance
@@ -78,12 +88,18 @@ instance
     from = toSet
     {-# INLINE from #-}
 
-instance From (FreeVariables variable) (Set (SomeVariableName variable)) where
+instance
+    Ord variable
+    => From (FreeVariables variable) (Set (SomeVariableName variable))
+  where
     from = toNames
     {-# INLINE from #-}
 
 toList :: FreeVariables variable -> [SomeVariable variable]
-toList = map (uncurry Variable) . Map.toAscList . getFreeVariables
+toList = map (uncurry Variable) . go . fmap Map.toAscList . getFreeVariables
+  where
+    go adj = Foldable.fold (leftAdjunct classifyKeys () <*> adj)
+    classifyKeys which = (map . Bifunctor.first) (which $>)
 {-# INLINE toList #-}
 
 fromList
@@ -100,12 +116,18 @@ toSet
 toSet = Set.fromList . toList
 {-# INLINE toSet #-}
 
-toNames :: FreeVariables variable -> Set (SomeVariableName variable)
-toNames = Map.keysSet . getFreeVariables
+toNames
+    :: Ord variable
+    => FreeVariables variable
+    -> Set (SomeVariableName variable)
+toNames = go . fmap Map.keysSet . getFreeVariables
+  where
+    go adj = Foldable.fold (leftAdjunct classifyKeys () <*> adj)
+    classifyKeys which = Set.map (which $>)
 {-# INLINE toNames #-}
 
 nullFreeVariables :: FreeVariables variable -> Bool
-nullFreeVariables = Map.null . getFreeVariables
+nullFreeVariables = all Map.null . getFreeVariables
 {-# INLINE nullFreeVariables #-}
 
 bindVariable
@@ -113,8 +135,13 @@ bindVariable
     => SomeVariable variable
     -> FreeVariables variable
     -> FreeVariables variable
-bindVariable Variable { variableName } (FreeVariables freeVars) =
-    FreeVariables (Map.delete variableName freeVars)
+bindVariable Variable { variableName } (FreeVariables adj) =
+    (<*>)
+        (tabulate $ \ix' -> if ix == ix' then Map.delete variable else id)
+        adj
+    & FreeVariables
+  where
+    (variable, ix) = splitL variableName
 {-# INLINE bindVariable #-}
 
 bindVariables
@@ -132,13 +159,21 @@ isFreeVariable
     => SomeVariableName variable
     -> FreeVariables variable
     -> Bool
-isFreeVariable someVariableName (FreeVariables freeVars) =
-    Map.member someVariableName freeVars
+isFreeVariable someVariableName (FreeVariables adj) =
+    rightAdjunct (\variable -> Map.member variable <$> adj) someVariableName
 {-# INLINE isFreeVariable #-}
 
 freeVariable :: SomeVariable variable -> FreeVariables variable
 freeVariable Variable { variableName, variableSort } =
-    FreeVariables (Map.singleton variableName variableSort)
+    tabulate
+        (\ix' ->
+                if ix == ix'
+                then Map.singleton variable variableSort
+                else Map.empty
+        )
+    & FreeVariables
+  where
+    (variable, ix) = splitL variableName
 {-# INLINE freeVariable #-}
 
 mapFreeVariables

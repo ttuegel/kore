@@ -62,7 +62,9 @@ instance
     from = from @(FreeVariables _) . unConcrete
     {-# INLINE from #-}
 
-instance From (Concrete variable) (Set (SomeVariableName variable)) where
+instance
+    Ord variable => From (Concrete variable) (Set (SomeVariableName variable))
+  where
     from = from @(FreeVariables _) . unConcrete
     {-# INLINE from #-}
 

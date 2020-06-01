@@ -450,9 +450,22 @@ data AdjSomeVariableName a =
     , adjSomeVariableNameSet     :: SetVariableName     a
     -- ^ compare to: 'SomeVariableNameSet'
     }
+    deriving (Eq, Ord, Show)
     deriving (Functor)
     deriving (Foldable, Traversable)
-    deriving (GHC.Generic1)
+    deriving (GHC.Generic, GHC.Generic1)
+
+instance NFData a => NFData (AdjSomeVariableName a)
+
+instance Hashable a => Hashable (AdjSomeVariableName a)
+
+instance SOP.Generic (AdjSomeVariableName a)
+
+instance SOP.HasDatatypeInfo (AdjSomeVariableName a)
+
+instance Debug a => Debug (AdjSomeVariableName a)
+
+instance (Debug a, Diff a) => Diff (AdjSomeVariableName a)
 
 instance Semigroup a => Semigroup (AdjSomeVariableName a) where
     (<>) a b =

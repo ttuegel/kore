@@ -57,7 +57,9 @@ instance
     from = from @(FreeVariables _) . unSymbolic
     {-# INLINE from #-}
 
-instance From (Symbolic variable) (Set (SomeVariableName variable)) where
+instance
+    Ord variable => From (Symbolic variable) (Set (SomeVariableName variable))
+  where
     from = from @(FreeVariables _) . unSymbolic
     {-# INLINE from #-}
 
