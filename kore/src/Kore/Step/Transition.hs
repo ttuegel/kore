@@ -48,6 +48,7 @@ import Log
     )
 import Logic
     ( LogicT
+    , MonadLogic
     )
 import qualified Logic
 import SMT
@@ -117,6 +118,18 @@ instance MonadCatch m => MonadCatch (TransitionT rule m) where
         action' = runTransitionT action
         handler' e = runTransitionT (handler e)
 
+instance Monad m => MonadLogic (TransitionT rule m) where
+    msplit act = TransitionT $ AccumT $ \rules -> do
+        split <- Logic.msplit $ runAccumT (getTransitionT act) rules
+        case split of
+            Nothing -> pure (Nothing, rules)
+            Just ((a, rules'), act') -> pure (Just (a, liftLogicT act'), rules')
+      where
+        liftLogicT act' = do
+            (a, rules) <- TransitionT (lift act')
+            addRules rules
+            pure a
+
 runTransitionT :: Monad m => TransitionT rule m a -> m [(a, Seq rule)]
 runTransitionT (TransitionT edge) = Logic.observeAllT (runAccumT edge mempty)
 
@@ -169,6 +182,4 @@ orElse
     => TransitionT rule m a
     -> TransitionT rule m a
     -> TransitionT rule m a
-orElse first second = do
-    results <- tryTransitionT first
-    if null results then second else scatter results
+orElse first second = Logic.ifte first return second
