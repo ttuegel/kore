@@ -46,6 +46,9 @@ import Kore.Log.DebugAppliedRewriteRules
 import Kore.Log.DebugEvaluateCondition
     ( DebugEvaluateCondition
     )
+import Kore.Log.DebugProofDepth
+    ( DebugProofDepth
+    )
 import Kore.Log.DebugProofState
     ( DebugProofState
     )
@@ -146,6 +149,7 @@ entryHelpDocs :: [Pretty.Doc ()]
     unzip
     [ mk $ Proxy @DebugSolverSend
     , mk $ Proxy @DebugSolverRecv
+    , mk $ Proxy @DebugProofDepth
     , mk $ Proxy @DebugProofState
     , mk $ Proxy @DebugAppliedRewriteRules
     , mk $ Proxy @DebugSubstitutionSimplifier

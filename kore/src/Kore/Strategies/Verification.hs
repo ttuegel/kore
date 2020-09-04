@@ -85,6 +85,7 @@ import Kore.Internal.TermLike
     , pattern Not_
     , TermLike (..)
     )
+import Kore.Log.DebugProofDepth
 import Kore.Log.DebugProofState
 import Kore.Log.DebugProven
 import Kore.Log.InfoExecBreadth
@@ -499,10 +500,11 @@ throwStuckClaims rule prim state = do
  -}
 trackProofDepth
     :: forall m rule goal
-    .  TransitionRule m rule (ProofState goal)
+    .  MonadLog m
+    => TransitionRule m rule (ProofState goal)
     -> TransitionRule m rule (ProofDepth, ProofState goal)
 trackProofDepth rule prim (!proofDepth, proofState) = do
-    proofState' <- rule prim proofState
+    proofState' <- rule prim proofState & debugProofDepth proofDepth
     let proofDepth' = (if didRewrite proofState' then succ else id) proofDepth
     pure (proofDepth', proofState')
   where
