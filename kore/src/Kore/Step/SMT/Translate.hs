@@ -39,6 +39,7 @@ import Control.Monad.State.Strict
     )
 import qualified Control.Monad.State.Strict as State
 import Data.Default
+import Data.Functor.Const
 import qualified Data.Functor.Foldable as Recursive
 import Data.Generics.Product.Fields
 import Data.Map.Strict
@@ -58,6 +59,7 @@ import qualified Kore.Attribute.Symbol as Attribute
 import qualified Kore.Builtin.Bool as Builtin.Bool
 import qualified Kore.Builtin.Int as Builtin.Int
 import Kore.IndexedModule.MetadataTools
+import Kore.Internal.InternalInt
 import Kore.Internal.Predicate
 import Kore.Internal.TermLike
 import Kore.Log.WarnSymbolSMTRepresentation
@@ -154,6 +156,7 @@ translatePredicateWith translateTerm predicate =
             VariableF _ -> empty
             StringLiteralF _ -> empty
             InternalBytesF _ -> empty
+            InternalIntF _ -> empty
             InhabitantF _ -> empty
             EndiannessF _ -> empty
             SignednessF _ -> empty
@@ -206,9 +209,8 @@ translatePredicateWith translateTerm predicate =
     translateInt pat =
         case Cofree.tailF (Recursive.project pat) of
             VariableF _ -> translateUninterpreted SMT.tInt pat
-            BuiltinF dv ->
-                return $ SMT.int $ Builtin.Int.extractIntDomainValue
-                    "while translating dv to SMT.int" dv
+            InternalIntF (Const InternalInt { internalIntValue }) ->
+                return $ SMT.int internalIntValue
             ApplySymbolF app ->
                 translateApplication (Just SMT.tInt) pat app
             DefinedF (Defined child) -> translateInt child
